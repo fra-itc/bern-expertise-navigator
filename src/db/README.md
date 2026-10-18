@@ -139,8 +139,9 @@ with a `schema_outdated` error if a migration it needs is missing.
 | `0002_remove_technical_review` | (team, main) end of the technical-review step: open review statuses become `new`, status CHECK narrowed to `new/contacted/call_scheduled/closed`, review columns **dropped**. Already part of the fresh `initdb/` schema (registered by `05-migrations.sql`); not required by the app |
 | `0003_case_search_filters` | `nav."case".canton/area/niche` (search-first request filters, `config/medtech_areas.yaml` ids) + index `(area, niche)`; on databases that still have the review columns they become nullable and unused (nothing dropped) |
 | `0005_case_company_sources` | request from a company link / shared documents and broad search (main `32a3c4c`..`ae7ba6e`): `nav."case".city/understood/company_url/need/website/documents`, `nav.case_match.archetype`; `request_text` defaults to `''`. Additive only (`0004` is reserved by the papers branch) |
+| `0006_evidence_publication_field` | lets the Postgres backend index the team's OpenAlex source: `nav.entity.extractor` also allows `openalex`, `nav.evidence.field` also allows `publication`. Without it `index` fails on the first OpenAlex entity. Only widens two CHECKs; idempotent |
 
-Order on an existing database: `0002_index_order_and_match_ref`, then `0003_case_search_filters`, then `0005_case_company_sources` (all required by the app).
+Order on an existing database: `0002_index_order_and_match_ref`, then `0003_case_search_filters`, then `0005_case_company_sources`, then `0006_evidence_publication_field` (all required by the app).
 `0002_remove_technical_review` is independent and destructive (drops the review columns): take a backup first
 (see below) if that data matters.
 

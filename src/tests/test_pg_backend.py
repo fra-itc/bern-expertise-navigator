@@ -155,6 +155,21 @@ def test_reindex_is_idempotent_and_scoped(env):
     assert n_fac[0][0] == 0
 
 
+def test_index_accepts_openalex_entities(env):
+    # the team's OpenAlex source: extractor 'openalex', one 'publication' evidence per work (migration 0006)
+    use, ents = env
+    author = "https://openalex.org/A5000000001"
+    oa = ent(20, "Dr. Ada Example", "person", None, ["corneal biomechanics"])
+    oa = oa.model_copy(update={
+        "extractor": "openalex", "source_urls": [author],
+        "evidence": oa.evidence + [Evidence(field="publication", value="Diurnal variations in corneal thickness",
+                                            snippet="Publication: Diurnal variations in corneal thickness (2024)",
+                                            url=author)]})
+    index.build(ents + [oa])
+    assert _sql("SELECT extractor FROM nav.entity WHERE id = %s", oa.id)[0][0] == "openalex"
+    assert _sql("SELECT count(*) FROM nav.evidence WHERE field = 'publication'")[0][0] == 1
+
+
 def test_neighbors_match_file_adjacency(env):
     use, ents = env
     index.build(ents)
