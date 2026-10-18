@@ -12,7 +12,7 @@ from pydantic import BaseModel
 from . import index, llm
 from .config import load_glossary, settings
 from .extract import name_key, unit_key
-from .storage import index_store
+from .storage import PaperHit, index_store
 from .schema import Affiliation, Entity, SearchResponse, SearchResult, SourceRef
 
 RRF_K = 60
@@ -113,12 +113,70 @@ def vector_rank(q: str, extra: list[str], top: int = 200,
     return sorted(best, key=lambda k: -best[k]), orig
 
 
-def rrf(*rankings: list[str]) -> dict[str, float]:
+def rrf(*rankings: list[str], weights: list[float] | None = None) -> dict[str, float]:
     s: dict[str, float] = {}
-    for r in rankings:
+    for j, r in enumerate(rankings):
+        w = weights[j] if weights else 1.0
         for i, eid in enumerate(r):
-            s[eid] = s.get(eid, 0.0) + 1.0 / (RRF_K + i + 1)
+            s[eid] = s.get(eid, 0.0) + w / (RRF_K + i + 1)
     return s
+
+
+# ---------------- papers (Postgres backend: store.supports_papers) ----------------
+def paper_hits(q: str) -> tuple[dict[str, PaperHit], np.ndarray | None]:
+    """Best paper chunk per entity for the query; empty when the store has no paper vectors."""
+    st = index_store()
+    if not settings.use_papers or not getattr(st, "supports_papers", False) or not st.has_paper_vectors():
+        return {}, None
+    qvec = index.embed([q], query=True)[0]
+    return st.paper_hits(qvec), qvec
+
+
+def propagate_similar(fused: dict[str, float], ents: dict[str, Entity], depth: int = 10) -> dict[str, tuple[str, float]]:
+    """A matching person surfaces the people with a similar research profile (SIMILAR_TO), damped by
+    SIMILAR_DAMPING x similarity. Returns {person_id: (person it was reached from, similarity)}."""
+    st = index_store()
+    people = [pid for pid in sorted(fused, key=lambda x: -fused[x])[:depth]
+              if (p := ents.get(pid)) and p.entity_type == "person"]
+    g = st.similar_neighbors(people)
+    out: dict[str, tuple[str, float]] = {}
+    for pid in people:
+        for nb, sim in g.get(pid, []):
+            if nb not in ents:
+                continue
+            score = fused[pid] * settings.similar_damping * sim
+            if score > fused.get(nb, 0.0):
+                fused[nb] = score
+                out[nb] = (pid, sim)
+    return out
+
+
+_SENT = re.compile(r"(?<=[.!?])\s+")
+
+
+def best_sentence(text: str, terms: list[str], max_chars: int = 300) -> str:
+    """Verbatim sentence of the chunk sharing most words with the query (first sentence after the title if none)."""
+    sents = [x.strip() for x in _SENT.split(text) if x.strip()]
+    if not sents:
+        return text[:max_chars]
+    toks = {t for term in terms for t in index.tokenize(term) if len(t) > 2}
+    scored = [(sum(t in x.lower() for t in toks), -i, x) for i, x in enumerate(sents)]
+    best = max(scored)[2] if max(scored)[0] > 0 else (sents[1] if len(sents) > 1 else sents[0])
+    if len(best) > max_chars:
+        cut = best[:max_chars]
+        best = cut[: cut.rfind(" ")] if " " in cut else cut
+    return best
+
+
+def paper_source(h: PaperHit, terms: list[str]) -> SourceRef:
+    return SourceRef(url=h.url, snippet=best_sentence(h.text, terms), field="publication", retrieved_at=h.fetched_at)
+
+
+def paper_why(h: PaperHit, snippet: str) -> str:
+    when = f" ({h.year})" if h.year else ""
+    lead = "Author of" if h.relation == "author" else "Their page lists"
+    short = snippet if len(snippet) <= 180 else snippet[: snippet.rfind(" ", 0, 180)] + " …"
+    return f"{lead} “{h.title}”{when}, which says: “{short}”"
 
 
 def fair_top(ids: list[str], ents: dict[str, Entity], k: int) -> list[str]:
@@ -260,6 +318,13 @@ def _llm_why(q: str, name: str, etype: str, numbered: str, valid: tuple[int, ...
     return r.explanation  # type: ignore[attr-defined]
 
 
+def explain_similar(q: str, person: Entity, parent: Entity, sim: float, terms: list[str],
+                    paper: PaperHit | None) -> tuple[str, list[SourceRef]]:
+    """Person reached through SIMILAR_TO: say so, and cite the person's own evidence (paper first)."""
+    why, refs = explain(q, person, terms, paper)
+    return f"Research profile similar to {parent.name} (cosine {sim:.2f}). {why}", refs
+
+
 def explain_via(q: str, person: Entity, parent: Entity, terms: list[str]) -> tuple[str, list[SourceRef]]:
     """Person found through a matching unit/project: cite the link AND why the unit/project matches."""
     why_parent, refs = explain(q, parent, terms)
@@ -292,15 +357,25 @@ def fallback_why(q: str, terms: list[str], hits) -> str:
     return f"Mentions {_join([f'“{p}”' for p in phrases[:3]])} in its {_join(fields[:3])}."
 
 
-def explain(q: str, e: Entity, terms: list[str]) -> tuple[str, list[SourceRef]]:
+def explain(q: str, e: Entity, terms: list[str], paper: PaperHit | None = None) -> tuple[str, list[SourceRef]]:
     hits = matched_evidence(e, [q, *terms])[:4]
     refs = [SourceRef(url=ev.url, snippet=ev.snippet, field=ev.field, retrieved_at=e.retrieved_at)
             for _, _, ev in hits]
     fallback = fallback_why(q, terms, hits)
-    if not settings.use_llm_explain or not hits or not llm.available():
+    numbered_paper: list[tuple[int, str]] = []
+    if paper is not None:
+        pref = paper_source(paper, [q, *terms])
+        pwhy = paper_why(paper, pref.snippet)
+        if any(x[0] > 0 for x in hits):   # the page itself matches: the paper supports it
+            refs, fallback = refs[:3] + [pref], f"{fallback} {pwhy}."
+        else:                              # found through the paper: it is the main evidence
+            refs, fallback = [pref] + refs[:3], f"{pwhy}."
+        numbered_paper = [(len(e.evidence), f"(publication “{paper.title}”) {pref.snippet}")]
+    if not settings.use_llm_explain or not (hits or numbered_paper) or not llm.available():
         return fallback, refs
-    numbered = "\n".join(f"[{i}] ({ev.field}) {ev.snippet}" for _, i, ev in hits)
-    why = _llm_why(q, e.name, e.entity_type, numbered, tuple(i for _, i, _ in hits))
+    items = [(i, f"({ev.field}) {ev.snippet}") for _, i, ev in hits] + numbered_paper
+    numbered = "\n".join(f"[{i}] {t}" for i, t in items)
+    why = _llm_why(q, e.name, e.entity_type, numbered, tuple(i for i, _ in items))
     return (why or fallback), refs
 
 
@@ -330,34 +405,51 @@ def search(q: str, k: int = 10, sources: list[str] | None = None, types: list[st
     bm_q, bm_top = bm25_rank(q)
     bm_x, _ = bm25_rank(" ".join(terms)) if terms else ([], 0.0)
     vec_ids, vec_orig = vector_rank(q, terms, sources=sources)
-    vec_top = max(vec_orig.values(), default=0.0)
+    # papers (Postgres only): an entity's best paper chunk is semantic evidence like its own snippets
+    phits, qvec = paper_hits(q)
+    sem = dict(vec_orig)
+    for eid, h in phits.items():
+        sem[eid] = max(sem.get(eid, 0.0), h.cos)
+    vec_top = max(sem.values(), default=0.0)
 
     # Honest abstention: weak semantic match AND the query's words are mostly absent from the best
     # candidates AND no expansion term occurs verbatim. Calibrated on eval/golden_set.yaml.
-    cands = [ents[i] for i in (sorted(vec_orig, key=lambda x: -vec_orig[x])[:5] + bm_q[:5]) if i in ents]
+    cands = [ents[i] for i in (sorted(sem, key=lambda x: -sem[x])[:5] + bm_q[:5]) if i in ents]
     if not pinned and vec_top < settings.min_vector_score \
             and coverage(q, cands) <= settings.min_coverage \
             and max([coverage(t, cands) for t in terms] or [0.0]) < 1.0:
         return _abstain(q, terms)
 
-    fused = rrf(bm_q, bm_x, vec_ids)
+    paper_ids = sorted(phits, key=lambda x: (-phits[x].cos, x))
+    fused = rrf(bm_q, bm_x, vec_ids, paper_ids, weights=[1.0, 1.0, 1.0, settings.paper_weight])
     via = propagate(fused, ents)
+    via_sim = propagate_similar(fused, ents) if phits else {}
+    for eid in via_sim:
+        via.pop(eid, None)
     for i, eid in enumerate(pinned):
         fused[eid] = fused.get(eid, 0.0) + 1.0 - i * 1e-3
         via.pop(eid, None)
+        via_sim.pop(eid, None)
     floor = settings.min_vector_score - RESULT_FLOOR_MARGIN
     all_terms = [q, *terms]
     ranked = [eid for eid in sorted(fused, key=lambda x: -fused[x])
               if eid in ents
               and (not sources or ents[eid].source in sources)
               and (not types or ents[eid].entity_type in types)
-              and (eid in pinned or eid in via or vec_orig.get(eid, 0.0) >= floor or lexical_hit(ents[eid], all_terms))]
+              and (eid in pinned or eid in via or eid in via_sim or sem.get(eid, 0.0) >= floor
+                   or lexical_hit(ents[eid], all_terms))]
     top = fair_top(ranked, ents, k)
+    if via_sim and qvec is not None:  # people reached by similarity: their own best paper for this query
+        missing = [eid for eid in top if eid in via_sim and eid not in phits]
+        phits = {**phits, **index_store().paper_best_for(qvec, missing)}
 
     def _explain(eid: str):
         if eid in via and via[eid] in ents:
             return explain_via(q, ents[eid], ents[via[eid]], terms)
-        return explain(q, ents[eid], terms)
+        if eid in via_sim and via_sim[eid][0] in ents:
+            parent, sim = via_sim[eid]
+            return explain_similar(q, ents[eid], ents[parent], sim, terms, phits.get(eid))
+        return explain(q, ents[eid], terms, phits.get(eid))
 
     explained = list(_pool.map(_explain, top))
     nb = neighbors(top)
@@ -366,7 +458,8 @@ def search(q: str, k: int = 10, sources: list[str] | None = None, types: list[st
         e = ents[eid]
         if not refs:  # traceability guard: never return an unsourced result
             continue
-        sim = max(vec_orig.get(eid, 0.0), vec_orig.get(via.get(eid, ""), 0.0)) or CONF_LO
+        parent = via.get(eid) or via_sim.get(eid, ("", 0.0))[0]
+        sim = max(sem.get(eid, 0.0), sem.get(parent, 0.0)) or CONF_LO
         conf = float(np.clip((sim - CONF_LO) / (CONF_HI - CONF_LO), 0, 1))
         results.append(SearchResult(
             id=e.id, person_or_unit=e.name, entity_type=e.entity_type, role=e.role,
@@ -374,7 +467,7 @@ def search(q: str, k: int = 10, sources: list[str] | None = None, types: list[st
             institution=e.source_label, expertise=e.expertise, projects=e.projects,
             infrastructure_services=e.infrastructure, description=(e.description or [None])[0],
             contact=e.email, why_match=why, related=related(e, ents, nb_ids=nb.get(eid, [])),
-            via=ents[via[eid]].name if eid in via else None, sources=refs, score=round(fused[eid], 4), confidence=round(conf, 2)))
+            via=ents[parent].name if parent in ents else None, sources=refs, score=round(fused[eid], 4), confidence=round(conf, 2)))
     if not results:
         return _abstain(q, terms)
     return SearchResponse(query=q, expanded_terms=terms, abstained=False, results=results)

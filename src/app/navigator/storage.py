@@ -15,6 +15,12 @@ Capability matrix
     pages / rejected claims stored | no (files written by extract)| nav.page / nav.rejected_claim
     partial (per-source) reindex   | no: always full rebuild      | yes: one transaction per call
     cases                          | SQLite data/cases.db         | nav."case" / case_match / case_event
+    papers: `cli papers collect`   | yes: data/papers/*.jsonl,    | yes: + nav.paper / paper_author /
+      (OpenAlex, OA PDFs, text)    |   pdf/, text/                |   author_match / paper_chunk
+    papers: embed + link (kNN,     | no (StorageError             | nav.paper_chunk / research_profile /
+      SIMILAR_TO, ABOUT, CITES)    |   "unsupported")             |   similarity / topic_map + AGE projection
+    papers as search evidence,     | no: file search ignores      | yes (supports_papers): paper ranking in
+      SIMILAR_TO propagation       |   papers                     |   RRF, paper sources, SIMILAR_TO via
 """
 from __future__ import annotations
 
@@ -47,9 +53,25 @@ class IndexBundle:
     scope: list[str] | None = None  # sources being replaced; None = everything
 
 
+@dataclass(frozen=True)
+class PaperHit:
+    """Best paper chunk of one entity for a query (search evidence)."""
+    entity_id: str
+    cos: float
+    paper_id: str
+    title: str
+    year: int | None
+    url: str
+    kind: str          # abstract / fulltext
+    text: str
+    relation: str      # author / page_link
+    fetched_at: str | None
+
+
 class IndexStore(Protocol):
     name: str
     persists_corpus: bool  # stores pages / rejected claims (build only loads them if True)
+    supports_papers: bool  # paper_hits / paper_best_for / similar_neighbors available
 
     def write_index(self, bundle: IndexBundle) -> dict: ...
     def load_entities(self) -> dict[str, Entity]: ...

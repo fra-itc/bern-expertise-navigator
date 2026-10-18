@@ -11,6 +11,8 @@ qdrant-client==1.12.1
 psycopg[binary]==3.3.6
 psycopg-pool==3.3.3
 pgvector==0.5.1
+# Papers: open-access PDF text (pure Python, BSD-3; PyMuPDF would bring AGPL into an Apache-2.0 repo)
+pypdf==6.21.1
 sentence-transformers==3.3.1
 pytest==8.3.4
 numpy>=1.26

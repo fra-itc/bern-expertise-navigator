@@ -95,6 +95,66 @@ class Entity(BaseModel):
         return " \n".join(dict.fromkeys(p for p in parts if p))
 
 
+# ---- Papers (OpenAlex), see papers.py ----------------------------------------
+class PaperAuthor(BaseModel):
+    """One authorship of a work, in OpenAlex order; `entity_id` is set when the author was matched to a person."""
+    position: int
+    author_position: str | None = None      # OpenAlex: first / middle / last
+    author_id: str | None = None            # short OpenAlex id, 'A5012345678'
+    name: str = ""
+    institutions: list[str] = []            # short OpenAlex institution ids
+    entity_id: str | None = None
+
+
+class EntityLink(BaseModel):
+    """Why a work belongs to an entity: an OpenAlex authorship of its matched author, or a link on its own page."""
+    entity_id: str
+    relation: Literal["author", "page_link"]
+    position: int | None = None
+    author_id: str | None = None
+    page_url: str | None = None
+
+
+class Work(BaseModel):
+    id: str                                 # short OpenAlex work id, 'W123'
+    doi: str | None = None                  # lowercase, without https://doi.org/
+    title: str = ""
+    year: int | None = None
+    venue: str | None = None
+    abstract: str | None = None             # rebuilt from abstract_inverted_index
+    authors: list[PaperAuthor] = []
+    topics: list[dict] = []                 # [{id, display_name, score, subfield, field}]
+    concepts: list[dict] = []               # [{id, display_name, score}]
+    cited_by_count: int = 0
+    referenced_works: list[str] = []        # short ids only
+    is_oa: bool = False
+    oa_status: str | None = None
+    pdf_urls: list[str] = []                # pdf_url of OA locations, best_oa_location first
+    landing_url: str | None = None
+    pmid: str | None = None
+    pmcid: str | None = None
+    links: list[EntityLink] = []
+    pdf_url: str | None = None              # the PDF actually downloaded
+    pdf_sha1: str | None = None             # file name in data/papers/pdf/ (sha1 of pdf_url)
+    fulltext_chars: int | None = None
+    fulltext_status: str | None = None      # ok / not_oa / no_pdf_url / robots_disallowed / too_large / ...
+    fetched_at: str
+
+    def url(self) -> str:
+        return f"https://doi.org/{self.doi}" if self.doi else (self.landing_url or f"https://openalex.org/{self.id}")
+
+
+class AuthorMatch(BaseModel):
+    """Audit record of one person <-> OpenAlex author decision (nav.author_match)."""
+    entity_id: str
+    entity_name: str
+    candidates: list[dict]
+    chosen_author_id: str | None = None
+    decided_by: Literal["llm", "rules"]
+    reason: str
+    model: str | None = None
+
+
 # ---- What the API returns (the challenge's required fields) ----------------
 class SourceRef(BaseModel):
     url: str

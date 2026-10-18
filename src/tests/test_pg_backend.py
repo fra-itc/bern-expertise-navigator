@@ -79,7 +79,8 @@ def _wipe(url):
     import psycopg
     with psycopg.connect(url) as c:
         c.execute("SELECT * FROM cypher('expertise_graph', $$ MATCH (n) DETACH DELETE n $$) AS (v agtype)")
-        for t in ('nav."case"', "nav.rejected_claim", "nav.passage", "nav.evidence", "nav.entity", "nav.page", "nav.source"):
+        for t in ("nav.similarity", "nav.paper_topic", "nav.topic_map", "nav.author_match", "nav.paper",  # 0004 (papers)
+                  'nav."case"', "nav.rejected_claim", "nav.passage", "nav.evidence", "nav.entity", "nav.page", "nav.source"):
             c.execute(f"DELETE FROM {t}")
 
 

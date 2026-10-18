@@ -1,4 +1,4 @@
-"""Pipeline CLI:  python -m navigator.cli {crawl,extract,index,all,stats} [--source NAME]"""
+"""Pipeline CLI:  python -m navigator.cli {crawl,extract,index,all,stats} [--source NAME]  |  papers {collect,embed,link,all}"""
 from __future__ import annotations
 
 import argparse
@@ -120,9 +120,58 @@ def cmd_stats(a):
     }, indent=2))
 
 
+def cmd_papers(a):
+    """papers {collect,embed,link,all}: OpenAlex papers of the indexed people (see navigator/papers.py)."""
+    from . import papers
+    from .openalex import OpenAlexClient
+    from .storage import index_store
+    st = index_store()
+    steps = ["collect", "embed", "link"] if a.step == "all" else [a.step]
+    out: dict = {"backend": st.name}
+    if "collect" in steps:
+        use_llm = False if a.no_llm else llm.available()
+        print(f"[papers] matcher: {'LLM ' + settings.llm_model if use_llm else 'rules (no LLM)'}; "
+              f"OpenAlex key: {'set' if settings.openalex_api_key else 'not set'}; "
+              f"mailto: {'set' if settings.openalex_mailto else 'not set'}")
+        ents = list(st.load_entities().values())
+        ua = (load_sources() or [None])[0]
+        fetcher = None if a.no_pdf else papers.PdfFetcher(user_agent=ua.user_agent if ua else None)
+        client = OpenAlexClient()
+        try:
+            res = papers.collect(ents, crawl.load_pages(), client, fetcher=fetcher, use_llm=use_llm,
+                                 types=tuple(a.types.split(",")), limit=a.limit, max_pdfs=a.max_pdfs,
+                                 workers=a.workers)
+        finally:
+            client.close()
+        papers.save_jsonl(res)
+        out["collect"] = res.stats
+        if getattr(st, "supports_papers", False):
+            out["store"] = papers.write_to_store(st, list(res.works.values()), res.matches)
+        else:
+            out["store"] = f"{st.name}: JSONL only ({papers.WORKS_PATH}); embed/link need DATABASE_URL"
+    if "embed" in steps:
+        out["embed"] = papers.embed_pending(st)
+    if "link" in steps:
+        out["similar"] = papers.link_similar(st)
+        out["topics"] = papers.link_topics(st, use_llm=False if a.no_llm else None)
+    out["llm_usage"] = dict(llm.usage)
+    (DATA_DIR / "papers").mkdir(parents=True, exist_ok=True)
+    (DATA_DIR / "papers" / f"stats_{a.step}.json").write_text(json.dumps(out, indent=2, default=str))
+    print(json.dumps(out, indent=2, default=str))
+
+
 def main():
     ap = argparse.ArgumentParser(prog="navigator")
     sub = ap.add_subparsers(required=True)
+    pp = sub.add_parser("papers", help="OpenAlex papers: collect -> embed -> link (embed/link: Postgres only)")
+    pp.add_argument("step", nargs="?", default="all", choices=["collect", "embed", "link", "all"])
+    pp.add_argument("--limit", type=int, default=0, help="collect: max people (quick tests)")
+    pp.add_argument("--types", default="person", help="collect: entity types searched on OpenAlex (person[,unit])")
+    pp.add_argument("--max-pdfs", type=int, default=0, help="collect: max OA PDFs to download this run (0 = all)")
+    pp.add_argument("--no-pdf", action="store_true", help="collect: metadata and abstracts only")
+    pp.add_argument("--no-llm", action="store_true", help="author/topic matching with the deterministic rules only")
+    pp.add_argument("--workers", type=int, default=4, help="collect: people processed in parallel")
+    pp.set_defaults(fn=cmd_papers)
     for name, fn in [("crawl", cmd_crawl), ("extract", cmd_extract), ("index", cmd_index),
                      ("all", cmd_all), ("stats", cmd_stats)]:
         sp = sub.add_parser(name)
