@@ -65,7 +65,7 @@ disjoint objects, so a database that already has `0005` takes `0004` as-is.
 
 ```bash
 cd /opt/bern/papers/src-<sha>/src/db/migrations
-for v in 0002_index_order_and_match_ref 0003_case_search_filters 0004_papers 0005_case_company_sources; do
+for v in 0002_index_order_and_match_ref 0003_case_search_filters 0004_papers 0005_case_company_sources 0006_evidence_publication_field; do
   have=$(docker exec bern-db-db-1 psql -U postgres -d bern -tAc "SELECT 1 FROM nav.schema_migrations WHERE version = '$v'")
   if [ "$have" = 1 ]; then echo "skip $v"; continue; fi
   docker exec -i bern-db-db-1 psql -U postgres -d bern -v ON_ERROR_STOP=1 < "$v.sql" || { echo "FAILED $v"; break; }

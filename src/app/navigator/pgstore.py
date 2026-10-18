@@ -30,7 +30,7 @@ DIM = 768
 FTS_CONFIG = "nav.simple_unaccent"
 # 0002_remove_technical_review (main) is not required: the store neither reads nor writes the review columns.
 REQUIRED_MIGRATIONS = ("0001_initial", "0002_index_order_and_match_ref", "0003_case_search_filters",
-                       "0004_papers", "0005_case_company_sources")
+                       "0004_papers", "0005_case_company_sources", "0006_evidence_publication_field")
 _REINDEX_LOCK = 0x6E617669  # pg_advisory_xact_lock key: one reindex at a time
 
 

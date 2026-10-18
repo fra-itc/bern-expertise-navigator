@@ -186,9 +186,10 @@ with a `schema_outdated` error if a migration it needs is missing.
 | `0003_case_search_filters` | `nav."case".canton/area/niche` (search-first request filters, `config/medtech_areas.yaml` ids) + index `(area, niche)`; on databases that still have the review columns they become nullable and unused (nothing dropped) |
 | `0004_papers` | papers: `nav.paper`, `paper_author`, `paper_chunk` (HNSW), `research_profile` (HNSW), `author_match`, `topic_map`, `paper_topic`, `similarity`; graph labels `Paper`, `AUTHORED`, `ABOUT`, `CITES`, `SIMILAR_TO` (+ indexes, grants to `bern_app`). Additive and idempotent; independent of `0005` (no shared tables/columns), so it can be applied before or after it |
 | `0005_case_company_sources` | request from a company link / shared documents and broad search (main `32a3c4c`..`ae7ba6e`): `nav."case".city/understood/company_url/need/website/documents`, `nav.case_match.archetype`; `request_text` defaults to `''`. Additive only (`0004` is reserved by the papers branch) |
+| `0006_evidence_publication_field` | adds `publication` to the allowed `nav.evidence.field` values (evidence of the team's OpenAlex source); without it `index` fails on the first OpenAlex entity. Only widens a CHECK; idempotent |
 
 Order on an existing database: `0002_index_order_and_match_ref`, `0003_case_search_filters`, `0004_papers`, then
-`0005_case_company_sources` (all required by the app). `0004` and `0005` touch disjoint objects: a database that
+`0005_case_company_sources`, `0006_evidence_publication_field` (all required by the app). `0004` and `0005` touch disjoint objects: a database that
 already has `0005` takes `0004` as-is.
 
 `0002_remove_technical_review` is independent and destructive (drops the review columns): take a backup first
