@@ -53,7 +53,22 @@ sources:
       unit: ["/focus-area", "/innovation/"]
 
   - name: unibe
+    label: University of Bern
+    # Seeds are generated from the supplied subdomain inventory (one host per line)
+    seeds_file: config/unibe_subdomains.txt
+    domains_from_seeds: true
+    max_pages: 1500
+    max_depth: 3
+    extra_skip_keywords: [index_ger.html, index_fra.html, /studium/, /studies/, /publications/, /publikationen/]
+    page_types:
+      person: ["/ueber_uns/personen/", "/about_us/people/", "/personen/", "/people/", "/group_members/", "/team/"]
+      unit: ["/ueber_uns/", "/about_us/", "/forschung/", "/research/"]
+      project: ["/forschungsprojekte/", "/research_projects/", "/projekte/"]
+      infrastructure: ["/dienstleistungen/", "/services/", "/infrastruktur/", "/facilities/"]
+
+  - name: unibe_web
     label: University of Bern (medtech / biomedical)
+    # `unibe_web`, not `unibe`: the team keeps `unibe` (subdomain inventory here, OpenAlex on the server).
     # Medtech/biomedical perimeter only. Domains are suffix-matched (dbmr.unibe.ch also covers www.dbmr.unibe.ch).
     # Never list unibe.ch / www.unibe.ch: that would admit every faculty and duplicate ARTORG (a separate source).
     # Seeds and robots.txt verified 2026-10-18. Faculty/staff directory pages (/personenpool_index/) are included on purpose.
