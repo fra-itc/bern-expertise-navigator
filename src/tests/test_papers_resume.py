@@ -144,7 +144,7 @@ def test_estimate_without_network(tmp_path, monkeypatch):
     ents = corpus() + [from_openalex("a" * 16, "Known Person", "https://openalex.org/A100")]
     est = papers.estimate(ents, pages(ents), max_pdfs=5)
     assert est["people"] == {"selected": 4, "known_openalex_id": 1, "to_search": 3, "already_decided_skipped": 0,
-                             "types": ["person"], "limit": 0}
+                             "types": ["person"], "limit": 0, "filter": "all"}
     # 1 institutions + 3 searches + 4 works_by_author + 1 DOI batch (BORIS refs have no OpenAlex lookup)
     assert est["openalex_requests_max"]["total"] == 9
     assert est["openalex_requests_max"]["cost_usd_max"] == round(3 * 0.001 + 6 * 0.0001, 4)
@@ -154,3 +154,37 @@ def test_estimate_without_network(tmp_path, monkeypatch):
     inc = papers.estimate(ents, pages(ents), limit=2, skip_ids={ents[0].id}, use_llm=False, pdf=False)
     assert inc["people"]["selected"] == 2 and inc["people"]["already_decided_skipped"] == 1
     assert inc["llm_calls_max"]["author_match"] == 0 and inc["pdf_downloads_max"] == 0
+
+
+# ---------------- --people selection filter -----------------------------------------------------------------
+def people_mix():
+    # real data order: people needing a search first, known-id people last
+    s1 = ent("s" * 15 + "1", "Search One", "person", None, ["x"], "https://example.org/1", source="unibe")
+    s2 = ent("s" * 15 + "2", "Search Two", "person", None, ["x"], "https://example.org/2", source="unibe")
+    k1 = from_openalex("k" * 15 + "1", "Known One", "https://openalex.org/A1")
+    k2 = from_openalex("k" * 15 + "2", "Known Two", "https://openalex.org/A2")
+    return [s1, s2, k1, k2]
+
+
+def test_select_people_filters_before_limit():
+    ents = people_mix()
+    ids = lambda **k: [e.name for e in papers.select_people(ents, ("person",), **k)]  # noqa: E731
+    assert ids() == ids(people_filter="all") == ["Search One", "Search Two", "Known One", "Known Two"]
+    assert ids(limit=2) == ["Search One", "Search Two"]  # without the filter known ids are never reached
+    assert ids(people_filter="known") == ["Known One", "Known Two"]
+    assert ids(people_filter="known", limit=1) == ["Known One"]
+    assert ids(people_filter="search", limit=1) == ["Search One"]
+    assert ids(people_filter="known", skip_ids={ents[2].id}) == ["Known Two"]
+    try:
+        papers.select_people(ents, ("person",), people_filter="bogus")
+    except ValueError:
+        pass
+    else:
+        raise AssertionError("unknown filter accepted")
+
+
+def test_estimate_reports_people_filter():
+    ents = people_mix()
+    for f, selected, known in [("all", 4, 2), ("known", 2, 2), ("search", 2, 0)]:
+        p = papers.estimate(ents, pages(ents), people_filter=f)["people"]
+        assert (p["filter"], p["selected"], p["known_openalex_id"]) == (f, selected, known)

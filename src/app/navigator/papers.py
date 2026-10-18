@@ -323,10 +323,19 @@ def _since_year() -> int:
     return datetime.now(timezone.utc).year - settings.papers_years
 
 
+PEOPLE_FILTERS = ("all", "known", "search")
+
+
 def select_people(entities: list[Entity], types: tuple[str, ...], limit: int = 0,
-                  skip_ids: set[str] | frozenset[str] = frozenset()) -> list[Entity]:
-    """The people this run processes: the given types, minus those already decided, at most `limit`."""
+                  skip_ids: set[str] | frozenset[str] = frozenset(), people_filter: str = "all") -> list[Entity]:
+    """The people this run processes: the given types, minus those already decided, narrowed by `people_filter`
+    (all | known = OpenAlex author id already known | search = needs an author search), then at most `limit`
+    (the filter comes first, so `known` + limit N yields N known-id people wherever they sit in the list)."""
+    if people_filter not in PEOPLE_FILTERS:
+        raise ValueError(f"people_filter {people_filter!r} not in {PEOPLE_FILTERS}")
     people = [e for e in entities if e.entity_type in types and e.id not in skip_ids]
+    if people_filter != "all":
+        people = [e for e in people if bool(known_author_id(e)[0]) == (people_filter == "known")]
     return people[:limit] if limit else people
 
 
@@ -341,11 +350,11 @@ OPENALEX_SEARCH_USD, OPENALEX_LIST_USD = 0.001, 0.0001
 
 def estimate(entities: list[Entity], pages: list[Page], *, types: tuple[str, ...] = ("person",), limit: int = 0,
              skip_ids: set[str] | frozenset[str] = frozenset(), previous_works: dict[str, Work] | None = None,
-             use_llm: bool = True, pdf: bool = True, max_pdfs: int = 0) -> dict:
+             use_llm: bool = True, pdf: bool = True, max_pdfs: int = 0, people_filter: str = "all") -> dict:
     """What `papers collect` (then embed/link) would do, without any network call: upper bounds of OpenAlex
     requests, LLM calls, PDF downloads and chunks, computed from the same selection and settings the run uses.
     The OpenAlex disk cache (OPENALEX_CACHE_DAYS) can only lower the request count."""
-    people = select_people(entities, types, limit, skip_ids)
+    people = select_people(entities, types, limit, skip_ids, people_filter)
     known = [e for e in people if known_author_id(e)[0]]
     search = len(people) - len(known)
     refs = page_paper_links(entities, pages)
@@ -368,7 +377,7 @@ def estimate(entities: list[Entity], pages: list[Page], *, types: tuple[str, ...
     return {
         "people": {"selected": len(people), "known_openalex_id": len(known), "to_search": search,
                    "already_decided_skipped": sum(1 for e in entities if e.entity_type in types and e.id in skip_ids),
-                   "types": list(types), "limit": limit},
+                   "types": list(types), "limit": limit, "filter": people_filter},
         "openalex_requests_max": {"total": oa_calls, "institutions": 1, "author_search": search,
                                   "works_by_author": len(people), "page_linked_batches": page_calls,
                                   "seconds_at_rps_min": round(oa_calls / max(settings.openalex_rps, 0.01), 1),
@@ -394,7 +403,7 @@ def collect(entities: list[Entity], pages: list[Page], client: OpenAlexClient, *
             fetcher: PdfFetcher | None = None, use_llm: bool | None = None, types: tuple[str, ...] = ("person",),
             limit: int = 0, max_pdfs: int = 0, workers: int = 4, text_dir: Path = TEXT_DIR,
             skip_ids: set[str] | frozenset[str] = frozenset(), previous_works: dict[str, Work] | None = None,
-            previous_matches: list[AuthorMatch] | None = None) -> CollectResult:
+            previous_matches: list[AuthorMatch] | None = None, people_filter: str = "all") -> CollectResult:
     """People -> author match -> works (+ page-linked works) -> OA PDFs. Never raises for one person.
 
     Resume: `skip_ids` (people already decided) are not searched again; `previous_matches` still map their
@@ -403,7 +412,7 @@ def collect(entities: list[Entity], pages: list[Page], client: OpenAlexClient, *
         use_llm = llm.available()
     insts = resolve_bern(client, list(settings.papers_rors))
     bern_ids = {short_id(i["id"]) for i in insts}
-    people = select_people(entities, types, limit, skip_ids)
+    people = select_people(entities, types, limit, skip_ids, people_filter)
     stats: dict = {"institutions": [{"id": short_id(i["id"]), "ror": i.get("ror"), "name": i.get("display_name")}
                                     for i in insts], "people": len(people),
                    "skipped_done": sum(1 for e in entities if e.entity_type in types and e.id in skip_ids),

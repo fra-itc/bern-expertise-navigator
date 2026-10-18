@@ -134,7 +134,8 @@ def cmd_papers(a):
     if a.step == "stats" or a.dry_run:
         est = papers.estimate(list(st.load_entities().values()), crawl.load_pages(), types=types,
                               limit=a.limit_people, skip_ids=skip, previous_works={w.id: w for w in prev_works},
-                              use_llm=not a.no_llm, pdf=not a.no_pdf, max_pdfs=a.max_pdfs)
+                              use_llm=not a.no_llm, pdf=not a.no_pdf, max_pdfs=a.max_pdfs,
+                              people_filter=a.people)
         est = {"backend": st.name, "dry_run": True, "previous": {"works": len(prev_works), "matches": len(prev_matches)},
                **est}
         print(json.dumps(est, indent=2, default=str))
@@ -155,7 +156,7 @@ def cmd_papers(a):
             res = papers.collect(ents, crawl.load_pages(), client, fetcher=fetcher, use_llm=use_llm,
                                  types=types, limit=a.limit_people, max_pdfs=a.max_pdfs, workers=a.workers,
                                  skip_ids=skip, previous_works={w.id: w for w in prev_works},
-                                 previous_matches=prev_matches)
+                                 previous_matches=prev_matches, people_filter=a.people)
         finally:
             client.close()
         merged = papers.merge_results(prev_works, prev_matches, res)
@@ -187,6 +188,9 @@ def main():
                     help="stats = estimate only (same as --dry-run)")
     pp.add_argument("--limit-people", "--limit", dest="limit_people", type=int, default=0,
                     help="collect: at most N people not decided yet (incremental runs; 0 = all)")
+    pp.add_argument("--people", choices=["all", "known", "search"], default="all",
+                    help="collect/stats: all people, only those with a known OpenAlex author id (known), or only "
+                         "those that need an author search (search); applied before --limit-people")
     pp.add_argument("--dry-run", action="store_true",
                     help="estimate OpenAlex requests, LLM calls, PDFs and chunks; no network, nothing written")
     pp.add_argument("--redo", action="store_true",

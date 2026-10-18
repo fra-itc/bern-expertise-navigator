@@ -113,6 +113,7 @@ job() {
 job index                                               # entities + pages of the copy -> nav.* (the app's files are untouched)
 job papers stats --limit-people 50 --max-pdfs 100       # dry run: no network, prints the upper bounds below
 job papers all   --limit-people 50 --max-pdfs 100       # collect -> embed -> link for the next 50 people
+job papers stats --people known --limit-people 50       # only people with a known OpenAlex author id (`search` = only those needing an author search); applied before the limit
 ```
 
 `papers stats` (same as `--dry-run`) prints, before anything is spent:
