@@ -64,6 +64,7 @@ def _graph_at(path: str, _mt: float) -> dict[str, list[str]]:
 class FileIndexStore:
     name = "file"
     persists_corpus = False
+    supports_papers = False  # papers are collected to JSONL, but file search ignores them (storage.py matrix)
 
     def write_index(self, bundle: IndexBundle) -> dict:
         entities = bundle.entities

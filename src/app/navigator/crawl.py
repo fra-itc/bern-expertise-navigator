@@ -13,8 +13,10 @@ import httpx
 import trafilatura
 from selectolax.lexbor import LexborHTMLParser as HTMLParser
 
-from .config import DATA_DIR, Source
-from .schema import Page
+from . import config
+from .config import Source
+from .papers_links import normalize_url, paper_ref
+from .schema import Link, Page
 
 
 _BOILER = re.compile(r"(^|[\s_-])(nav|navbar|navigation|menu|footer|header|cookie|breadcrumb|sidebar|social|share|"
@@ -144,9 +146,56 @@ def url_key(url: str) -> str:
     return f"{host}{p.path.rstrip('/')}" + (f"?{p.query}" if p.query else "")
 
 
+# Per-page caps keep the JSONL bounded on link-farm pages (sitemaps, A-Z lists, publication lists).
+MAX_PAPER_LINKS = 500
+MAX_OTHER_LINKS = 300
+
+
+def extract_links(tree: HTMLParser, base_url: str, is_internal) -> list[Link]:
+    """Outgoing links of a page, read from the raw DOM (before any text extraction strips it).
+
+    Absolute + normalised, deduplicated per page (first non-empty anchor text wins), classified as
+    paper (see papers_links), internal (`is_internal(url)`, i.e. the source's domains) or external.
+    """
+    by_url: dict[str, Link] = {}
+    n_paper = n_other = 0
+    for a in tree.css("a[href]"):
+        href = (a.attributes.get("href") or "").strip()
+        url = normalize_url(href, base_url)
+        text = re.sub(r"\s+", " ", a.text(separator=" ") or "").strip()[:300]
+        ref = paper_ref(url, text) if url else (paper_ref(href) if href.lower().startswith("doi:") else None)
+        if url is None and ref is not None:
+            url = ref.url
+        if url is None:
+            continue
+        if url in by_url:
+            if text and not by_url[url].text:
+                by_url[url].text = text
+            continue
+        if ref is not None:
+            if n_paper >= MAX_PAPER_LINKS:
+                continue
+            n_paper += 1
+            kind = "paper"
+        else:
+            if n_other >= MAX_OTHER_LINKS:
+                continue
+            n_other += 1
+            kind = "internal" if is_internal(url) else "external"
+        by_url[url] = Link(url=url, text=text, kind=kind, paper_ref=ref)
+    return list(by_url.values())
+
+
+def _skip(url: str, src: Source) -> bool:
+    return (not src.allows(url) or any(k in url.lower() for k in src.skip_keywords)
+            or _ARCHIVE.search(url) is not None)
+
+
 def crawl(src: Source) -> list[Page]:
-    out_path = DATA_DIR / "pages" / f"{src.name}.jsonl"
+    out_path = config.DATA_DIR / "pages" / f"{src.name}.jsonl"
     out_path.parent.mkdir(parents=True, exist_ok=True)
+    # Written to a side file and swapped in at the end: an interrupted re-crawl keeps the old pages.
+    tmp_path = out_path.with_name(out_path.name + ".partial")
     seen: set[str] = set()
     content_hashes: set[str] = set()
     queue: list[tuple[int, int, int, str]] = []
@@ -158,14 +207,13 @@ def crawl(src: Source) -> list[Page]:
     skipped_robots = 0
 
     with httpx.Client(headers={"User-Agent": src.user_agent}, follow_redirects=True, timeout=20) as client, \
-            out_path.open("w") as fh:
+            tmp_path.open("w", encoding="utf-8") as fh:
         robots = _Robots(src.user_agent, client)
         while queue and len(pages) < src.max_pages:
             _, depth, _, url = heapq.heappop(queue)
             url = urldefrag(url)[0]
             key = url_key(url)
-            if key in seen or not src.allows(url) or any(k in url.lower() for k in src.skip_keywords) \
-                    or _ARCHIVE.search(url):
+            if key in seen or _skip(url, src):
                 continue
             seen.add(key)
             if not robots.ok(url):
@@ -185,12 +233,13 @@ def crawl(src: Source) -> list[Page]:
             text = page_text(html)
             tree = HTMLParser(html)
             title = (tree.css_first("title").text(strip=True) if tree.css_first("title") else "")
+            links = extract_links(tree, final, src.allows)
             digest = hashlib.sha1(text.encode()).hexdigest()
             if len(text) > 150 and digest not in content_hashes:
                 content_hashes.add(digest)
                 lang = (tree.css_first("html").attributes.get("lang") or "")[:2] if tree.css_first("html") else ""
                 page = Page(url=final, source=src.name, title=title, text=text, lang=lang or None,
-                            fetched_at=datetime.now(timezone.utc).isoformat())
+                            fetched_at=datetime.now(timezone.utc).isoformat(), links=links)
                 pages.append(page)
                 fh.write(page.model_dump_json() + "\n")
                 fh.flush()
@@ -199,21 +248,27 @@ def crawl(src: Source) -> list[Page]:
             if depth < src.max_depth:
                 for a in tree.css("a[href]"):
                     nxt = urldefrag(urljoin(final, a.attributes.get("href") or ""))[0]
-                    if nxt.startswith("http") and url_key(nxt) not in seen and src.allows(nxt):
+                    # Paper links (DOI, PubMed, BORIS records, PDFs, ...) are recorded on the page, never fetched
+                    if nxt.startswith("http") and url_key(nxt) not in seen and src.allows(nxt) \
+                            and paper_ref(nxt) is None:
                         heapq.heappush(queue, (_priority(nxt, depth + 1, src), depth + 1, counter, nxt))
                         counter += 1
             time.sleep(src.delay_seconds)
-    print(f"[crawl] {src.name}: {len(pages)} pages -> {out_path} ({skipped_robots} URLs disallowed by robots.txt)")
+    tmp_path.replace(out_path)
+    n_links = sum(len(p.links) for p in pages)
+    n_paper = sum(1 for p in pages for x in p.links if x.kind == "paper")
+    print(f"[crawl] {src.name}: {len(pages)} pages -> {out_path} ({skipped_robots} URLs disallowed by robots.txt; "
+          f"{n_links} links recorded, {n_paper} to papers)")
     return pages
 
 
 def load_pages(source: str | None = None) -> list[Page]:
-    files = sorted((DATA_DIR / "pages").glob(f"{source or '*'}.jsonl"))
-    return [Page.model_validate_json(l) for f in files for l in f.open() if l.strip()]
+    files = sorted((config.DATA_DIR / "pages").glob(f"{source or '*'}.jsonl"))
+    return [Page.model_validate_json(l) for f in files for l in f.open(encoding="utf-8") if l.strip()]
 
 
 def dump_jsonl(items, path):
     path.parent.mkdir(parents=True, exist_ok=True)
-    with path.open("w") as fh:
+    with path.open("w", encoding="utf-8") as fh:
         for it in items:
             fh.write((it.model_dump_json() if hasattr(it, "model_dump_json") else json.dumps(it)) + "\n")

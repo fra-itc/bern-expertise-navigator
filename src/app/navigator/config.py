@@ -70,6 +70,39 @@ class Settings:
     llm_price_out: float = float(os.getenv("LLM_PRICE_OUT_CHF_PER_M", "1.50"))
     llm_price_set: bool = bool(os.getenv("LLM_PRICE_IN_CHF_PER_M") or os.getenv("LLM_PRICE_OUT_CHF_PER_M"))
 
+    # ---- papers (navigator.papers, `cli papers`) -------------------------------------
+    openalex_base_url: str = os.getenv("OPENALEX_BASE_URL", "https://api.openalex.org").rstrip("/")
+    openalex_mailto: str = os.getenv("OPENALEX_MAILTO", "")
+    # free key = $1/day budget and 30 req/s; without it OpenAlex shares $0.10/day per IP (see README)
+    openalex_api_key: str = os.getenv("OPENALEX_API_KEY", "")
+    openalex_rps: float = float(os.getenv("OPENALEX_RPS", "5"))
+    openalex_cache_days: float = float(os.getenv("OPENALEX_CACHE_DAYS", "30"))
+    # Bern institutions as ROR ids, resolved to OpenAlex ids at run time (University of Bern, Inselspital).
+    papers_rors: tuple[str, ...] = tuple(x.strip() for x in os.getenv(
+        "PAPERS_RORS", "https://ror.org/02k7v4d05,https://ror.org/01q9sj412").split(",") if x.strip())
+    papers_max_works: int = int(os.getenv("PAPERS_MAX_WORKS", "30"))       # per author, newest first
+    papers_years: int = int(os.getenv("PAPERS_YEARS", "10"))               # ... and not older than this
+    papers_max_candidates: int = int(os.getenv("PAPERS_MAX_CANDIDATES", "8"))
+    papers_pdf: bool = os.getenv("PAPERS_PDF", "1") == "1"
+    papers_pdf_max_mb: float = float(os.getenv("PAPERS_PDF_MAX_MB", "20"))
+    papers_pdf_timeout: float = float(os.getenv("PAPERS_PDF_TIMEOUT", "30"))
+    papers_pdf_max_pages: int = int(os.getenv("PAPERS_PDF_MAX_PAGES", "40"))
+    papers_pdf_delay: float = float(os.getenv("PAPERS_PDF_DELAY", "1.0"))  # per host
+    papers_chunk_words: int = int(os.getenv("PAPERS_CHUNK_WORDS", "200"))  # median ~360 e5 tokens on a real paper
+    papers_chunk_overlap: int = int(os.getenv("PAPERS_CHUNK_OVERLAP", "30"))
+    papers_max_chunks: int = int(os.getenv("PAPERS_MAX_CHUNKS", "8"))      # full-text chunks per paper
+    # embedding-derived graph edges (cli papers link)
+    similar_k: int = int(os.getenv("SIMILAR_K", "5"))
+    similar_quantile: float = float(os.getenv("SIMILAR_QUANTILE", "0.9"))  # threshold = this quantile of kNN cosines
+    similar_min: float = float(os.getenv("SIMILAR_MIN", "0.80"))          # ... but never below this
+    similar_person_threshold: str = os.getenv("SIMILAR_PERSON_THRESHOLD", "auto")  # 'auto' or a cosine
+    similar_paper_threshold: str = os.getenv("SIMILAR_PAPER_THRESHOLD", "auto")
+    topic_shortlist: int = int(os.getenv("TOPIC_SHORTLIST", "8"))         # topic candidates shown to the LLM
+    # search: papers as evidence (Postgres backend only)
+    use_papers: bool = os.getenv("USE_PAPERS", "1") == "1"
+    paper_weight: float = float(os.getenv("PAPER_WEIGHT", "0.8"))         # RRF weight of the paper ranking
+    similar_damping: float = float(os.getenv("SIMILAR_DAMPING", "0.6"))   # score passed along SIMILAR_TO
+
 
 settings = Settings()
 
@@ -95,6 +128,15 @@ class Source:
         return any(host == d or host.endswith("." + d) for d in self.domains)
 
 
+def _resolve(rel: str) -> Path:
+    """Paths in sources.yaml are relative to ROOT ("config/x.txt"); with NAV_CONFIG_DIR pointing
+    elsewhere, fall back to the same file name inside that config dir."""
+    p = Path(rel)
+    if p.is_absolute() or (ROOT / p).exists():
+        return p if p.is_absolute() else ROOT / p
+    return CONFIG_DIR / p.name
+
+
 def _read_seeds_file(path: Path) -> list[str]:
     hosts = [l.strip() for l in path.read_text().splitlines() if l.strip() and not l.startswith("#")]
     return [h if h.startswith("http") else f"https://{h}/" for h in hosts]
@@ -109,7 +151,7 @@ def load_sources(only: str | None = None) -> list[Source]:
             continue
         seeds = list(s.get("seeds", []))
         if s.get("seeds_file"):
-            seeds += _read_seeds_file(ROOT / s["seeds_file"])
+            seeds += _read_seeds_file(_resolve(s["seeds_file"]))
         domains = list(s.get("domains", []))
         if s.get("domains_from_seeds"):
             domains += [urlparse(u).hostname for u in seeds if urlparse(u).hostname]

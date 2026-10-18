@@ -1,0 +1,1226 @@
+{
+ "institutions": {
+  "meta": {
+   "count": 2,
+   "cost_usd": 0.0001
+  },
+  "results": [
+   {
+    "id": "https://openalex.org/I118564535",
+    "ror": "https://ror.org/02k7v4d05",
+    "display_name": "University of Bern",
+    "country_code": "CH",
+    "type": "education"
+   },
+   {
+    "id": "https://openalex.org/I2801112126",
+    "ror": "https://ror.org/01q9sj412",
+    "display_name": "University Hospital of Bern",
+    "country_code": "CH",
+    "type": "healthcare"
+   }
+  ]
+ },
+ "authors": {
+  "jane doe": {
+   "meta": {
+    "count": 3,
+    "cost_usd": 0.001
+   },
+   "results": [
+    {
+     "id": "https://openalex.org/A100",
+     "display_name": "Jane Doe",
+     "display_name_alternatives": [
+      "J. Doe",
+      "Doe, Jane"
+     ],
+     "orcid": null,
+     "works_count": 40,
+     "cited_by_count": 480,
+     "last_known_institutions": [
+      {
+       "id": "https://openalex.org/I4400000001",
+       "ror": null,
+       "display_name": "ARTORG Center for Biomedical Engineering Research",
+       "country_code": "CH",
+       "type": "facility",
+       "lineage": [
+        "https://openalex.org/I4400000001",
+        "https://openalex.org/I118564535"
+       ]
+      }
+     ],
+     "affiliations": [
+      {
+       "institution": {
+        "id": "https://openalex.org/I4400000001",
+        "ror": null,
+        "display_name": "ARTORG Center for Biomedical Engineering Research",
+        "country_code": "CH",
+        "type": "facility",
+        "lineage": [
+         "https://openalex.org/I4400000001",
+         "https://openalex.org/I118564535"
+        ]
+       },
+       "years": [
+        2019,
+        2024
+       ]
+      },
+      {
+       "institution": {
+        "id": "https://openalex.org/I118564535",
+        "ror": "https://ror.org/02k7v4d05",
+        "display_name": "University of Bern",
+        "country_code": "CH",
+        "type": "education",
+        "lineage": [
+         "https://openalex.org/I118564535"
+        ]
+       },
+       "years": [
+        2016,
+        2024
+       ]
+      }
+     ],
+     "topics": [
+      {
+       "id": "https://openalex.org/T4199",
+       "display_name": "Diabetes Management and Glucose Monitoring",
+       "count": 5
+      },
+      {
+       "id": "https://openalex.org/T624",
+       "display_name": "Photoacoustic and Ultrasonic Imaging",
+       "count": 5
+      }
+     ]
+    },
+    {
+     "id": "https://openalex.org/A101",
+     "display_name": "Jane Doe",
+     "display_name_alternatives": [
+      "J. A. Doe"
+     ],
+     "orcid": null,
+     "works_count": 12,
+     "cited_by_count": 144,
+     "last_known_institutions": [
+      {
+       "id": "https://openalex.org/I136199984",
+       "ror": "https://ror.org/03vek6s52",
+       "display_name": "Harvard University",
+       "country_code": "US",
+       "type": "education",
+       "lineage": [
+        "https://openalex.org/I136199984"
+       ]
+      }
+     ],
+     "affiliations": [
+      {
+       "institution": {
+        "id": "https://openalex.org/I136199984",
+        "ror": "https://ror.org/03vek6s52",
+        "display_name": "Harvard University",
+        "country_code": "US",
+        "type": "education",
+        "lineage": [
+         "https://openalex.org/I136199984"
+        ]
+       },
+       "years": [
+        2010,
+        2024
+       ]
+      },
+      {
+       "institution": {
+        "id": "https://openalex.org/I2801112126",
+        "ror": "https://ror.org/01q9sj412",
+        "display_name": "University Hospital of Bern",
+        "country_code": "CH",
+        "type": "healthcare",
+        "lineage": [
+         "https://openalex.org/I2801112126"
+        ]
+       },
+       "years": [
+        2012
+       ]
+      }
+     ],
+     "topics": [
+      {
+       "id": "https://openalex.org/T8474",
+       "display_name": "Medieval History",
+       "count": 5
+      },
+      {
+       "id": "https://openalex.org/T253",
+       "display_name": "Archaeology",
+       "count": 5
+      }
+     ]
+    },
+    {
+     "id": "https://openalex.org/A102",
+     "display_name": "J. Doe",
+     "display_name_alternatives": [
+      "Julia Doe"
+     ],
+     "orcid": null,
+     "works_count": 8,
+     "cited_by_count": 96,
+     "last_known_institutions": [
+      {
+       "id": "https://openalex.org/I118564535",
+       "ror": "https://ror.org/02k7v4d05",
+       "display_name": "University of Bern",
+       "country_code": "CH",
+       "type": "education",
+       "lineage": [
+        "https://openalex.org/I118564535"
+       ]
+      }
+     ],
+     "affiliations": [
+      {
+       "institution": {
+        "id": "https://openalex.org/I118564535",
+        "ror": "https://ror.org/02k7v4d05",
+        "display_name": "University of Bern",
+        "country_code": "CH",
+        "type": "education",
+        "lineage": [
+         "https://openalex.org/I118564535"
+        ]
+       },
+       "years": [
+        2020,
+        2023
+       ]
+      }
+     ],
+     "topics": [
+      {
+       "id": "https://openalex.org/T8460",
+       "display_name": "Glaciology",
+       "count": 5
+      },
+      {
+       "id": "https://openalex.org/T8313",
+       "display_name": "Climate Change",
+       "count": 5
+      }
+     ]
+    }
+   ]
+  },
+  "max muster": {
+   "meta": {
+    "count": 1,
+    "cost_usd": 0.001
+   },
+   "results": [
+    {
+     "id": "https://openalex.org/A200",
+     "display_name": "Max Muster",
+     "display_name_alternatives": [
+      "M. Muster"
+     ],
+     "orcid": null,
+     "works_count": 40,
+     "cited_by_count": 480,
+     "last_known_institutions": [
+      {
+       "id": "https://openalex.org/I2801112126",
+       "ror": "https://ror.org/01q9sj412",
+       "display_name": "University Hospital of Bern",
+       "country_code": "CH",
+       "type": "healthcare",
+       "lineage": [
+        "https://openalex.org/I2801112126"
+       ]
+      }
+     ],
+     "affiliations": [
+      {
+       "institution": {
+        "id": "https://openalex.org/I2801112126",
+        "ror": "https://ror.org/01q9sj412",
+        "display_name": "University Hospital of Bern",
+        "country_code": "CH",
+        "type": "healthcare",
+        "lineage": [
+         "https://openalex.org/I2801112126"
+        ]
+       },
+       "years": [
+        2015,
+        2024
+       ]
+      }
+     ],
+     "topics": [
+      {
+       "id": "https://openalex.org/T2769",
+       "display_name": "Hearing Loss and Rehabilitation",
+       "count": 5
+      }
+     ]
+    }
+   ]
+  },
+  "ann a": {
+   "meta": {
+    "count": 0,
+    "cost_usd": 0.001
+   },
+   "results": []
+  }
+ },
+ "works_by_author": {
+  "A100": {
+   "meta": {
+    "count": 2,
+    "cost_usd": 0.0001
+   },
+   "results": [
+    {
+     "id": "https://openalex.org/W1001",
+     "doi": "https://doi.org/10.1000/w1001",
+     "title": "Photoacoustic glucose sensing in interstitial fluid",
+     "display_name": "Photoacoustic glucose sensing in interstitial fluid",
+     "publication_year": 2024,
+     "primary_location": {
+      "is_oa": true,
+      "landing_page_url": "https://doi.org/10.1000/w1001",
+      "pdf_url": "https://repo.example.org/w1001.pdf",
+      "source": {
+       "display_name": "Journal of Medical Devices"
+      }
+     },
+     "abstract_inverted_index": {
+      "Photoacoustic": [
+       0
+      ],
+      "spectroscopy": [
+       1
+      ],
+      "measures": [
+       2
+      ],
+      "glucose": [
+       3,
+       30
+      ],
+      "noninvasively": [
+       4
+      ],
+      "through": [
+       5
+      ],
+      "the": [
+       6,
+       20,
+       26
+      ],
+      "skin.": [
+       7
+      ],
+      "A": [
+       8
+      ],
+      "pulsed": [
+       9
+      ],
+      "mid-infrared": [
+       10
+      ],
+      "laser": [
+       11
+      ],
+      "excites": [
+       12
+      ],
+      "interstitial": [
+       13
+      ],
+      "fluid": [
+       14
+      ],
+      "and": [
+       15
+      ],
+      "an": [
+       16
+      ],
+      "acoustic": [
+       17
+      ],
+      "resonator": [
+       18
+      ],
+      "records": [
+       19
+      ],
+      "signal.": [
+       21
+      ],
+      "In": [
+       22
+      ],
+      "a": [
+       23,
+       33
+      ],
+      "clinical": [
+       24
+      ],
+      "pilot": [
+       25
+      ],
+      "sensor": [
+       27
+      ],
+      "tracked": [
+       28
+      ],
+      "reference": [
+       29
+      ],
+      "values": [
+       31
+      ],
+      "with": [
+       32
+      ],
+      "mean": [
+       34
+      ],
+      "absolute": [
+       35
+      ],
+      "relative": [
+       36
+      ],
+      "difference": [
+       37
+      ],
+      "of": [
+       38
+      ],
+      "twelve": [
+       39
+      ],
+      "percent.": [
+       40
+      ]
+     },
+     "authorships": [
+      {
+       "author_position": "first",
+       "author": {
+        "id": "https://openalex.org/A100",
+        "display_name": "Jane Doe",
+        "orcid": null
+       },
+       "institutions": [
+        {
+         "id": "https://openalex.org/I4400000001",
+         "ror": null,
+         "display_name": "ARTORG Center for Biomedical Engineering Research",
+         "country_code": "CH",
+         "type": "facility",
+         "lineage": [
+          "https://openalex.org/I4400000001",
+          "https://openalex.org/I118564535"
+         ]
+        }
+       ],
+       "raw_author_name": "Jane Doe"
+      },
+      {
+       "author_position": "middle",
+       "author": {
+        "id": "https://openalex.org/A900",
+        "display_name": "Erik External",
+        "orcid": null
+       },
+       "institutions": [
+        {
+         "id": "https://openalex.org/I136199984",
+         "ror": "https://ror.org/03vek6s52",
+         "display_name": "Harvard University",
+         "country_code": "US",
+         "type": "education",
+         "lineage": [
+          "https://openalex.org/I136199984"
+         ]
+        }
+       ],
+       "raw_author_name": "Erik External"
+      },
+      {
+       "author_position": "last",
+       "author": {
+        "id": "https://openalex.org/A200",
+        "display_name": "Max Muster",
+        "orcid": null
+       },
+       "institutions": [
+        {
+         "id": "https://openalex.org/I2801112126",
+         "ror": "https://ror.org/01q9sj412",
+         "display_name": "University Hospital of Bern",
+         "country_code": "CH",
+         "type": "healthcare",
+         "lineage": [
+          "https://openalex.org/I2801112126"
+         ]
+        }
+       ],
+       "raw_author_name": "Max Muster"
+      }
+     ],
+     "topics": [
+      {
+       "id": "https://openalex.org/T10560",
+       "display_name": "Diabetes Management and Glucose Monitoring",
+       "score": 0.9,
+       "subfield": {
+        "display_name": "Endocrinology"
+       },
+       "field": {
+        "display_name": "Medicine"
+       }
+      },
+      {
+       "id": "https://openalex.org/T11222",
+       "display_name": "Photoacoustic and Ultrasonic Imaging",
+       "score": 0.8,
+       "subfield": {
+        "display_name": "Radiology"
+       },
+       "field": {
+        "display_name": "Medicine"
+       }
+      }
+     ],
+     "concepts": [
+      {
+       "id": "https://openalex.org/C71924100",
+       "display_name": "Medicine",
+       "score": 0.4
+      }
+     ],
+     "cited_by_count": 7,
+     "referenced_works": [
+      "https://openalex.org/W1002",
+      "https://openalex.org/W9999"
+     ],
+     "open_access": {
+      "is_oa": true,
+      "oa_status": "gold"
+     },
+     "best_oa_location": {
+      "is_oa": true,
+      "landing_page_url": "https://doi.org/10.1000/w1001",
+      "pdf_url": "https://repo.example.org/w1001.pdf",
+      "source": {
+       "display_name": "Journal of Medical Devices"
+      }
+     },
+     "locations": [
+      {
+       "is_oa": true,
+       "landing_page_url": "https://doi.org/10.1000/w1001",
+       "pdf_url": "https://repo.example.org/w1001.pdf",
+       "source": {
+        "display_name": "Journal of Medical Devices"
+       }
+      }
+     ],
+     "ids": {
+      "openalex": "https://openalex.org/W1001",
+      "doi": "https://doi.org/10.1000/w1001"
+     },
+     "type": "article"
+    },
+    {
+     "id": "https://openalex.org/W1002",
+     "doi": "https://doi.org/10.1000/w1002",
+     "title": "Closed-loop insulin dosing with model predictive control",
+     "display_name": "Closed-loop insulin dosing with model predictive control",
+     "publication_year": 2022,
+     "primary_location": {
+      "is_oa": false,
+      "landing_page_url": "https://doi.org/10.1000/w1002",
+      "pdf_url": null,
+      "source": {
+       "display_name": "Journal of Medical Devices"
+      }
+     },
+     "abstract_inverted_index": {
+      "Model": [
+       0
+      ],
+      "predictive": [
+       1
+      ],
+      "control": [
+       2
+      ],
+      "adjusts": [
+       3
+      ],
+      "insulin": [
+       4
+      ],
+      "delivery": [
+       5
+      ],
+      "every": [
+       6
+      ],
+      "five": [
+       7
+      ],
+      "minutes": [
+       8
+      ],
+      "from": [
+       9
+      ],
+      "sensor": [
+       10
+      ],
+      "glucose.": [
+       11
+      ],
+      "The": [
+       12
+      ],
+      "controller": [
+       13
+      ],
+      "kept": [
+       14
+      ],
+      "patients": [
+       15
+      ],
+      "in": [
+       16
+      ],
+      "range": [
+       17
+      ],
+      "seventy": [
+       18
+      ],
+      "percent": [
+       19
+      ],
+      "of": [
+       20
+      ],
+      "the": [
+       21
+      ],
+      "time.": [
+       22
+      ]
+     },
+     "authorships": [
+      {
+       "author_position": "first",
+       "author": {
+        "id": "https://openalex.org/A100",
+        "display_name": "Jane Doe",
+        "orcid": null
+       },
+       "institutions": [
+        {
+         "id": "https://openalex.org/I118564535",
+         "ror": "https://ror.org/02k7v4d05",
+         "display_name": "University of Bern",
+         "country_code": "CH",
+         "type": "education",
+         "lineage": [
+          "https://openalex.org/I118564535"
+         ]
+        }
+       ],
+       "raw_author_name": "Jane Doe"
+      }
+     ],
+     "topics": [
+      {
+       "id": "https://openalex.org/T10560",
+       "display_name": "Diabetes Management and Glucose Monitoring",
+       "score": 0.9,
+       "subfield": {
+        "display_name": "Endocrinology"
+       },
+       "field": {
+        "display_name": "Medicine"
+       }
+      }
+     ],
+     "concepts": [
+      {
+       "id": "https://openalex.org/C71924100",
+       "display_name": "Medicine",
+       "score": 0.4
+      }
+     ],
+     "cited_by_count": 7,
+     "referenced_works": [],
+     "open_access": {
+      "is_oa": false,
+      "oa_status": "closed"
+     },
+     "best_oa_location": null,
+     "locations": [
+      {
+       "is_oa": false,
+       "landing_page_url": "https://doi.org/10.1000/w1002",
+       "pdf_url": null,
+       "source": {
+        "display_name": "Journal of Medical Devices"
+       }
+      }
+     ],
+     "ids": {
+      "openalex": "https://openalex.org/W1002",
+      "doi": "https://doi.org/10.1000/w1002"
+     },
+     "type": "article"
+    }
+   ]
+  },
+  "A200": {
+   "meta": {
+    "count": 2,
+    "cost_usd": 0.0001
+   },
+   "results": [
+    {
+     "id": "https://openalex.org/W2001",
+     "doi": "https://doi.org/10.1000/w2001",
+     "title": "Cochlear implant electrode insertion forces",
+     "display_name": "Cochlear implant electrode insertion forces",
+     "publication_year": 2023,
+     "primary_location": {
+      "is_oa": true,
+      "landing_page_url": "https://doi.org/10.1000/w2001",
+      "pdf_url": null,
+      "source": {
+       "display_name": "Journal of Medical Devices"
+      }
+     },
+     "abstract_inverted_index": {
+      "Robotic": [
+       0
+      ],
+      "insertion": [
+       1
+      ],
+      "lowers": [
+       2
+      ],
+      "the": [
+       3,
+       6
+      ],
+      "forces": [
+       4
+      ],
+      "on": [
+       5
+      ],
+      "basilar": [
+       7
+      ],
+      "membrane": [
+       8
+      ],
+      "during": [
+       9
+      ],
+      "cochlear": [
+       10
+      ],
+      "implant": [
+       11
+      ],
+      "surgery.": [
+       12
+      ]
+     },
+     "authorships": [
+      {
+       "author_position": "first",
+       "author": {
+        "id": "https://openalex.org/A200",
+        "display_name": "Max Muster",
+        "orcid": null
+       },
+       "institutions": [
+        {
+         "id": "https://openalex.org/I2801112126",
+         "ror": "https://ror.org/01q9sj412",
+         "display_name": "University Hospital of Bern",
+         "country_code": "CH",
+         "type": "healthcare",
+         "lineage": [
+          "https://openalex.org/I2801112126"
+         ]
+        }
+       ],
+       "raw_author_name": "Max Muster"
+      }
+     ],
+     "topics": [
+      {
+       "id": "https://openalex.org/T10730",
+       "display_name": "Hearing Loss and Rehabilitation",
+       "score": 0.9,
+       "subfield": {
+        "display_name": "Otorhinolaryngology"
+       },
+       "field": {
+        "display_name": "Medicine"
+       }
+      }
+     ],
+     "concepts": [
+      {
+       "id": "https://openalex.org/C71924100",
+       "display_name": "Medicine",
+       "score": 0.4
+      }
+     ],
+     "cited_by_count": 7,
+     "referenced_works": [],
+     "open_access": {
+      "is_oa": true,
+      "oa_status": "gold"
+     },
+     "best_oa_location": {
+      "is_oa": true,
+      "landing_page_url": "https://doi.org/10.1000/w2001",
+      "pdf_url": null,
+      "source": {
+       "display_name": "Journal of Medical Devices"
+      }
+     },
+     "locations": [
+      {
+       "is_oa": true,
+       "landing_page_url": "https://doi.org/10.1000/w2001",
+       "pdf_url": null,
+       "source": {
+        "display_name": "Journal of Medical Devices"
+       }
+      }
+     ],
+     "ids": {
+      "openalex": "https://openalex.org/W2001",
+      "doi": "https://doi.org/10.1000/w2001"
+     },
+     "type": "article"
+    },
+    {
+     "id": "https://openalex.org/W1001",
+     "doi": "https://doi.org/10.1000/w1001",
+     "title": "Photoacoustic glucose sensing in interstitial fluid",
+     "display_name": "Photoacoustic glucose sensing in interstitial fluid",
+     "publication_year": 2024,
+     "primary_location": {
+      "is_oa": true,
+      "landing_page_url": "https://doi.org/10.1000/w1001",
+      "pdf_url": "https://repo.example.org/w1001.pdf",
+      "source": {
+       "display_name": "Journal of Medical Devices"
+      }
+     },
+     "abstract_inverted_index": {
+      "Photoacoustic": [
+       0
+      ],
+      "spectroscopy": [
+       1
+      ],
+      "measures": [
+       2
+      ],
+      "glucose": [
+       3,
+       30
+      ],
+      "noninvasively": [
+       4
+      ],
+      "through": [
+       5
+      ],
+      "the": [
+       6,
+       20,
+       26
+      ],
+      "skin.": [
+       7
+      ],
+      "A": [
+       8
+      ],
+      "pulsed": [
+       9
+      ],
+      "mid-infrared": [
+       10
+      ],
+      "laser": [
+       11
+      ],
+      "excites": [
+       12
+      ],
+      "interstitial": [
+       13
+      ],
+      "fluid": [
+       14
+      ],
+      "and": [
+       15
+      ],
+      "an": [
+       16
+      ],
+      "acoustic": [
+       17
+      ],
+      "resonator": [
+       18
+      ],
+      "records": [
+       19
+      ],
+      "signal.": [
+       21
+      ],
+      "In": [
+       22
+      ],
+      "a": [
+       23,
+       33
+      ],
+      "clinical": [
+       24
+      ],
+      "pilot": [
+       25
+      ],
+      "sensor": [
+       27
+      ],
+      "tracked": [
+       28
+      ],
+      "reference": [
+       29
+      ],
+      "values": [
+       31
+      ],
+      "with": [
+       32
+      ],
+      "mean": [
+       34
+      ],
+      "absolute": [
+       35
+      ],
+      "relative": [
+       36
+      ],
+      "difference": [
+       37
+      ],
+      "of": [
+       38
+      ],
+      "twelve": [
+       39
+      ],
+      "percent.": [
+       40
+      ]
+     },
+     "authorships": [
+      {
+       "author_position": "first",
+       "author": {
+        "id": "https://openalex.org/A100",
+        "display_name": "Jane Doe",
+        "orcid": null
+       },
+       "institutions": [
+        {
+         "id": "https://openalex.org/I4400000001",
+         "ror": null,
+         "display_name": "ARTORG Center for Biomedical Engineering Research",
+         "country_code": "CH",
+         "type": "facility",
+         "lineage": [
+          "https://openalex.org/I4400000001",
+          "https://openalex.org/I118564535"
+         ]
+        }
+       ],
+       "raw_author_name": "Jane Doe"
+      },
+      {
+       "author_position": "middle",
+       "author": {
+        "id": "https://openalex.org/A900",
+        "display_name": "Erik External",
+        "orcid": null
+       },
+       "institutions": [
+        {
+         "id": "https://openalex.org/I136199984",
+         "ror": "https://ror.org/03vek6s52",
+         "display_name": "Harvard University",
+         "country_code": "US",
+         "type": "education",
+         "lineage": [
+          "https://openalex.org/I136199984"
+         ]
+        }
+       ],
+       "raw_author_name": "Erik External"
+      },
+      {
+       "author_position": "last",
+       "author": {
+        "id": "https://openalex.org/A200",
+        "display_name": "Max Muster",
+        "orcid": null
+       },
+       "institutions": [
+        {
+         "id": "https://openalex.org/I2801112126",
+         "ror": "https://ror.org/01q9sj412",
+         "display_name": "University Hospital of Bern",
+         "country_code": "CH",
+         "type": "healthcare",
+         "lineage": [
+          "https://openalex.org/I2801112126"
+         ]
+        }
+       ],
+       "raw_author_name": "Max Muster"
+      }
+     ],
+     "topics": [
+      {
+       "id": "https://openalex.org/T10560",
+       "display_name": "Diabetes Management and Glucose Monitoring",
+       "score": 0.9,
+       "subfield": {
+        "display_name": "Endocrinology"
+       },
+       "field": {
+        "display_name": "Medicine"
+       }
+      },
+      {
+       "id": "https://openalex.org/T11222",
+       "display_name": "Photoacoustic and Ultrasonic Imaging",
+       "score": 0.8,
+       "subfield": {
+        "display_name": "Radiology"
+       },
+       "field": {
+        "display_name": "Medicine"
+       }
+      }
+     ],
+     "concepts": [
+      {
+       "id": "https://openalex.org/C71924100",
+       "display_name": "Medicine",
+       "score": 0.4
+      }
+     ],
+     "cited_by_count": 7,
+     "referenced_works": [
+      "https://openalex.org/W1002",
+      "https://openalex.org/W9999"
+     ],
+     "open_access": {
+      "is_oa": true,
+      "oa_status": "gold"
+     },
+     "best_oa_location": {
+      "is_oa": true,
+      "landing_page_url": "https://doi.org/10.1000/w1001",
+      "pdf_url": "https://repo.example.org/w1001.pdf",
+      "source": {
+       "display_name": "Journal of Medical Devices"
+      }
+     },
+     "locations": [
+      {
+       "is_oa": true,
+       "landing_page_url": "https://doi.org/10.1000/w1001",
+       "pdf_url": "https://repo.example.org/w1001.pdf",
+       "source": {
+        "display_name": "Journal of Medical Devices"
+       }
+      }
+     ],
+     "ids": {
+      "openalex": "https://openalex.org/W1001",
+      "doi": "https://doi.org/10.1000/w1001"
+     },
+     "type": "article"
+    }
+   ]
+  }
+ },
+ "works_by_doi": {
+  "meta": {
+   "count": 1,
+   "cost_usd": 0.0001
+  },
+  "results": [
+   {
+    "id": "https://openalex.org/W3001",
+    "doi": "https://doi.org/10.1000/unitpaper",
+    "title": "Hearing preservation outcomes after cochlear implantation",
+    "display_name": "Hearing preservation outcomes after cochlear implantation",
+    "publication_year": 2021,
+    "primary_location": {
+     "is_oa": false,
+     "landing_page_url": "https://doi.org/10.1000/unitpaper",
+     "pdf_url": null,
+     "source": {
+      "display_name": "Journal of Medical Devices"
+     }
+    },
+    "abstract_inverted_index": {
+     "Residual": [
+      0
+     ],
+     "hearing": [
+      1
+     ],
+     "was": [
+      2
+     ],
+     "preserved": [
+      3
+     ],
+     "in": [
+      4
+     ],
+     "most": [
+      5
+     ],
+     "patients": [
+      6
+     ],
+     "after": [
+      7
+     ],
+     "atraumatic": [
+      8
+     ],
+     "electrode": [
+      9
+     ],
+     "insertion.": [
+      10
+     ]
+    },
+    "authorships": [
+     {
+      "author_position": "first",
+      "author": {
+       "id": "https://openalex.org/A777",
+       "display_name": "Lea Other",
+       "orcid": null
+      },
+      "institutions": [
+       {
+        "id": "https://openalex.org/I2801112126",
+        "ror": "https://ror.org/01q9sj412",
+        "display_name": "University Hospital of Bern",
+        "country_code": "CH",
+        "type": "healthcare",
+        "lineage": [
+         "https://openalex.org/I2801112126"
+        ]
+       }
+      ],
+      "raw_author_name": "Lea Other"
+     }
+    ],
+    "topics": [
+     {
+      "id": "https://openalex.org/T10730",
+      "display_name": "Hearing Loss and Rehabilitation",
+      "score": 0.9,
+      "subfield": {
+       "display_name": "Otorhinolaryngology"
+      },
+      "field": {
+       "display_name": "Medicine"
+      }
+     }
+    ],
+    "concepts": [
+     {
+      "id": "https://openalex.org/C71924100",
+      "display_name": "Medicine",
+      "score": 0.4
+     }
+    ],
+    "cited_by_count": 7,
+    "referenced_works": [],
+    "open_access": {
+     "is_oa": false,
+     "oa_status": "closed"
+    },
+    "best_oa_location": null,
+    "locations": [
+     {
+      "is_oa": false,
+      "landing_page_url": "https://doi.org/10.1000/unitpaper",
+      "pdf_url": null,
+      "source": {
+       "display_name": "Journal of Medical Devices"
+      }
+     }
+    ],
+    "ids": {
+     "openalex": "https://openalex.org/W3001",
+     "doi": "https://doi.org/10.1000/unitpaper"
+    },
+    "type": "article"
+   }
+  ]
+ }
+}

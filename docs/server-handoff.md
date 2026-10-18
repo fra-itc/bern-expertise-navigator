@@ -28,6 +28,9 @@ State described here was verified on **2026-10-18** (read-only audit
 > - **New:** a staff dashboard at `/dashboard`, behind the staff login. Each web request that calls Apertus is
 >   logged in `data/usage.jsonl` (route, case id, tokens, latency; never the request text). The log is kept
 >   across deploys.
+> - **PR #11 (papers graph) is merged** into `main`. It is used only by the Postgres backend, which the app does
+>   not use yet (`DATABASE_URL` is empty), so the live site is unchanged. Its runbook is `docs/papers-runbook.md`;
+>   the full overnight run on `/opt/bern/papers` and Postgres still needs the team's go.
 > - **Still open:**
 >   - no backups;
 >   - no record of the deployed commit;

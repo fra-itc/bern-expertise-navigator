@@ -12,7 +12,7 @@ PY_ROOT := docker compose run --rm api python
 PY_ENV = docker compose run --rm $(addprefix -e ,$(1)) api python
 endif
 
-.PHONY: up up-gpu down setup-local serve crawl extract index pipeline stats eval compare bench test logs demo deploy
+.PHONY: up up-gpu down setup-local serve crawl extract index pipeline stats papers eval compare bench test logs demo deploy
 
 up:            ## API/UI on :8080 + Qdrant; Apertus at $$LLM_BASE_URL
 	cp -n .env.example .env || true
@@ -58,6 +58,10 @@ demo:          ## from the SAVED pages (no network): extract (Apertus if reachab
 
 stats:
 	$(PY) -m navigator.cli stats
+
+PAPERS_STEP ?= all
+papers:        ## explicit only (network: OpenAlex + OA PDFs): make papers [PAPERS_STEP=collect|embed|link] (embed/link: Postgres)
+	$(PY) -m navigator.cli papers $(PAPERS_STEP)
 
 TAG ?=
 eval:          ## recall@10, synonym twins, traceability, abstention (TAG=name also saves data/eval/<name>.json)

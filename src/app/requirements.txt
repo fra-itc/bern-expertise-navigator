@@ -11,10 +11,12 @@ qdrant-client==1.12.1
 psycopg[binary]==3.3.6
 psycopg-pool==3.3.3
 pgvector==0.5.1
+# PDF text for shared documents and open-access papers (pure Python, BSD-3; PyMuPDF would bring AGPL into an
+# Apache-2.0 repo). One pin for both: main had 5.1.0, the papers branch 6.21.1 (6.x carries the 2025 DoS fixes).
+pypdf==6.21.1
 sentence-transformers==3.3.1
 pytest==8.3.4
 numpy>=1.26
-pypdf==5.1.0
 python-docx==1.1.2
 python-pptx==1.0.2
 openpyxl==3.1.5
