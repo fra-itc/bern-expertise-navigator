@@ -4,7 +4,9 @@
 #
 # Kinds: (a) site-terminology queries, (b) lay-term / other-language twins (twin_of -> must find the
 # same experts), (c) out-of-domain and non-existent-person queries that must abstain.
-# TODO(team): add UniBE queries once the subdomain inventory is crawled.
+# UniBE (u01-u16, added 2026-10-18 with the unibe_web source): chosen from the institute pages' own text, not from
+# search results; each expected name was checked on its page, and a surname is used only where no other indexed
+# name contains it.
 
 queries:
   # ---------------- ARTORG (artorg.unibe.ch/research/<group>/index_eng.html) ----------------
@@ -95,6 +97,59 @@ queries:
   - id: d09
     query: insulin activity measurement
     expected: ["Maren Schinz"]                          # Insulin activity project
+
+  # ---------------- UniBE institute websites (unibe_web: dbmr / physiologie / neuroscience / ispm / bcpm .unibe.ch) ----------------
+  - id: u01
+    query: mechanisms of cardiac arrhythmias
+    expected: ["Odening"]                               # dbmr /research_programs/odening_lab/
+  - id: u02
+    query: research on irregular heartbeat
+    expected: ["Odening"]
+    twin_of: u01
+  - id: u03
+    query: devices for mechanical thrombectomy in stroke
+    expected: ["Interventional Neurovascular Research Group"]   # neuroscience /research_groups/ (INRG)
+  - id: u04
+    query: organoid core facility
+    expected: ["Translational Organoid Resource"]       # dbmr /core_facilities/ (TOR)
+  - id: u05
+    query: growing mini-organs from patient tissue
+    expected: ["Translational Organoid Resource"]
+    twin_of: u04
+  - id: u06
+    query: flow cytometry and cell sorting facility
+    expected: ["Flow Cytometry and Cell Sorting"]       # dbmr /core_facilities/ (FCCS)
+  - id: u07
+    query: magnetic resonance spectroscopy
+    expected: ["Vermathen"]                             # dbmr /research_programs/vermathen__kreis_lab/
+  - id: u08
+    query: radioactive tracers for molecular imaging
+    expected: ["Rominger"]                              # dbmr /research_programs/rominger_lab/
+  - id: u09
+    query: chronobiology of epilepsy
+    expected: ["Baud"]                                  # dbmr /research_programs/baud_lab/
+  - id: u10
+    query: why seizures happen at certain times
+    expected: ["Baud"]
+    twin_of: u09
+  - id: u11
+    query: tissue engineering and mechanobiology in orthopaedics
+    expected: ["Gantenbein"]                            # dbmr /research_programs/gantenbein_lab/
+  - id: u12
+    query: steroid analysis by mass spectrometry
+    expected: ["Du Toit"]                               # dbmr /research_programs/du_toit_lab/
+  - id: u13
+    query: biobank for tissue and liquid samples
+    expected: ["Biobank Bern"]                          # bcpm /platforms/biobank_bern/
+  - id: u14
+    query: support for running clinical trials
+    expected: ["CTU Bern"]                              # ispm /research_support/ctu_bern/
+  - id: u15
+    query: sleep in childhood and adolescent development
+    expected: ["Sleep and Development Lab"]             # neuroscience /research_groups/
+  - id: u16
+    query: light, circadian clock and sleep
+    expected: ["Ludovic Mure"]                          # dbmr /research_programs/mure_lab/
 
   # ---------------- Must abstain ----------------
   - id: x01

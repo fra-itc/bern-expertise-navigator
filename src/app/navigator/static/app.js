@@ -691,7 +691,7 @@
     if (!S.sources) S.sources = new Set(st.sources.map((x) => x.name));
     return `<div class="filters"><div class="fgroup" role="group" aria-label="${esc(t("flt.sources"))}">${st.sources.filter((x) => (st.entities_per_source[x.name] ?? 0) > 0).map((x) =>
       `<button type="button" class="fchip ${S.sources.has(x.name) ? "on" : ""}" data-src="${esc(x.name)}" title="${esc(x.label)}" aria-pressed="${S.sources.has(x.name)}">
-        <i class="t-dot src"></i>${esc(x.name === "unibe" ? "UniBE" : x.name.toUpperCase())} <span class="muted">${st.entities_per_source[x.name] ?? 0}</span></button>`).join("")}</div>
+        <i class="t-dot src"></i>${esc(({ unibe_web: "UniBE", unibe: "UniBE · OpenAlex" })[x.name] || x.name.toUpperCase())} <span class="muted">${st.entities_per_source[x.name] ?? 0}</span></button>`).join("")}</div>
       <div class="fgroup" role="group" aria-label="${esc(t("flt.types"))}">${[["person", "t.people"], ["unit", "t.labs"], ["project", "t.projects"], ["infrastructure", "t.facilities"]].map(([k, l]) =>
       `<button type="button" class="fchip ${S.types.has(k) ? "on" : ""}" data-type="${k}" aria-pressed="${S.types.has(k)}"><i class="t-dot ${k}"></i>${esc(t(l))}</button>`).join("")}</div></div>`;
   }

@@ -37,7 +37,8 @@ _ROLE_WORDS = re.compile(
     r"\b(professor|prof\.|ph\.?d|doctoral|doktorand|postdoc|post-doc|researcher|research associate|scientist|student|"
     r"engineer|manager|head|lead|leader|director|coordinator|fellow|assistant|technician|intern|ceo|cfo|coo|cto|"
     r"officer|specialist|statistician|developer|physician|lecturer|chair|group leader|principal investigator|"
-    r"mitarbeiter|wissenschaftlich|professeur|chercheur|doctorant|secretary|administrat|data scientist|nurse)", re.I)
+    r"mitarbeiter|wissenschaftlich|professeur|chercheur|doctorant|secretary|administrat|data scientist|nurse|"
+    r"collaborator|consultant|advis[eo]r)", re.I)
 _UNIT_WORDS = re.compile(r"\b(lab|laboratory|labor|group|gruppe|team|center|centre|zentrum|unit|institute|institut|clinic|klinik|"
                          r"division|department|abteilung|facility|platform|chair|lehrstuhl)\b", re.I)
 _EMAIL = re.compile(r"[\w.+-]+@[\w-]+(?:\.[\w-]+)+")
@@ -58,7 +59,22 @@ GENERIC_HEAD = re.compile(
     r"services?|facilities|our services|publications?|news.*|team|group members|members|staff|people|"
     r"collaborations?|.*seminars?|education|about( us)?|overview|studienteilnehmende|.*archives|.*spin-offs|"
     r"(our )?core research pillars|downloads?|links?|media|events?|select page|projects?|focus( areas?)?|"
-    r"innovation|community|get involved!?|career|imprint|legal notice|privacy policy|\d+)$", re.I)
+    r"innovation|community|get involved!?|career|imprint|legal notice|privacy policy|\d+|"
+    # site administration, events and listings (UniBE institute sites): navigation, not research entities
+    r"disclaimer|faq|terms (of use|& conditions|and conditions)|pricing|fees( and conditions)?|booking.*|"
+    r"(meeting room )?reservations?|equipment reservation|how to .*|(vision and )?mission|our institute|"
+    r"organi[sz]ation|guidelines?.*|funding( programs)?|.*\bawards?|.*\bprizes?( .*)?|awardees|"
+    r"acknowledgements?|authorship|administrative (office|support)|administration|human resources|"
+    r"event coordination|important information|institute secretariat|team and contact|support|resources|"
+    r"research (groups( and themes)?|group leaders|units|programs|support|overview.*|fields|strategy|meetings|"
+    r"collaborations)|group leaders|platform|applications|core (facilities|activities)|clusters( and networks)?|"
+    r"(past )?trainings?( and courses)?|phd dissertations|academic career paths|scientific integrity|.* alumni|"
+    r"group excursion.*|other equipment|instruments|microscopes|.* website|standard workplace|"
+    r"projects?:.*|.*\bpublications?|\+?[\d ()/-]{6,}.*)$", re.I)
+# "Dort, Jacqueline" / "Ballif Marie, PhD": person-directory headings (UniBE), surname first
+_SURNAME_FIRST = re.compile(r"^([A-ZÄÖÜÉ][\w'’-]+), ([A-ZÄÖÜÉ][\w'’-]+(?: [A-ZÄÖÜÉ][\w'’-]+)?)$")
+_DEGREE = r"(?:PhD|MPH|MD|MSc|MBA|PD|Dr\.|Prof\.)"
+_NAME_TITLE = re.compile(rf"^([A-ZÄÖÜÉ][\w'’-]+ [A-ZÄÖÜÉ][\w'’-]+), {_DEGREE}(?:[ ,]+{_DEGREE})*$")
 
 
 def _clean(line: str) -> str:
@@ -192,6 +208,13 @@ def extract_page(page: Page) -> list[dict]:
     if GENERIC_HEAD.match(head.strip(" :")):
         head = ""
     ptype = page.page_type or "other"
+    # a directory profile headed "Dort, Jacqueline" / "Ballif Marie, PhD" whose next line is a role
+    directory_person = False
+    if head and len(lines) > 1 and role_like(lines[1]):
+        if m := _SURNAME_FIRST.match(head):
+            bare_head, directory_person = f"{m.group(2)} {m.group(1)}", True
+        elif m := _NAME_TITLE.match(head):
+            bare_head, directory_person = m.group(1), True
     ents: list[ExtractedEntity] = []
     sents = _sentences(lines)
     phrases = list(dict.fromkeys(p for s in sents for p in _phrases(s)))
@@ -211,7 +234,7 @@ def extract_page(page: Page) -> list[dict]:
     # Profile page: a name-like heading AND a person signal (person URL, academic title or a role line)
     person_signal = ptype == "person" or bare_head.split()[0].lower() in _TITLE_TOK \
         or (len(lines) > 1 and role_like(lines[1]))
-    if head and name_like(bare_head) and person_signal:
+    if head and (directory_person or (name_like(bare_head) and person_signal)):
         ent = ExtractedEntity(entity_type="person", name=Cited(value=bare_head, snippet=lines[0]))
         if len(lines) > 1 and role_like(lines[1]):
             ent.role = Cited(value=lines[1], snippet=_span(lines, 0, 1))

@@ -65,6 +65,11 @@ def cmd_extract(a):
     use_llm_classify = extractor == "apertus" and not a.no_llm_classify
     srcs = {s.name: s for s in load_sources()}
     pages = crawl.load_pages(a.source)
+    # pages saved before a skip rule was added (e.g. former staff) are not indexed either
+    n_saved = len(pages)
+    pages = [p for p in pages if not (sc := srcs.get(p.source)) or not any(k in p.url.lower() for k in sc.skip_keywords)]
+    if len(pages) < n_saved:
+        print(f"[extract] {n_saved - len(pages)} saved pages skipped by the sources' skip_keywords")
     if a.limit:
         pages = pages[: a.limit]
     out_path = DATA_DIR / "extracted.jsonl"

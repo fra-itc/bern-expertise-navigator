@@ -111,3 +111,36 @@ def test_site_structure_links_members_to_their_unit():
     assert person.unit == "AI in Health and Nutrition"
     assert any(ev.field == "unit" and ev.url == unit.source_urls[0] for ev in person.evidence)  # cited on the unit page
     assert sub.entity_type == "project" and "Intelligent Nutrition" in unit.projects
+
+
+def _page(url, title, text, ptype):
+    return Page(url=url, source="unibe_web", title=title, page_type=ptype, fetched_at="2026-10-18", text=text)
+
+
+def test_directory_profile_with_surname_first_heading_is_a_person():
+    # UniBE staff directories head profiles "Surname, Firstname" or "Surname Firstname, PhD"; the page type is "unit"
+    dort = run(_page("https://dcr.unibe.ch/about_us/personen_all_dcr_staff/dort_jacqueline/index_eng.html",
+                     "Dort, Jacqueline", "Dort, Jacqueline\nResearch Assistant\nDCR / MDS\nField of work\n"
+                     "Researcher in medical data science with a focus on Large Language Models for drug approval data", "unit"))
+    assert dort["Jacqueline Dort"].entity_type == "person" and dort["Jacqueline Dort"].role.value == "Research Assistant"
+    ballif = run(_page("https://www.ispm.unibe.ch/about_us/staff/ballif_marie/index_eng.html", "Ballif Marie, PhD, MPH",
+                       "Ballif Marie, PhD, MPH\nResearch Collaborator\nResearch - HIV, Hepatitis and Tuberculosis", "unit"))
+    assert "Ballif Marie" in ballif and ballif["Ballif Marie"].entity_type == "person" and "Ballif Marie, PhD, MPH" not in ballif
+    # same shape without a role line is not a person
+    place = run(_page("https://www.dbmr.unibe.ch/about_us/how_to_find_us/index_eng.html", "Bern, Switzerland",
+                      "Bern, Switzerland\nMurtenstrasse 35\n3008 Bern", "unit"))
+    assert not any(e.entity_type == "person" for e in place.values())
+
+
+def test_site_administration_headings_are_not_entities():
+    for title in ["Disclaimer", "Booking & Rates", "Johanna Dürmüller-Bol DBMR Research Award", "Terms of Use",
+                  "Human Resources", "How to find us", "+41 31 632 41 14 (clinic)", "Research Groups and Themes",
+                  "Projects: 2nd round", "BORIS Portal Publications"]:
+        ents = run(_page("https://www.dbmr.unibe.ch/services/x/index_eng.html", title,
+                         f"{title}\nPlease contact the office for details about this page.", "infrastructure"))
+        assert title not in ents, title
+    kept = run(_page("https://www.dbmr.unibe.ch/services/core_facilities/fccs/index_eng.html",
+                     "Flow Cytometry and Cell Sorting (FCCS)",
+                     "Flow Cytometry and Cell Sorting (FCCS)\nThe FCCS offers cell sorting and analysis on six cytometers.",
+                     "infrastructure"))
+    assert kept["Flow Cytometry and Cell Sorting (FCCS)"].entity_type == "infrastructure"

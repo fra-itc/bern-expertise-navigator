@@ -47,7 +47,10 @@ make test                       # unit tests: no GPU, no network, no model downl
 ```
 
 `make demo` needs saved pages in `data/pages/*.jsonl`, which are **not** in the repository (`data/` is git-ignored).
-Fetch them once with `make crawl SOURCE=artorg`, `make crawl SOURCE=dcb` and `make crawl SOURCE=unibe` (network).
+Fetch them once with `make crawl SOURCE=artorg`, `make crawl SOURCE=dcb`, `make crawl SOURCE=unibe_web` and
+`make crawl SOURCE=unibe` (network; robots.txt is checked for every URL, and `unibe_web` is limited to 22 medtech /
+biomedical institute sites, 1,500 pages, 1 s delay). Pages matching a source's `skip_keywords` (e.g. former staff)
+are skipped by the crawl and, for pages saved earlier, by `extract` too.
 `unibe` is the OpenAlex source (`openalex.py`): University of Bern researchers with medtech publications since 2023,
 from the public OpenAlex API, so a new fetch can differ from the team server's records.
 `config/unibe_subdomains.txt` is still a placeholder seed list for a future web crawl of unibe.ch.

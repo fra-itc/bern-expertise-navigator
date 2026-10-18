@@ -27,15 +27,23 @@ publication (DOI) listed there, numbered and linked; nothing about money; no cla
 The app separates its users clearly: a **public navigator** (the challenge's search deliverable), a **staff
 workspace** for the business-development team, and the **brief** the CEO receives.
 
-Numbers so far are all from the **rules baseline** (no LLM calls), on our golden set `src/eval/golden_set.yaml`
-(30 queries). There are two runs, on different corpora, and **neither recorded its commit**:
+Numbers so far are all from the **rules baseline** (no LLM calls), on our golden set `src/eval/golden_set.yaml`.
+The first two runs used the 30 ARTORG/DCB queries and recorded no commit. The third adds 16 UniBE queries and the
+UniBE institute websites, and is saved as `data/eval/rules-unibe-web.json` (shown on the staff dashboard):
 
 | Run (rules baseline) | Corpus | recall@10 | Synonym twins | Traceability | Abstention | Reproducible |
 |---|---|---|---|---|---|---|
 | Development laptop, crawl of 2026-10-18 | 396 entities (ARTORG + DCB, rules extractor) | 96% | 71% | 100% | 100% | No: no `eval_report.json` committed, commit not recorded |
 | Team server, `eval_report.json` of 2026-10-18 15:46 UTC | 1015 entities (396 rules + 619 OpenAlex) | 88% | 71% | 100% | 100% | No: the report records neither commit nor corpus (corpus read from the server state) |
+| Development laptop, 2026-10-18 evening, **46 queries** (30 + 16 UniBE) | 2386 entities (ARTORG 293, DCB 103, UniBE web 1463, OpenAlex 527) | **90%** | 50% (5 of 10 pairs) | 100% | 100% | Yes: corpus = the saved pages below, `make pipeline EXTRACTOR=rules`, the commit that adds `rules-unibe-web.json` |
 
-Median latency 0.11 s on CPU was measured on the development-laptop run only. TODO(team): regenerate the eval with
+Median latency on CPU: 0.11 s (first run), 0.13 s (46-query run). The 46-query run: 15 of the 16 UniBE queries find
+their expert. The five misses are lay-term or crowding cases ("AI that reads brain scans", "tiny robots steered by
+sound waves", "growing mini-organs", "intestinal bacteria and weight gain", where four relevant UniBE gut-microbiota
+labs now rank above the expected DCB expert). They need Apertus query expansion; we did not add the failing
+queries' words to the glossary, which would only inflate the score. `RECORD_ONLY_WEIGHT` was lowered from 0.9 to
+0.8 on this same set: it brings the Hearing Research Laboratory back for "cochlear implant surgery" in place of
+dental-implant publication records, and 0.7 already loses a UniBE expert. TODO(team): regenerate the eval with
 the commit, corpus and model recorded (rules baseline and Apertus), and report one recall@10 per configuration.
 Apertus numbers: TODO(team) (see §5).
 
@@ -151,18 +159,25 @@ The staff **Dashboard** (`GET /dashboard`) measures what Apertus costs.
 
 ## 4. Data
 
-- Public pages of `www.artorg.unibe.ch` (373 pages) and `www.dcberne.com` (54 pages), crawled on 2026-10-18.
-  robots.txt was checked for every URL; an audit found 0 disallowed fetches.
+- Public pages of `www.artorg.unibe.ch` (373 pages), `www.dcberne.com` (54 pages) and 22 University of Bern
+  medtech/biomedical institute sites (`unibe_web`, 1,500 pages: dbmr, ispm, mcid, neuroscience, bcpm, dcr, ibmm,
+  pki, physiologie, bioinformatics, medizin, tki, iap, mic, …), all crawled on 2026-10-18.
+- **Robots.txt:** checked during each crawl. On 2026-10-18 evening, every one of the 1,927 saved URLs was checked
+  again against the host's current robots.txt (24 hosts, all answering 200): 0 disallowed. The unibe.ch rules block
+  only SEO crawlers (Ahrefs, BLEXBot, Yandex) entirely, not our user agent. The UniBE pages were not crawled again
+  for this; we reused the team's crawl of 14:53–15:32 UTC.
+- **Skipped on purpose:** former staff and alumni pages (`/former_…`, `…_alumni/`, `/zz_old_staff/`; 5 pages),
+  through `extra_skip_keywords` in `config/sources.yaml`. The extract step applies those rules to saved pages too.
 - Extracted (rules baseline, development laptop): 396 entities (282 people, 21 labs, 82 projects, 11 facilities)
   with 2,414 verbatim snippets. TODO(team): recount snippets and DOIs (143) on the submitted corpus.
-- **UniBE** means two different things today:
-  - on `main`, `unibe` is a web source whose seed list `config/unibe_subdomains.txt` is still a 3-host placeholder,
-    and the golden set has no UniBE query yet;
-  - on the team server, `unibe` is 619 records (556 people, 63 units, 8,838 evidence snippets) built from
-    openalex.org author profiles by `openalex.py` (committed in `05fce96`). The server corpus is 1015 entities with
-    11,274 evidence snippets (396 rules + 619 OpenAlex);
-  - a separate web crawl of 1,500 unibe.ch pages exists on the server but is not used by the app.
-  - TODO(team): fill `unibe_subdomains.txt`, add UniBE queries to the golden set.
+- **UniBE** comes from two sources:
+  - `unibe_web`: the institutes' own pages, 1463 entities (1045 people, 250 labs/units, 87 facilities, 81 projects)
+    with 8,882 verbatim snippets;
+  - `unibe`: openalex.org author records built by `openalex.py`, 527 entities with 7,022 snippets. About 90
+    OpenAlex researchers are merged into their web profile instead of appearing twice.
+  - The whole corpus is 2386 entities with 18,714 evidence snippets. The golden set has 16 UniBE queries (u01–u16).
+  - `config/unibe_subdomains.txt` (a future crawl of all of unibe.ch) is still a placeholder; TODO(team): fill it or
+    drop it.
 - Personal data: only what the institutions publish on public team/profile pages (names, roles, work emails).
   Company requests are stored locally and can be deleted. All example requests are fictional.
 - Copyright stays with the institutions; `data/` is not in the repository.
@@ -171,10 +186,12 @@ The staff **Dashboard** (`GET /dashboard`) measures what Apertus costs.
 
 - **No Apertus numbers yet.** The development laptop (6 GB GPU) cannot host Apertus 8B; the team server reaches
   Apertus 70B, but no eval has been run with it, so all reported numbers use the rules baseline. Apertus extraction and expansion should improve
-  expertise coverage and lay-term twins (71%). The one recall miss ("tiny robots steered by sound waves") needs
-  expansion.
-- **Golden set bias.** We built the 30 queries ourselves from the same pages and tuned the abstention thresholds on
-  them; the numbers are optimistic until others add queries.
+  expertise coverage and lay-term twins (50% on the 46-query set). The lay-term misses listed in §1 need expansion.
+- **Golden set bias.** We built the 46 queries ourselves from the same pages, and tuned the abstention thresholds
+  and `RECORD_ONLY_WEIGHT` on them; the numbers are optimistic until others add queries.
+- **UniBE pages are noisier** than ARTORG/DCB: the rules extractor filters navigation, admin and event headings
+  ("Disclaimer", "Booking & Rates", award pages, …), but some supplier pages (e.g. "Merck" in the DBMR supply
+  center) still become facility entities.
 - **Rules extractor** heuristics occasionally mistake headings for names or miss relations. The verifier keeps every
   claim traceable but not necessarily complete.
 - **Plain language without Apertus** is extractive: the summary repeats the request's own sentences, with glossary

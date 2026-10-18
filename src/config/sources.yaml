@@ -126,7 +126,9 @@ sources:
     extra_skip_keywords: [artorg.unibe.ch, index_ger.html, index_fra.html, index_ita.html,
                           /studium/, /studies/, /studies_, /publications/, /publikationen/,
                           /continuing_education/, /teaching/, /about_us/job, /open_positions,
-                          /annual_report, /media_release, /safety/, /annual_meeting, /newsletter]
+                          /annual_report, /media_release, /safety/, /annual_meeting, /newsletter,
+                          # former staff and alumni are not current experts
+                          /former_, _alumni/, /zz_old_staff/, /former_members/]
     page_types:
       person: ["/personenpool_index/", "/about_us/personen/", "/mcid_members/", "/ispm_team/",
                "/about_us/members", "/members/", "/people/", "/group_members/", "/team/"]

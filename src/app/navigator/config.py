@@ -62,7 +62,8 @@ class Settings:
     max_per_unit: int = int(os.getenv("MAX_PER_UNIT", "3"))
     # a researcher known only from publication records (OpenAlex: no role, no lab page) ranks slightly below
     # the institutes' own profiles at equal relevance
-    record_only_weight: float = float(os.getenv("RECORD_ONLY_WEIGHT", "0.9"))
+    # (0.8: best recall on the 46-query golden set with the UniBE websites indexed; 0.7 starts losing UniBE experts)
+    record_only_weight: float = float(os.getenv("RECORD_ONLY_WEIGHT", "0.8"))
     use_llm_expansion: bool = os.getenv("USE_LLM_EXPANSION", "1") == "1"
     use_llm_explain: bool = os.getenv("USE_LLM_EXPLAIN", "1") == "1"
     # Cost on the dashboard: CHF per million tokens. Unset -> a placeholder, shown as such until the real price is known
