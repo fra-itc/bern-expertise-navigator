@@ -44,10 +44,10 @@ EXTRACTOR ?= auto
 extract:       ## Apertus structured extraction + snippet verification (EXTRACTOR=auto|apertus|rules)
 	$(PY) -m navigator.cli extract $(SRC_ARG) --extractor $(EXTRACTOR)
 
-index:
-	$(PY) -m navigator.cli index
+index:         ## SOURCE=x: the Postgres backend replaces only source x; the file backend always rebuilds all
+	$(PY) -m navigator.cli index $(SRC_ARG)
 
-pipeline: extract index   ## from saved pages (never crawls); with SOURCE=x only that source is reprocessed
+pipeline: extract index   ## from saved pages (never crawls); SOURCE=x re-extracts only x (index: see above)
 
 demo:          ## from the SAVED pages (no network): extract (Apertus if reachable, else rules), index, eval
 	@ls data/pages/*.jsonl >/dev/null 2>&1 || { echo "No saved pages in data/pages — run 'make crawl' once first."; exit 1; }

@@ -11,27 +11,47 @@ runs there today, how to access it, how a deploy works, and what can lose data.
 State described here was verified on **2026-10-18** (read-only audit
 16:20–16:30 UTC, plus checks up to 17:01 UTC). See [Verified state](#verified-state-2026-10-18).
 
+> **Update, 2026-10-18 20:55 UTC.** What changed since the audit:
+>
+> - **Code is in git.** The server runs commit `f5b2ce1` of `main`. An `rsync -c --dry-run` comparison shows
+>   no content difference under `src/`, excluding `data/` and `db/`. `openalex.py` is committed (`05fce96`).
+>   The code part of issue #7 is resolved; backups are still open.
+> - **PR #6 is merged** (`168a218`). `deploy.sh` excludes `caddy.env` and the new `data/usage.jsonl`.
+> - **Second exposure.** At about 20:10 UTC, a deploy from a tree that did not yet contain PR #6 replaced the
+>   Caddyfile and compose file and deleted `caddy.env`.
+>   - From about 20:10 to 20:40 UTC, `/cases`, `/documents` and the API docs were reachable without credentials.
+>   - The old hash could not be recovered. A **new staff password** (user `staff`) was generated and its hash
+>     written to `caddy.env` at 20:38 UTC, then the app was redeployed.
+>   - The old password no longer works. The new one is handed out of band.
+>   - Verified from outside: 401 without credentials on `/cases`, `/dashboard`, `/documents/types` and
+>     `/openapi.json`; 200 with them. The 29 cases are intact.
+> - **New:** a staff dashboard at `/dashboard`, behind the staff login. Each web request that calls Apertus is
+>   logged in `data/usage.jsonl` (route, case id, tokens, latency; never the request text). The log is kept
+>   across deploys.
+> - **Still open:**
+>   - no backups;
+>   - no record of the deployed commit;
+>   - a deploy still overwrites `data/` from the deployer's tree;
+>   - no host firewall.
+
 ## Data-loss warnings (read first)
 
-1. **The code running in production is not in git.** `/opt/bern/app` is not a
-   repository. `navigator/openalex.py` exists only on the server and 16 more
-   files differ from `main` (best match: 34 of 52 files). A `make deploy` from
-   a clean checkout of `main` **deletes `openalex.py`** and replaces the rest.
-   Tracked in issue #7.
+1. ~~**The code running in production is not in git.**~~ Resolved at 20:40 UTC: the server runs `f5b2ce1` of
+   `main`, and `openalex.py` is committed. `/opt/bern/app` is still not a repository, and nothing on the server
+   records which commit is deployed.
 2. **`make deploy` deletes the search index and corpus.** `deploy.sh` runs
-   `rsync --delete` and protects only `.env`, `data/cases.db*`, `data/*.log`
-   (plus venv/caches/`db/`). Everything else under `data/` is overwritten or
+   `rsync --delete` and protects only `.env`, `caddy.env`, `data/cases.db*`, `data/*.log`,
+   `data/usage.jsonl` (plus venv/caches/`db/`). Everything else under `data/` is overwritten or
    deleted: `entities.jsonl`, `extracted.jsonl`, `bm25.pkl`, `vectors.npy`,
    `vectors_meta.json`, `pages/*`, `eval_report.json`, `extract_stats*`
    (about 42 MB). `data/*` is in `.gitignore`, so a deploy from a clean clone
    leaves the app **with an empty index**. `config/`, `eval/`, `tests/` and the
    code are overwritten too.
-3. **`make deploy` from `main` removes the staff authentication.** The basic
-   auth lives in three server-side changes (Caddyfile, compose `env_file`,
-   `deploy.sh` excluding `caddy.env`) that are only in **PR #6 (open)**. Until
-   it is merged, a deploy from a working tree without those changes overwrites
-   the Caddyfile and compose file **and deletes `/opt/bern/app/caddy.env`**,
-   making cases and documents public again.
+3. **A deploy from a tree older than `168a218` removes the staff authentication.** The basic auth needs three
+   changes: the Caddyfile, the compose `env_file`, and `deploy.sh` excluding `caddy.env`. They are in `main`
+   since PR #6 (`168a218`). A deploy from a working tree without them overwrites the Caddyfile and compose file
+   **and deletes `/opt/bern/app/caddy.env`**, which makes cases and documents public again. This happened at
+   about 20:10 UTC on 2026-10-18 (see the update above). Always `git pull` before deploying.
 4. **There are no data backups.** No cron job or systemd timer exists. The
    SQLite case database (8 cases with company contact data at audit time) and
    the corpus exist in one copy only. Hetzner snapshots could not be verified.
@@ -40,8 +60,8 @@ State described here was verified on **2026-10-18** (read-only audit
    (inference, strong). Anything you park in `/opt/bern/app` that is not
    excluded will be deleted by the next deploy.
 
-**Rule: deploy only from a pushed commit** that contains the production code
-(issue #7) and the auth changes (PR #6), and only after taking a copy of
+**Rule: deploy only from a pushed, up-to-date commit of `main`** (it contains
+the production code and the auth changes), and only after taking a copy of
 `/opt/bern/app/data/` and `cases.db` (see [Backups](#backups)). Record the
 deployed commit on the server (for example a `SOURCE_SHA` file in
 `/opt/bern/app`); today there is no such record.
@@ -155,7 +175,12 @@ the old one. If you lock yourself out, the fallback is the Hetzner web console.
 ### Staff basic auth (web)
 
 Active since 16:45 UTC on 2026-10-18. User `staff`; the password is handed
-over out of band and is never written in the repo or in issues.
+over out of band and is never written in the repo or in issues. The password
+was replaced at 20:38 UTC, after a deploy deleted the hash; the earlier one no
+longer works. To change it: `caddy hash-password` (for example inside the
+`caddy` container), write `STAFF_AUTH_HASH='<hash>'` to
+`/opt/bern/app/caddy.env` (mode `600`; single quotes keep the `$` signs
+literal), then run `make deploy` or recreate the `caddy` container.
 
 ## Directory layout
 
@@ -163,7 +188,8 @@ over out of band and is never written in the repo or in issues.
 |---|---|---|---|
 | `/opt/bern/app` | `deploy` | **Yes**, target of `rsync --delete` | Copy of `src/`: `app/` (code), `config/`, `eval/`, `tests/`, `deploy/` (compose + Caddyfile), `data/` |
 | `/opt/bern/app/.env` | `deploy`, `600` | No (excluded) | App settings, `LLM_*`, LLM key; `DATABASE_URL` absent |
-| `/opt/bern/app/caddy.env` | `deploy`, `600` | **Only excluded by PR #6**; `main`'s `deploy.sh` deletes it | Bcrypt hash for the staff user, read by Caddy as `{$STAFF_AUTH_HASH}` |
+| `/opt/bern/app/caddy.env` | `deploy`, `600` | No (excluded since PR #6, `168a218`); a tree older than that deletes it | Bcrypt hash for the staff user, read by Caddy as `{$STAFF_AUTH_HASH}` |
+| `/opt/bern/app/data/usage.jsonl` | `root` (written by the `api` container) | No (excluded) | Apertus usage per web request, read by `/dashboard`; created on the first request that calls Apertus |
 | `/opt/bern/app/data/cases.db*` | `root` | No (excluded) | SQLite case database |
 | `/opt/bern/app/data/*.log` | | No (excluded) | Logs |
 | `/opt/bern/app/data/` (everything else) | `deploy` | **Yes: overwritten or deleted** | Corpus, pages, index, vectors, eval report |
@@ -182,8 +208,8 @@ cd src && make deploy        # = ./deploy/deploy.sh, uses DEPLOY_HOST (default: 
 What `deploy.sh` actually does:
 
 1. `rsync -az --delete ./ bern:/opt/bern/app/` from **your local working tree**
-   (committed or not), excluding only `.env`, `.venv/`, `.pytest_cache/`,
-   `__pycache__/`, `db/`, `data/cases.db*`, `data/*.log`.
+   (committed or not), excluding only `.env`, `caddy.env`, `.venv/`, `.pytest_cache/`,
+   `__pycache__/`, `db/`, `data/cases.db*`, `data/*.log`, `data/usage.jsonl`.
 2. On the server: `cp -n .env.example .env` (only if `.env` is missing),
    creates the Docker network `bern` if missing, then
    `cd deploy && docker compose up -d --build && docker compose ps`.
@@ -197,23 +223,25 @@ Consequences:
   `cases.db*` and `*.log`. Files on the server that are not in your tree are
   **deleted** (this is how `openalex.py`, `caddy.env` and the `.env.bak-*`
   files are at risk or gone).
-- Kept: `.env`, `data/cases.db*`, `data/*.log`, `/opt/bern/db`, `/opt/bern/crawl`.
+- Kept: `.env`, `caddy.env`, `data/cases.db*`, `data/*.log`, `data/usage.jsonl`, `/opt/bern/db`, `/opt/bern/crawl`.
 - The `api` container mounts `../data`, `../config` and `../eval` from the host.
 
-Before every deploy, until issue #7 and PR #6 are closed:
+Before every deploy:
 
-1. Deploy only from a **pushed commit**, checked out clean, that contains the
-   production code (issue #7) and the auth changes (PR #6).
+1. Deploy only from a **pushed commit**, checked out clean and up to date with
+   `main` (`git pull` first), so it contains the auth changes (PR #6).
 2. If your tree has no `data/` corpus, the deploy empties the index: either
    bring the current `data/` into your tree first, or agree on one deployer
    who owns the data. Excluding `data/` from rsync is the structural fix.
 3. Copy `/opt/bern/app/data/` and `cases.db` aside first (see [Backups](#backups)).
 4. After the deploy, check `https://bern-expertise.ch/health` and that
-   `https://bern-expertise.ch/cases` answers **401** without credentials.
+   `https://bern-expertise.ch/cases` and `/dashboard` answer **401** without credentials.
 
 Logs: `ssh bern 'cd /opt/bern/app/deploy && docker compose logs -f'`. Only the
-HTTP access log is there; LLM calls are not logged, and logs are lost when the
-container is recreated.
+HTTP access log is there, and it is lost when the container is recreated. LLM
+usage per web request (calls, tokens, latency) is appended to
+`data/usage.jsonl` on the host and shown on `/dashboard`; failed LLM calls are
+still not logged.
 
 ## Database
 
@@ -249,11 +277,10 @@ from `data/entities.jsonl`, not from Postgres. The `pgdata` volume (about
 
 The Postgres backend (PR #3) is on `main` since 16:31:58 UTC (`d77de8e`). The
 app switches backend on `DATABASE_URL`: empty means files + SQLite, set means
-Postgres. Activation is **blocked until the production code is committed
-(issue #7)**, because deploying `main` would delete `openalex.py` from the
-server. Then:
+Postgres. The blocker (production code not committed, issue #7) is resolved:
+the server runs `main` (`f5b2ce1`). Then:
 
-1. Merge the production code (issue #7) and PR #6; deploy from that pushed commit.
+1. Deploy from a pushed, up-to-date commit of `main`.
 2. Take a `pg_dump` (see below), even if the database is empty.
 3. Apply the migrations, in this order, as `postgres` (from `/opt/bern/db`,
    with the files from `src/db/migrations/` of the deployed commit):
@@ -334,8 +361,9 @@ and hybrid graph + vector search.
   fallback) and case analysis (`plain.analyze_company`).
 - **`llm_available` / `llm_used` do not mean a call succeeded.** They only
   report that `GET /models` on the gateway answered (cached 60 s, 3 s timeout).
-  A failed call (`LLMError`) is swallowed silently. LLM calls are **not
-  logged**, so their number, errors and latency cannot be measured today.
+  A failed call (`LLMError`) is swallowed silently. Successful calls are
+  counted per web request (calls, tokens, latency, route, case id) in
+  `data/usage.jsonl` and priced on `/dashboard`; failures are not logged.
 - **Embeddings:** `intfloat/multilingual-e5-base` (768 dimensions) on CPU
   with torch, model baked into the image, `HF_HUB_OFFLINE=1`.
 - Search pipeline: BM25 + e5 vectors fused with RRF (weight 0.9 for OpenAlex
@@ -344,13 +372,14 @@ and hybrid graph + vector search.
 ## Security
 
 - **Staff basic auth (Caddy)**, active since 16:45 UTC on 2026-10-18, on:
-  `/cases`, `/cases/*`, `/documents`, `/documents/*`, `/docs`, `/docs/*`,
+  `/cases`, `/cases/*`, `/documents`, `/documents/*`, `/dashboard`, `/docs`, `/docs/*`,
   `/redoc`, `/redoc/*`, `/openapi.json`.
   - The bcrypt hash is in `/opt/bern/app/caddy.env` (`600`, owner `deploy`),
     loaded by the compose `caddy` service via `env_file: ../caddy.env` and used
     in the Caddyfile as `{$STAFF_AUTH_HASH}`. `deploy.sh` excludes `caddy.env`.
-  - These three changes are in **PR #6 (open)**. Until it is merged, a deploy
-    from a tree without them removes the auth (see the warnings above).
+  - These three changes are in `main` since PR #6 (`168a218`). A deploy from a
+    tree without them removes the auth (see the warnings above); it happened
+    once, from about 20:10 to 20:40 UTC on 2026-10-18.
   - Public on purpose: `/`, `/search`, `/stats`, `/health`, and
     `/briefs/{token}` (protected by a 12-byte random token compared in
     constant time; an unknown token returns 404).
@@ -399,14 +428,14 @@ sudo tar czf ~/data-$(date +%F-%H%M).tgz -C /opt/bern/app data
 
 | Item | Reference |
 |---|---|
-| Production code (`openalex.py` + 16 files) not committed; blocks deploys and Postgres activation | issue #7 |
+| ~~Production code (`openalex.py` + 16 files) not committed~~ Resolved: the server runs `f5b2ce1` | issue #7 |
 | No data backups; configure and test them | issue #7 |
-| Staff basic auth not yet in `main` | PR #6 (open) |
+| ~~Staff basic auth not yet in `main`~~ Merged (`168a218`); a deploy from an older tree still removes it | PR #6 |
 | `make deploy` deletes `data/` corpus and index; exclude `data/` from rsync or designate one data owner | |
 | No record of the deployed commit (`SOURCE_SHA`) | |
 | Postgres backend merged (PR #3) but not active; SQLite → Postgres case import missing | issue #7 |
 | LLM key owner to be decided | issue / PR #4 |
-| LLM calls not logged; `llm_used` only means "endpoint reachable" | |
+| Failed LLM calls not logged (successful ones are, in `data/usage.jsonl`); `llm_used` only means "endpoint reachable" | |
 | Eval report is rules-only and unversioned; rerun with the 70B model, recording commit and corpus | |
 | No healthcheck on the `api` container | |
 | No host firewall | |
@@ -433,6 +462,10 @@ Read-only audit 16:20–16:30 UTC; later checks by the coordinator as noted.
 | 16:45+ | `curl -o /dev/null -w '%{http_code}'` from outside | Without credentials: 401 on all protected paths; 200 on `/`, `/search`, `/stats`, `/health`; 404 on `/briefs/<unknown>`; 301 on `www` |
 | 17:01 | `psql`: `nav.schema_migrations`, `pg_stat_user_tables`, Cypher count, `pg_stat_activity` | Only `0001_initial`; 0 rows everywhere; 0 vertices / 0 edges; no clients |
 | 17:01 | `grep -c '^DATABASE_URL=' /opt/bern/app/.env` | Absent |
+| ~20:35 | `ls /opt/bern/app/caddy.env`, `docker inspect bern-app-caddy-1` | `caddy.env` missing, no `STAFF_AUTH_HASH` in the container; `/cases` answered 200 without credentials |
+| 20:38 | `caddy hash-password` (new password), write `caddy.env` (`600`) | Hash written; `make deploy` of `f5b2ce1` |
+| 20:41 | `curl` from outside, with and without credentials | Without: 401 on `/cases`, `/dashboard`, `/documents/types`, `/openapi.json`; 200 on `/`, `/health`. With: 200; 29 cases |
+| 20:50 | `rsync -anci --delete` of `git archive f5b2ce1` against `/opt/bern/app` (excluding `data/`, `db/`) | Timestamps differ only; no content difference |
 
 Not verifiable from the server: where the LLM gateway runs and who operates
 it; LLM call counts and errors; Hetzner snapshots and cloud firewall; the

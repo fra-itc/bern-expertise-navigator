@@ -1,13 +1,28 @@
 # bern-db: PostgreSQL 18 + pgvector + Apache AGE
 
-> Deployed on the team server at /opt/bern/db — see docs/server-handoff.md.
+> Deployed on the team server at /opt/bern/db, but **not connected to the app** yet — see docs/server-handoff.md.
 
-The single database for the Bern Expertise Navigator. It replaces the YAML files, the entities JSON,
-SQLite, Qdrant/NumPy and the BM25 pickle.
+The planned single database for the Bern Expertise Navigator. Once the app runs with `DATABASE_URL` set, it will
+replace the entities JSON, SQLite, Qdrant/NumPy and the BM25 pickle (sources stay in `config/sources.yaml` and are
+mirrored into `nav.source`).
+
+## Status (2026-10-18)
+
+| | Status |
+|---|---|
+| Backend code (`navigator/pgstore.py`, `storage.py`) | On `main` (PR #3, merged 2026-10-18) |
+| Stack on the team server (`/opt/bern/db`) | Installed and running (PG 18.6, AGE 1.8.0, pgvector 0.8.6) |
+| Schema on the team server | Only `0001_initial`; `0002`+ not applied (the app would refuse to start with `schema_outdated`) |
+| Data on the team server | Empty: no rows inserted |
+| App connected | No: `DATABASE_URL` is empty; the app uses files + SQLite |
+| Backups | None scheduled (see [Backup and restore](#backup-and-restore)) |
+
+Switching the team server over means: apply the migrations, run `index` with `DATABASE_URL` set, and move the
+existing requests from `data/cases.db` into `nav."case"`.
 
 ## Architecture
 
-- Immagine `bern-pg:18-age1.8.0-vec0.8.6`: `apache/age:release_PG18_1.8.0` (PG 18.6, AGE 1.8.0) + `postgresql-18-pgvector=0.8.6-1.pgdg13+1`.
+- Image `bern-pg:18-age1.8.0-vec0.8.6`: `apache/age:release_PG18_1.8.0` (PG 18.6, AGE 1.8.0) + `postgresql-18-pgvector=0.8.6-1.pgdg13+1`.
   The `initdb/` scripts are copied into the image and run **only on first start** (empty volume). Later schema changes are made with migrations recorded in `nav.schema_migrations`. Migration files live in `migrations/` (e.g. `0002_remove_technical_review.sql`, which drops the former technical-review columns and statuses); apply them as `postgres` on databases created before the change.
 - A single `db` service. The port is published only on `127.0.0.1:${PG_HOST_PORT:-5432}`. It uses the `pgdata` volume (mounted at `/var/lib/postgresql`, PG18 layout) and the `bern` network, which the app containers join.
 - AGE is in `shared_preload_libraries`: no `LOAD 'age'` needed. The `bern_app` role has `search_path = nav, ag_catalog, public`.
@@ -26,7 +41,7 @@ SQLite, Qdrant/NumPy and the BM25 pickle.
 | Before | Now |
 |---|---|
 | `sources/*.yaml` | `nav.source` |
-| pagine crawl (`Page`) | `nav.page` |
+| crawled pages (`Page`) | `nav.page` |
 | entities JSON (`Entity`) | `nav.entity` (with generated `tsv`: simple+unaccent, weights A/B/C; trigram on `name`) |
 | `Entity.evidence[]` | `nav.evidence` (FK entity, optional FK page, `tsv` on the snippet) |
 | rejected claims | `nav.rejected_claim` (+ `reason`) |
@@ -43,7 +58,7 @@ Graph:
 - Edges:
   - `MEMBER_OF`: person->unit;
   - `WORKS_ON`: person->project;
-  - `PART_OF`: project->unit e unit->unit;
+  - `PART_OF`: project->unit and unit->unit;
   - `OPERATES`: unit->infrastructure;
   - `FROM_SOURCE`: entity->source;
   - `HAS_EXPERTISE`: ->topic.
@@ -65,7 +80,7 @@ To connect the app, add it to the `bern` network (`networks: { bern: { external:
 For remote access, through an SSH tunnel:
 
 ```bash
-ssh -L 5432:127.0.0.1:5432 deploy@116.203.127.208
+ssh -L 5432:127.0.0.1:5432 deploy@<server>   # host and SSH alias: see docs/server-handoff.md
 psql "postgresql://bern_app@127.0.0.1:5432/bern"
 ```
 

@@ -24,8 +24,10 @@ The app has three clearly separated areas:
    institutional page or a publication listed there, numbered and linked. The brief never claims anyone has agreed
    to meet and says nothing about money.
 
-Built on **Apertus v1.5**, the Swiss open LLM. Fully self-hosted, so no data leaves Switzerland. Without an Apertus
-endpoint everything still works, using a reviewed glossary and deterministic rules, and the UI says so.
+Built on **Apertus v1.5**, the Swiss open LLM. It can run fully self-hosted (`docker-compose.yml` with the `gpu`
+profile: Apertus 8B on local vLLM, no network at runtime after the crawl). The team server runs differently (Germany,
+Apertus 70B through a remote gateway, network at runtime): see [Deployment modes](#deployment-modes). Without an
+Apertus endpoint everything still works, using a reviewed glossary and deterministic rules, and the UI says so.
 
 ---
 
@@ -43,6 +45,32 @@ make bench                      # Apertus vs the no-LLM baseline on the golden s
                                 #   (saved runs in data/eval/; make eval TAG=x saves one, make compare shows them)
 make test                       # unit tests: no GPU, no network, no model download
 ```
+
+`make demo` needs saved pages in `data/pages/*.jsonl`, which are **not** in the repository (`data/` is git-ignored).
+Fetch them once with `make crawl SOURCE=artorg`, `make crawl SOURCE=dcb` and `make crawl SOURCE=unibe` (network).
+`unibe` is the OpenAlex source (`openalex.py`): University of Bern researchers with medtech publications since 2023,
+from the public OpenAlex API, so a new fetch can differ from the team server's records.
+`config/unibe_subdomains.txt` is still a placeholder seed list for a future web crawl of unibe.ch.
+
+`make test` collects 119 tests (`pytest --collect-only -q`, 2026-10-18 evening: 110 pass); the 9 in
+`tests/test_pg_backend.py` are skipped unless `TEST_DATABASE_URL` is set.
+
+## Deployment modes
+
+| | Self-hosted (`src/docker-compose.yml`) | Team server (`src/deploy/docker-compose.yml`) |
+|---|---|---|
+| Start | `make up` / `make up-gpu` | `make deploy` (rsync + `docker compose up` on the server) |
+| Services | api, Qdrant, optional vLLM (`gpu` profile) | api, Caddy (HTTPS) |
+| Vectors | Qdrant (`QDRANT_URL=http://qdrant:6333` set by the compose file) | NumPy (`QDRANT_URL` empty) |
+| Requests DB | SQLite `data/cases.db` | SQLite `data/cases.db` |
+| `DATABASE_URL` | empty unless you set it | empty: the Postgres in `/opt/bern/db` is running but not connected |
+| LLM | Apertus 8B on local vLLM, or `LLM_BASE_URL` | Apertus 70B via `gateway.keera.ch` (location declared by the provider, not verified) |
+| Location | wherever you run it | Hetzner, Nuremberg, Germany |
+| Runtime network | none in rules mode or with local vLLM, except fetching a company website when a link is given | LLM gateway calls (queries and company requests) and company websites |
+
+`make deploy` uses `rsync --delete`: it overwrites or deletes the server's `data/` (corpus, index, pages,
+`eval_report.json`) except `data/cases.db*` and `data/*.log`. See the header of `deploy/deploy.sh` and
+`docs/server-handoff.md` before deploying.
 
 **Without Docker** (Python 3.11): `make setup-local`, then add `LOCAL=1` to any target, e.g.
 `make demo LOCAL=1` and `make serve LOCAL=1`.
@@ -108,9 +136,11 @@ public websites ─► 1 crawl ─► 2 classify ─► 3 extract ────�
 
 `navigator/storage.py` picks the backend from `DATABASE_URL` (capability matrix in its docstring):
 
-- empty (default): files in `data/` (entities.jsonl, BM25 pickle, NumPy or Qdrant, SQLite cases), as before;
+- empty (default, and what the team server uses today): files in `data/` (entities.jsonl, BM25 pickle, NumPy
+  vectors when `QDRANT_URL` is empty or Qdrant when it is set, SQLite cases);
 - set: Postgres from `db/` (`nav` tables, pgvector, FTS, AGE graph `expertise_graph`). `index --source X`
-  then replaces only source X, in one transaction. Requires the migrations in `db/migrations/`.
+  (`make index SOURCE=X`) then replaces only source X, in one transaction. Requires the migrations in
+  `db/migrations/`. The code is on `main` (PR #3); it is not active on the team server.
 
 Postgres tests: `TEST_DATABASE_URL=postgresql://bern_app:<pw>@127.0.0.1:<port>/bern pytest -q tests/test_pg_backend.py`
 (wipes that database; use a throwaway container).
@@ -145,30 +175,45 @@ against the saved page, and anything unverifiable is dropped automatically. The 
 | `GET /search?q=&k=&source=&type=` | Search; every result has `sources[{url, snippet, field}]` |
 | `GET /entity/{id}` | Full entity with all evidence and linked people/labs |
 | `GET /showcase` | Landing data: themes (live), verified proof points, labs, facilities |
-| `POST /cases` · `GET /cases` · `GET /cases/{id}` | Company requests (staff actions carry `actor` + `role`) |
-| `POST /cases/{id}/selection` · `/details` · `/brief` · `/draft` · `/outcome` | Workflow steps |
+| `POST /cases` · `GET /cases` · `GET /cases/{id}` · `DELETE /cases/{id}` | Company requests (staff actions carry `actor` + `role`) |
+| `POST /cases/{id}/selection` · `/details` · `/matches` · `/rematch` · `/brief` · `/draft` · `/outcome` | Workflow steps |
+| `POST /companies/suggest` | Broad search without a company: up to three companies proposed by Apertus, each checked on its own homepage |
+| `POST /documents` · `GET /documents/types` | Extract text from a document shared by the company (the file is not stored) |
 | `GET /briefs/{token}` | The executive brief behind a private link (read-only); 410 once disabled or expired |
 | `POST /briefs/{token}/reply` | The company's reply from the brief (visit, call or question) |
 | `POST /cases/{cid}/brief/revoke` | Disable the brief's private link |
+| `GET /dashboard` | Staff dashboard: Apertus cost per request and per action, re-extraction cost, recall of saved eval runs |
 | `GET /cases/{id}/invite.ics` | Calendar invite |
+| `GET /understand` · `GET /archetypes` · `GET /medtech-areas` · `GET /examples` | Live request parsing (place, area, niche; no AI), filters, fictional examples |
 | `GET /glossary?lang=` · `GET /health` · `GET /stats` | Support |
+
+`/health` → `llm_available` only means that `GET {LLM_BASE_URL}/models` answered within 3 s (cached for 60 s).
+`/search` → `llm_used` is `llm_available` combined with `USE_LLM_EXPANSION` / `USE_LLM_EXPLAIN`: it does not say
+whether an LLM call succeeded (an `LLMError` falls back to the glossary and templates). The calls that do succeed are
+counted per web request in `data/usage.jsonl` (see *Dashboard* below).
 
 ## Repository layout
 
 ```
 config/        sources.yaml · unibe_subdomains.txt · glossary.yaml · plain_glossary.yaml · showcase.yaml · medtech_areas.yaml · example_requests.yaml
 app/navigator/ config · schema · llm · crawl · openalex · classify · extract · rules_extract · index · search · plain · cases · showcase · api · cli
+               storage · filestore · pgstore · graph · brief · company · documents · understand · archetypes · suggest · reply · dashboard
+db/            PostgreSQL 18 + pgvector + AGE stack and migrations (see db/README.md)
+deploy/        team server: deploy.sh, docker-compose.yml, Caddyfile
 app/navigator/static/  index.html · app.css · app.js   (no build step, no CDN: works air-gapped)
 eval/          golden_set.yaml · run_eval.py
-tests/         verifier, robots.txt, rules extractor, offline search, LLM client, request workflow
+tests/         verifier, robots.txt, rules extractor, offline search, LLM client, request workflow, brief, company web,
+               documents, request understanding, company suggestions, replies, match gate, dashboard, Postgres backend
 data/          (generated, git-ignored) pages/, entities.jsonl, vectors.npy, bm25.pkl, cases.db, eval_report.json
 ```
 
 ## Sovereignty, cost and scale
 
-- **Model:** Apertus v1.5 8B (Apache 2.0) on one ~16 GB GPU in FP8. 70B is optional for better extraction.
-- **No external services:** local embeddings (`multilingual-e5-base`, baked into the image), local vectors, local
-  SQLite for requests. The UI loads nothing from the internet.
+- **Model:** self-hosted: Apertus v1.5 8B (Apache 2.0) on one ~16 GB GPU in FP8; 70B is optional for better
+  extraction. Team server: Apertus 70B through a remote gateway (see [Deployment modes](#deployment-modes)).
+- **No other external services:** local embeddings (`multilingual-e5-base`, baked into the image), local vectors,
+  local SQLite for requests. The UI loads nothing from the internet. The only runtime network calls are the LLM
+  endpoint (if remote) and company websites linked in a request.
 - **Cost:** LLM work at indexing time is one call per page, cached per page. A search costs at most one expansion
   call plus short explanation calls, and both can be switched off. Token usage is written to
   `data/extract_stats*.json` and `data/eval_report.json`.
@@ -184,6 +229,15 @@ data/          (generated, git-ignored) pages/, entities.jsonl, vectors.npy, bm2
 - Public pages only; robots.txt (with wildcard rules) respected; polite delay; identifiable user agent; crawling only
   on explicit command. OpenAlex: public API, CC0 data, paced below its rate limit.
 - Only what the institutions already publish; every record points to its source page. Copyright stays with them.
-- nDSG / GDPR: no tracking and no query logging. Company requests stay in the local database and can be deleted from
-  the UI. Example requests are fictional.
-- Open source (Apache-2.0); outputs Open Commons (Hack Apertus T&C §6).
+- nDSG / GDPR: no tracking. The app does not store search queries (the Apertus usage log keeps only the route,
+  request id, tokens and latency), but the HTTP access logs (uvicorn, and the
+  reverse proxy if it logs) record request URLs, including `/search?q=`. With a remote LLM endpoint, queries and
+  company requests are sent to that provider. Company requests stay in the local database and can be deleted from
+  the UI. Example requests are fictional. Search results show the work emails the institutions publish.
+- Access: roles and names are chosen in the browser; the app itself has no authentication. On the team server the
+  staff API (`/cases`, `/documents`, `/dashboard`, API docs) is behind basic auth (`deploy/Caddyfile`, hash in the
+  server-only `caddy.env`, which `deploy.sh` never touches). Without it, the request API (including `DELETE`) is
+  open to anyone who can reach the server. Deploy only from an up-to-date `main`: an older tree removes the auth
+  (see `docs/server-handoff.md`).
+- Open source (HackApertus T&C §6): code Apache-2.0; documentation CC-BY-4.0; submitted datasets
+  CDLA-Permissive-2.0.
