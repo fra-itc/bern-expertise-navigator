@@ -1,6 +1,7 @@
 """Data contracts. Every claim carries the snippet it came from (traceability by construction)."""
 from __future__ import annotations
 
+import re
 from typing import Literal
 
 from pydantic import BaseModel, Field
@@ -113,6 +114,14 @@ class EntityLink(BaseModel):
     position: int | None = None
     author_id: str | None = None
     page_url: str | None = None
+
+
+_UNSTORABLE = re.compile(r"[\x00\ud800-\udfff]")
+
+
+def clean_text(s: str) -> str:
+    """Drops NUL and lone UTF-16 surrogates: Postgres text rejects the first, UTF-8 encoding fails on the second."""
+    return _UNSTORABLE.sub("", s)
 
 
 class Work(BaseModel):

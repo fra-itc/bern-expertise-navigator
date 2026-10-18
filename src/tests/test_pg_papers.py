@@ -273,3 +273,13 @@ def test_write_papers_keeps_stored_id_for_known_doi(env):
     assert out["doi_kept_stored_id"] == {}
     assert dict(_sql("SELECT id, doi FROM nav.paper WHERE id IN ('W7164323838', 'W4414173201')")) == {
         "W7164323838": "10.1/moved", "W4414173201": doi}
+
+
+def test_write_papers_strips_nul_from_text(env):
+    """Mini-pilot bug: NUL bytes in extracted PDF text -> psycopg.DataError, whole transaction rolled back."""
+    work = _dup_work("W8", "10.1/nul", [], [], venue="Jour\x00nal")
+    work.title, work.abstract = "Ti\x00tle\ud800", "abs\x00tract"
+    out = index_store().write_papers([work], [], {"W8": [("abstract", 0, "abs\x00tract"), ("fulltext", 0, "full\x00 text")]})
+    assert out["papers"] == 1 and out["chunks"] == 2
+    assert _sql("SELECT title, abstract, venue FROM nav.paper WHERE id = 'W8'") == [("Title", "abstract", "Journal")]
+    assert sorted(_sql("SELECT text FROM nav.paper_chunk WHERE paper_id = 'W8'")) == [("abstract",), ("full text",)]

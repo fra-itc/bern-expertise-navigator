@@ -32,7 +32,7 @@ from . import llm
 from .config import DATA_DIR, settings
 from .extract import name_key
 from .openalex_client import OpenAlexClient, OpenAlexError, candidate_summary, parse_work, short_id, strip_doi
-from .schema import AuthorMatch, Entity, EntityLink, Page, Work
+from .schema import AuthorMatch, Entity, EntityLink, Page, Work, clean_text
 
 PAPERS_DIR = DATA_DIR / "papers"
 PDF_DIR = PAPERS_DIR / "pdf"
@@ -256,7 +256,7 @@ def pdf_text(path: Path, max_pages: int | None = None) -> str:
     pages = reader.pages[: max_pages or settings.papers_pdf_max_pages]
     text = "\n".join((p.extract_text() or "") for p in pages)
     text = re.sub(r"-\n(?=[a-z])", "", text)        # re-join words hyphenated at line ends
-    return re.sub(r"[ \t]+", " ", re.sub(r"\n{3,}", "\n\n", text)).strip()
+    return clean_text(re.sub(r"[ \t]+", " ", re.sub(r"\n{3,}", "\n\n", text)).strip())
 
 
 # =============================================================================
@@ -290,9 +290,10 @@ def paper_chunks(w: Work, text_dir: Path = TEXT_DIR) -> list[tuple[str, int, str
     """[(kind, chunk_no, text)]: the abstract (title + abstract) and the full-text windows."""
     out: list[tuple[str, int, str]] = []
     if w.abstract or w.title:
-        out.append(("abstract", 0, f"{w.title}. {w.abstract or ''}".strip()))
+        out.append(("abstract", 0, clean_text(f"{w.title}. {w.abstract or ''}".strip())))
     if w.pdf_sha1 and (text_dir / f"{w.pdf_sha1}.txt").exists():
         full = (text_dir / f"{w.pdf_sha1}.txt").read_text(encoding="utf-8")
+        full = clean_text(full)         # text files extracted before clean_text existed may hold NUL bytes
         out += [("fulltext", i, c) for i, c in enumerate(chunk_words(full))]
     return out
 

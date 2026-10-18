@@ -21,7 +21,7 @@ from psycopg_pool import ConnectionPool, PoolTimeout
 
 from . import graph
 from .config import load_sources, settings
-from .schema import AuthorMatch, Entity, Evidence, Work
+from .schema import AuthorMatch, Entity, Evidence, Work, clean_text
 from .storage import IndexBundle, PaperHit, StorageError
 
 BACKEND = "postgres"
@@ -444,7 +444,8 @@ class PgIndexStore:
                 "pdf_url = EXCLUDED.pdf_url, landing_url = EXCLUDED.landing_url, pmid = EXCLUDED.pmid, "
                 "pmcid = EXCLUDED.pmcid, pdf_sha1 = EXCLUDED.pdf_sha1, fulltext_chars = EXCLUDED.fulltext_chars, "
                 "fulltext_status = EXCLUDED.fulltext_status, fetched_at = EXCLUDED.fetched_at",
-                [(w.id, w.doi, w.title, w.year, w.venue, w.abstract,
+                [(w.id, w.doi, clean_text(w.title), w.year, w.venue and clean_text(w.venue),
+                  w.abstract and clean_text(w.abstract),
                   Jsonb([a.model_dump() for a in w.authors]), Jsonb(w.topics), Jsonb(w.concepts), w.cited_by_count,
                   w.referenced_works, w.is_oa, w.oa_status, w.pdf_url, w.landing_url, w.pmid, w.pmcid, w.pdf_sha1,
                   w.fulltext_chars, w.fulltext_status, w.fetched_at) for w in works])
@@ -459,7 +460,7 @@ class PgIndexStore:
                             "page_url) VALUES (%s,%s,%s,%s,%s,%s) ON CONFLICT DO NOTHING", rows)
             stats["paper_authors"] = len(rows)
             stats["links_to_unknown_entities"] = sum(1 for w in works for l in w.links if l.entity_id not in known)
-            crow = [(pid, kind, no, text) for pid, cs in chunks.items() for kind, no, text in cs]
+            crow = [(pid, kind, no, clean_text(text)) for pid, cs in chunks.items() for kind, no, text in cs]
             cur.execute("DELETE FROM nav.paper_chunk c WHERE c.paper_id = ANY(%s) AND NOT EXISTS ("
                         "SELECT 1 FROM unnest(%s::text[], %s::text[], %s::int[]) AS n(p, k, i) "
                         "WHERE n.p = c.paper_id AND n.k = c.kind AND n.i = c.chunk_no)",
