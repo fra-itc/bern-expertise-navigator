@@ -163,6 +163,8 @@ python -m navigator.cli papers collect   # OpenAlex + OA PDFs -> data/papers/ (+
 python -m navigator.cli papers embed     # e5 vectors of abstracts + full-text chunks (Postgres only)
 python -m navigator.cli papers link      # SIMILAR_TO (kNN), ABOUT (topics), CITES -> AGE graph (Postgres only)
 python -m navigator.cli papers           # all three; options: --limit-people N --max-pdfs N --no-pdf --no-llm --workers N
+python -m navigator.cli papers --people known   # who: all (default) | known (OpenAlex id already known) | search
+python -m navigator.cli papers topics [--remap]  # ABOUT only; --remap decides every OpenAlex topic again
 python -m navigator.cli papers stats     # dry run (= --dry-run): max OpenAlex requests/cost, LLM calls, PDFs, chunks
 make papers [PAPERS_STEP=collect]        # same through make
 ```
@@ -187,7 +189,8 @@ result format is unchanged: a paper is one more `sources[]` entry with `field: "
 URL and a verbatim sentence of the chunk, and `why_match` quotes it (“Author of “<title>” (2024), which says: …”).
 The file backend can run `papers collect` (JSONL only); its search ignores papers (capability matrix in `storage.py`).
 
-**Costs and time** (measured on 3 people, extrapolated to ~700):
+**Costs and time** (measured on 3 people, extrapolated to ~700; the server pilots on 100 people are in
+[`docs/papers-pilot-report.md`](../docs/papers-pilot-report.md)):
 
 | | per person | ~700 people |
 |---|---|---|
