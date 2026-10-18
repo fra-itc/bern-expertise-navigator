@@ -126,27 +126,43 @@ def cmd_papers(a):
     from .openalex_client import OpenAlexClient
     from .storage import index_store
     st = index_store()
+    # resume: people decided by an earlier run are skipped, its works and PDF outcomes are kept (--redo: all again)
+    prev_works, prev_matches = ([], []) if a.redo else papers.load_jsonl()
+    skip = papers.decided_ids(prev_matches)
+    types = tuple(t.strip() for t in a.types.split(",") if t.strip())
+    if a.step == "stats" or a.dry_run:
+        est = papers.estimate(list(st.load_entities().values()), crawl.load_pages(), types=types,
+                              limit=a.limit_people, skip_ids=skip, previous_works={w.id: w for w in prev_works},
+                              use_llm=not a.no_llm, pdf=not a.no_pdf, max_pdfs=a.max_pdfs)
+        est = {"backend": st.name, "dry_run": True, "previous": {"works": len(prev_works), "matches": len(prev_matches)},
+               **est}
+        print(json.dumps(est, indent=2, default=str))
+        return
     steps = ["collect", "embed", "link"] if a.step == "all" else [a.step]
     out: dict = {"backend": st.name}
     if "collect" in steps:
         use_llm = False if a.no_llm else llm.available()
         print(f"[papers] matcher: {'LLM ' + settings.llm_model if use_llm else 'rules (no LLM)'}; "
               f"OpenAlex key: {'set' if settings.openalex_api_key else 'not set'}; "
-              f"mailto: {'set' if settings.openalex_mailto else 'not set'}")
+              f"mailto: {'set' if settings.openalex_mailto else 'not set'}; "
+              f"resume: {len(skip)} people already decided, {len(prev_works)} works kept")
         ents = list(st.load_entities().values())
         ua = (load_sources() or [None])[0]
         fetcher = None if a.no_pdf else papers.PdfFetcher(user_agent=ua.user_agent if ua else None)
         client = OpenAlexClient()
         try:
             res = papers.collect(ents, crawl.load_pages(), client, fetcher=fetcher, use_llm=use_llm,
-                                 types=tuple(a.types.split(",")), limit=a.limit, max_pdfs=a.max_pdfs,
-                                 workers=a.workers)
+                                 types=types, limit=a.limit_people, max_pdfs=a.max_pdfs, workers=a.workers,
+                                 skip_ids=skip, previous_works={w.id: w for w in prev_works},
+                                 previous_matches=prev_matches)
         finally:
             client.close()
-        papers.save_jsonl(res)
-        out["collect"] = res.stats
+        merged = papers.merge_results(prev_works, prev_matches, res)
+        papers.save_jsonl(merged)
+        out["collect"] = {**res.stats, "total_works": len(merged.works), "total_matches": len(merged.matches)}
         if getattr(st, "supports_papers", False):
-            out["store"] = papers.write_to_store(st, list(res.works.values()), res.matches)
+            # all works (upserts: unchanged rows and embeddings stay), only this run's decisions in the audit
+            out["store"] = papers.write_to_store(st, list(merged.works.values()), res.matches)
         else:
             out["store"] = f"{st.name}: JSONL only ({papers.WORKS_PATH}); embed/link need DATABASE_URL"
     if "embed" in steps:
@@ -156,7 +172,8 @@ def cmd_papers(a):
         out["topics"] = papers.link_topics(st, use_llm=False if a.no_llm else None)
     out["llm_usage"] = dict(llm.usage)
     (DATA_DIR / "papers").mkdir(parents=True, exist_ok=True)
-    (DATA_DIR / "papers" / f"stats_{a.step}.json").write_text(json.dumps(out, indent=2, default=str))
+    (DATA_DIR / "papers" / f"stats_{a.step}.json").write_text(json.dumps(out, indent=2, default=str),
+                                                              encoding="utf-8", newline="\n")
     print(json.dumps(out, indent=2, default=str))
 
 
@@ -164,8 +181,14 @@ def main():
     ap = argparse.ArgumentParser(prog="navigator")
     sub = ap.add_subparsers(required=True)
     pp = sub.add_parser("papers", help="OpenAlex papers: collect -> embed -> link (embed/link: Postgres only)")
-    pp.add_argument("step", nargs="?", default="all", choices=["collect", "embed", "link", "all"])
-    pp.add_argument("--limit", type=int, default=0, help="collect: max people (quick tests)")
+    pp.add_argument("step", nargs="?", default="all", choices=["collect", "embed", "link", "all", "stats"],
+                    help="stats = estimate only (same as --dry-run)")
+    pp.add_argument("--limit-people", "--limit", dest="limit_people", type=int, default=0,
+                    help="collect: at most N people not decided yet (incremental runs; 0 = all)")
+    pp.add_argument("--dry-run", action="store_true",
+                    help="estimate OpenAlex requests, LLM calls, PDFs and chunks; no network, nothing written")
+    pp.add_argument("--redo", action="store_true",
+                    help="collect: ignore data/papers/*.jsonl and decide every selected person again")
     pp.add_argument("--types", default="person", help="collect: entity types searched on OpenAlex (person[,unit])")
     pp.add_argument("--max-pdfs", type=int, default=0, help="collect: max OA PDFs to download this run (0 = all)")
     pp.add_argument("--no-pdf", action="store_true", help="collect: metadata and abstracts only")

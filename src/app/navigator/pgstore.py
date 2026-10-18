@@ -439,12 +439,18 @@ class PgIndexStore:
                 "embedding = CASE WHEN c.text_md5 = md5(EXCLUDED.text) THEN c.embedding END, "
                 "embed_model = CASE WHEN c.text_md5 = md5(EXCLUDED.text) THEN c.embed_model END", crow)
             stats["chunks"] = len(crow)
+            # audit log: a decision identical to the entity's latest one (a re-run) is not recorded twice
+            cur.execute("SELECT count(*) FROM nav.author_match")
+            n_before = cur.fetchone()[0]
             cur.executemany(
                 "INSERT INTO nav.author_match(entity_id, entity_name, candidates, chosen_author_id, decided_by, reason, "
-                "model) VALUES (%s,%s,%s,%s,%s,%s,%s)",
-                [(m.entity_id, m.entity_name, Jsonb(m.candidates), m.chosen_author_id, m.decided_by, m.reason, m.model)
-                 for m in matches])
-            stats["author_matches"] = len(matches)
+                "model) SELECT %s,%s,%s,%s,%s,%s,%s WHERE NOT EXISTS (SELECT 1 FROM (SELECT chosen_author_id, "
+                "decided_by FROM nav.author_match WHERE entity_id = %s ORDER BY id DESC LIMIT 1) l "
+                "WHERE l.chosen_author_id IS NOT DISTINCT FROM %s AND l.decided_by = %s)",
+                [(m.entity_id, m.entity_name, Jsonb(m.candidates), m.chosen_author_id, m.decided_by, m.reason, m.model,
+                  m.entity_id, m.chosen_author_id, m.decided_by) for m in matches])
+            cur.execute("SELECT count(*) FROM nav.author_match")
+            stats["author_matches"] = cur.fetchone()[0] - n_before
             self._write_paper_graph(cur, stats)
         stats["papers"] = len(works)
         return stats

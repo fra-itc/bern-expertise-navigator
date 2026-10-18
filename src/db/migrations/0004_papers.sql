@@ -1,7 +1,8 @@
 -- 0004: academic papers (OpenAlex) of the indexed people, their embeddings and the embedding-derived graph.
 -- Apply as the owner (postgres), once:
 --   docker compose exec -T db psql -U postgres -d bern -v ON_ERROR_STOP=1 < migrations/0004_papers.sql
--- Fresh volumes get it automatically through initdb/06-migrations.sh. Idempotent; nothing existing is changed.
+-- Fresh volumes get it automatically through initdb/06-migrations.sh. Idempotent and additive: the only change
+-- to an existing object is a wider CHECK on nav.entity.extractor (adds 'openalex'). Independent of 0005.
 --
 -- Design: the relational tables are the source of truth; the AGE vertices/edges (Paper, AUTHORED, ABOUT, CITES,
 -- SIMILAR_TO) are a projection rebuilt from them (pgstore._write_paper_graph), also after every reindex.
@@ -96,7 +97,7 @@ CREATE TABLE IF NOT EXISTS nav.author_match (
   entity_name       text NOT NULL,
   candidates        jsonb NOT NULL DEFAULT '[]'::jsonb,   -- what the matcher saw (compact OpenAlex cards)
   chosen_author_id  text CHECK (chosen_author_id ~ '^A[0-9]+$'),
-  decided_by        text NOT NULL CHECK (decided_by IN ('llm', 'rules')),
+  decided_by        text NOT NULL CHECK (decided_by IN ('llm', 'rules', 'known_id')),
   reason            text NOT NULL,
   model             text,
   decided_at        timestamptz NOT NULL DEFAULT now()
@@ -159,6 +160,14 @@ BEGIN
     EXECUTE format('CREATE INDEX IF NOT EXISTS %I ON expertise_graph.%I (end_id)',   lower(l) || '_end_idx',   l);
   END LOOP;
 END $$;
+
+-- Re-applied on a database that has an older 0004: same constraint names as the inline CHECKs above.
+ALTER TABLE nav.author_match DROP CONSTRAINT IF EXISTS author_match_decided_by_check,
+  ADD CONSTRAINT author_match_decided_by_check CHECK (decided_by IN ('llm', 'rules', 'known_id'));
+-- Entities extracted from OpenAlex (the team's `openalex` source) carry extractor = 'openalex'; the papers
+-- matcher then uses their known author id instead of searching and asking the LLM (papers.known_author_id).
+ALTER TABLE nav.entity DROP CONSTRAINT IF EXISTS entity_extractor_check,
+  ADD CONSTRAINT entity_extractor_check CHECK (extractor IN ('apertus', 'rules', 'openalex'));
 
 -- Privileges: new nav tables are covered by the default privileges of 04-grants.sql; the new label tables of
 -- the graph schema are not (no default privileges there), so grant them explicitly.

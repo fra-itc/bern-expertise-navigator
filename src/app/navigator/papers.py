@@ -97,6 +97,35 @@ def llm_choice(e: Entity, cands: list[dict]) -> tuple[str | None, str]:
     return choice, f"llm: {reason}"
 
 
+# Decision table for entities that already know their OpenAlex author (no search, no LLM):
+#   extractor == "openalex" and exactly one OpenAlex author id in source_urls / evidence -> known_id
+#   extractor == "openalex" and zero or several ids                                       -> normal matching
+#   any other extractor (web pages may link co-authors' profiles)                         -> normal matching
+# The id is a fixed OpenAlex pattern (A + digits), the one place where a pattern is the right tool.
+_OPENALEX_AUTHOR = re.compile(r"^(?:https?://(?:api\.)?openalex\.org/(?:authors/)?)?(A\d+)/?$", re.IGNORECASE)
+
+
+def openalex_author_ids(e: Entity) -> list[str]:
+    """Distinct OpenAlex author ids carried by the entity (its URLs, evidence URLs and evidence values)."""
+    found: list[str] = []
+    for s in [*e.source_urls, *(ev.url for ev in e.evidence), *(ev.value for ev in e.evidence)]:
+        m = _OPENALEX_AUTHOR.match((s or "").strip())
+        if m and m.group(1).upper() not in found:
+            found.append(m.group(1).upper())
+    return found
+
+
+def known_author_id(e: Entity) -> tuple[str | None, str]:
+    """(author id or None, why) following the decision table above."""
+    if e.extractor != "openalex":
+        return None, f"extractor {e.extractor}: matched by search"
+    ids = openalex_author_ids(e)
+    if len(ids) == 1:
+        return ids[0], f"known_id: entity extracted from OpenAlex author {ids[0]}"
+    return None, (f"extractor openalex but {len(ids)} author ids {ids[:5]}: matched by search" if ids
+                  else "extractor openalex without an author id: matched by search")
+
+
 def choose_author(e: Entity, cands: list[dict], use_llm: bool) -> AuthorMatch:
     base = dict(entity_id=e.id, entity_name=e.name, candidates=cands)
     if not cands:
@@ -294,19 +323,85 @@ def _since_year() -> int:
     return datetime.now(timezone.utc).year - settings.papers_years
 
 
+def select_people(entities: list[Entity], types: tuple[str, ...], limit: int = 0,
+                  skip_ids: set[str] | frozenset[str] = frozenset()) -> list[Entity]:
+    """The people this run processes: the given types, minus those already decided, at most `limit`."""
+    people = [e for e in entities if e.entity_type in types and e.id not in skip_ids]
+    return people[:limit] if limit else people
+
+
+def decided_ids(matches: list[AuthorMatch]) -> set[str]:
+    """People a previous run already decided. A rules decision taken only because the LLM was down is not final:
+    it is retried on the next run."""
+    return {m.entity_id for m in matches if not m.reason.startswith("LLM unavailable")}
+
+
+def estimate(entities: list[Entity], pages: list[Page], *, types: tuple[str, ...] = ("person",), limit: int = 0,
+             skip_ids: set[str] | frozenset[str] = frozenset(), previous_works: dict[str, Work] | None = None,
+             use_llm: bool = True, pdf: bool = True, max_pdfs: int = 0) -> dict:
+    """What `papers collect` (then embed/link) would do, without any network call: upper bounds of OpenAlex
+    requests, LLM calls, PDF downloads and chunks, computed from the same selection and settings the run uses.
+    The OpenAlex disk cache (OPENALEX_CACHE_DAYS) can only lower the request count."""
+    people = select_people(entities, types, limit, skip_ids)
+    known = [e for e in people if known_author_id(e)[0]]
+    search = len(people) - len(known)
+    refs = page_paper_links(entities, pages)
+    by_scheme: dict[str, set[str]] = defaultdict(set)
+    for rs in refs.values():
+        for scheme, rid, _ in rs:
+            by_scheme[scheme].add(rid)
+
+    def batched(ids: set[str]) -> int:
+        safe = [i for i in ids if "|" not in i and "," not in i]
+        return -(-len(safe) // 50) + (len(ids) - len(safe))
+
+    page_calls = batched(by_scheme.get("doi", set())) + batched(by_scheme.get("pubmed", set()))
+    page_works = len(by_scheme.get("doi", set())) + len(by_scheme.get("pubmed", set()))
+    works_max = len(people) * settings.papers_max_works + page_works
+    prev = previous_works or {}
+    reused_pdf = sum(1 for w in prev.values() if not _retry_fulltext(w.fulltext_status))
+    pdf_max = 0 if not (pdf and settings.papers_pdf) else (min(max_pdfs, works_max) if max_pdfs else works_max)
+    oa_calls = 1 + search + len(people) + page_calls
+    return {
+        "people": {"selected": len(people), "known_openalex_id": len(known), "to_search": search,
+                   "already_decided_skipped": sum(1 for e in entities if e.entity_type in types and e.id in skip_ids),
+                   "types": list(types), "limit": limit},
+        "openalex_requests_max": {"total": oa_calls, "institutions": 1, "author_search": search,
+                                  "works_by_author": len(people), "page_linked_batches": page_calls,
+                                  "seconds_at_rps_min": round(oa_calls / max(settings.openalex_rps, 0.01), 1)},
+        "llm_calls_max": {"author_match": search if use_llm else 0,
+                          "topic_labels": (3 * (works_max + len(prev))) if use_llm else 0,
+                          "note": "author_match only for people with candidates; topics are decided once per "
+                                  "OpenAlex topic (cached in nav.topic_map), so the real count is far lower"},
+        "works_max": works_max, "page_linked_refs": {k: len(v) for k, v in by_scheme.items()},
+        "pdf_downloads_max": pdf_max, "pdf_kept_from_previous_runs": reused_pdf,
+        "chunks_max": {"abstract": works_max, "fulltext": pdf_max * settings.papers_max_chunks,
+                       "total": works_max + pdf_max * settings.papers_max_chunks},
+        "settings": {"PAPERS_MAX_WORKS": settings.papers_max_works, "PAPERS_YEARS": settings.papers_years,
+                     "PAPERS_MAX_CANDIDATES": settings.papers_max_candidates,
+                     "PAPERS_MAX_CHUNKS": settings.papers_max_chunks, "PAPERS_PDF": settings.papers_pdf,
+                     "OPENALEX_RPS": settings.openalex_rps, "max_pdfs": max_pdfs},
+    }
+
+
 def collect(entities: list[Entity], pages: list[Page], client: OpenAlexClient, *,
             fetcher: PdfFetcher | None = None, use_llm: bool | None = None, types: tuple[str, ...] = ("person",),
-            limit: int = 0, max_pdfs: int = 0, workers: int = 4, text_dir: Path = TEXT_DIR) -> CollectResult:
-    """People -> author match -> works (+ page-linked works) -> OA PDFs. Never raises for one person."""
+            limit: int = 0, max_pdfs: int = 0, workers: int = 4, text_dir: Path = TEXT_DIR,
+            skip_ids: set[str] | frozenset[str] = frozenset(), previous_works: dict[str, Work] | None = None,
+            previous_matches: list[AuthorMatch] | None = None) -> CollectResult:
+    """People -> author match -> works (+ page-linked works) -> OA PDFs. Never raises for one person.
+
+    Resume: `skip_ids` (people already decided) are not searched again; `previous_matches` still map their
+    authors to co-authorship links; `previous_works` keep their full-text outcome (no second download)."""
     if use_llm is None:
         use_llm = llm.available()
     insts = resolve_bern(client, list(settings.papers_rors))
     bern_ids = {short_id(i["id"]) for i in insts}
-    people = [e for e in entities if e.entity_type in types]
-    if limit:
-        people = people[:limit]
+    people = select_people(entities, types, limit, skip_ids)
     stats: dict = {"institutions": [{"id": short_id(i["id"]), "ror": i.get("ror"), "name": i.get("display_name")}
-                                    for i in insts], "people": len(people), "candidates": 0,
+                                    for i in insts], "people": len(people),
+                   "skipped_done": sum(1 for e in entities if e.entity_type in types and e.id in skip_ids),
+                   "candidates": 0,
                    "matched": 0, "decided_by": defaultdict(int), "errors": 0}
     raw_works: dict[str, dict] = {}
     entity_works: dict[str, list[tuple[str, EntityLink]]] = defaultdict(list)
@@ -315,10 +410,17 @@ def collect(entities: list[Entity], pages: list[Page], client: OpenAlexClient, *
 
     def one(e: Entity):
         try:
-            raw = client.search_authors(name_key(e.name), sorted(bern_ids), per_page=settings.papers_max_candidates)
-            cands = [candidate_summary(a, bern_ids) for a in raw]
-            cands = [c for c in cands if c["id"]][: settings.papers_max_candidates]
-            m = choose_author(e, cands, use_llm)
+            known, why = known_author_id(e)
+            if known:
+                cands: list[dict] = []
+                m = AuthorMatch(entity_id=e.id, entity_name=e.name, candidates=[], chosen_author_id=known,
+                                decided_by="known_id", reason=why)
+            else:
+                raw = client.search_authors(name_key(e.name), sorted(bern_ids),
+                                            per_page=settings.papers_max_candidates)
+                cands = [candidate_summary(a, bern_ids) for a in raw]
+                cands = [c for c in cands if c["id"]][: settings.papers_max_candidates]
+                m = choose_author(e, cands, use_llm)
             works = client.works_by_author(m.chosen_author_id, since_year=_since_year(),
                                            limit=settings.papers_max_works) if m.chosen_author_id else []
         except OpenAlexError as ex:
@@ -388,11 +490,8 @@ def collect(entities: list[Entity], pages: list[Page], client: OpenAlexClient, *
     # assemble works: authorship positions and the person each matched author stands for
     fetched = _now()
     works: dict[str, Work] = {wid: parse_work(raw, fetched) for wid, raw in raw_works.items()}
-    author_entity = {m.chosen_author_id: m.entity_id for m in matches if m.chosen_author_id}
-    for w in works.values():
-        for a in w.authors:
-            if a.author_id in author_entity:
-                a.entity_id = author_entity[a.author_id]
+    author_entity = {m.chosen_author_id: m.entity_id for m in [*(previous_matches or []), *matches]
+                     if m.chosen_author_id}
     for eid, items in entity_works.items():
         for wid, link in items:
             w = works[wid]
@@ -402,16 +501,13 @@ def collect(entities: list[Entity], pages: list[Page], client: OpenAlexClient, *
             if not any(l.entity_id == eid and l.relation == link.relation for l in w.links):
                 w.links.append(link)
     # co-authors matched to other people: one link each, from the authorship list
-    for w in works.values():
-        for a in w.authors:
-            if a.entity_id and not any(l.entity_id == a.entity_id and l.relation == "author" for l in w.links):
-                w.links.append(EntityLink(entity_id=a.entity_id, relation="author", position=a.position,
-                                          author_id=a.author_id))
+    link_coauthors(works.values(), author_entity)
     stats["works"] = len(works)
     stats["oa_works"] = sum(w.is_oa for w in works.values())
     stats["oa_with_pdf_url"] = sum(bool(w.pdf_urls) for w in works.values())
     if fetcher is not None and settings.papers_pdf:
-        stats["pdf"] = fetch_fulltexts(list(works.values()), fetcher, max_pdfs=max_pdfs, text_dir=text_dir)
+        stats["pdf"] = fetch_fulltexts(list(works.values()), fetcher, max_pdfs=max_pdfs, text_dir=text_dir,
+                                       previous=previous_works)
     else:
         for w in works.values():
             w.fulltext_status = w.fulltext_status or ("pdf_disabled" if w.pdf_urls else
@@ -422,12 +518,37 @@ def collect(entities: list[Entity], pages: list[Page], client: OpenAlexClient, *
     return CollectResult(works=works, matches=matches, stats=stats)
 
 
+def link_coauthors(works, author_entity: dict[str, str]) -> None:
+    """Authorships whose OpenAlex author is matched to a person: set entity_id and add one author link each."""
+    for w in works:
+        for a in w.authors:
+            if a.author_id in author_entity:
+                a.entity_id = author_entity[a.author_id]
+            if a.entity_id and not any(l.entity_id == a.entity_id and l.relation == "author" for l in w.links):
+                w.links.append(EntityLink(entity_id=a.entity_id, relation="author", position=a.position,
+                                          author_id=a.author_id))
+
+
+# Full-text outcomes worth trying again on a later run; every other outcome of a previous run is kept as is.
+def _retry_fulltext(status: str | None) -> bool:
+    return (not status or status in ("skipped_limit", "pdf_disabled", "timeout")
+            or status.startswith(("transport_", "http_5", "http_429", "extract_failed")))
+
+
 def fetch_fulltexts(works: list[Work], fetcher: PdfFetcher, *, max_pdfs: int = 0,
-                    text_dir: Path = TEXT_DIR) -> dict:
-    """Only OA works with an OA pdf_url are ever fetched; the first URL that yields a readable PDF wins."""
+                    text_dir: Path = TEXT_DIR, previous: dict[str, Work] | None = None) -> dict:
+    """Only OA works with an OA pdf_url are ever fetched; the first URL that yields a readable PDF wins.
+    A work whose previous outcome is final (ok, not_oa, robots_disallowed, http_404, ...) is not fetched again."""
     counts: dict[str, int] = defaultdict(int)
     tried = 0
     for w in sorted(works, key=lambda x: (-(x.year or 0), x.id)):
+        old = (previous or {}).get(w.id)
+        if old is not None and not _retry_fulltext(old.fulltext_status) and \
+                (old.fulltext_status != "ok" or (old.pdf_sha1 and (text_dir / f"{old.pdf_sha1}.txt").exists())):
+            w.pdf_url, w.pdf_sha1 = old.pdf_url, old.pdf_sha1
+            w.fulltext_chars, w.fulltext_status = old.fulltext_chars, old.fulltext_status
+            counts["kept_" + (w.fulltext_status or "none")] += 1
+            continue
         if not w.is_oa:
             w.fulltext_status = "not_oa"
         elif not w.pdf_urls:
@@ -465,6 +586,25 @@ def save_jsonl(res: CollectResult, works_path: Path = WORKS_PATH, matches_path: 
     with matches_path.open("w", encoding="utf-8") as fh:
         for m in sorted(res.matches, key=lambda x: x.entity_id):
             fh.write(m.model_dump_json() + "\n")
+
+
+def merge_results(prev_works: list[Work], prev_matches: list[AuthorMatch], res: CollectResult) -> CollectResult:
+    """Previous JSONL + this run = the new JSONL. Works are keyed by id (this run's metadata wins, entity links
+    are united), matches by entity (this run's decision wins), so running again never duplicates anything."""
+    works: dict[str, Work] = {w.id: w.model_copy(deep=True) for w in prev_works}
+    for wid, w in res.works.items():
+        old = works.get(wid)
+        w = w.model_copy(deep=True)
+        if old is not None:
+            for l in old.links:
+                if not any(x.entity_id == l.entity_id and x.relation == l.relation for x in w.links):
+                    w.links.append(l)
+        works[wid] = w
+    by_entity = {m.entity_id: m for m in prev_matches}
+    by_entity.update({m.entity_id: m for m in res.matches})
+    matches = list(by_entity.values())
+    link_coauthors(works.values(), {m.chosen_author_id: m.entity_id for m in matches if m.chosen_author_id})
+    return CollectResult(works=works, matches=matches, stats=res.stats)
 
 
 def load_jsonl(works_path: Path = WORKS_PATH, matches_path: Path = MATCHES_PATH) -> tuple[list[Work], list[AuthorMatch]]:

@@ -1,6 +1,6 @@
 """Papers on the Postgres backend, end to end: index -> papers collect (fixtures) -> embed -> link -> search.
 
-Skipped unless TEST_DATABASE_URL points to a throwaway bern-pg database with migrations 0001-0004:
+Skipped unless TEST_DATABASE_URL points to a throwaway bern-pg database with every migration (0001-0005):
     TEST_DATABASE_URL=postgresql://bern_app:<pw>@127.0.0.1:55437/bern pytest -q tests/test_pg_papers.py
 The database is wiped (DML only) before each test.
 """
@@ -122,6 +122,24 @@ def test_papers_tables_graph_and_reindex(env):
     # rerun of the whole papers pipeline is idempotent (embeddings kept: nothing new to embed)
     _, again = _run_papers(tmp_path, ents)
     assert again["embed"]["chunks_embedded"] == 0 and _graph_count("AUTHORED") == 4
+    # ... and the author-match audit does not record the same decisions twice
+    assert again["store"]["author_matches"] == 0 and _sql("SELECT count(*) FROM nav.author_match")[0][0] == 3
+
+
+def test_openalex_entity_indexes_and_uses_known_id(env):
+    """An entity from the team's OpenAlex source (extractor 'openalex', author URL) goes into nav.entity
+    (0004 widens the CHECK) and is matched by its id: no search, decided_by known_id in the audit."""
+    tmp_path, ents = env
+    oa_ent = ents[0].model_copy(update={"id": "00000000000000aa", "name": "Jane Q. Doe", "extractor": "openalex",
+                                        "source": "unibe", "source_urls": ["https://openalex.org/A100"]})
+    index.build([*ents, oa_ent])
+    loaded = index_store().load_entities()["00000000000000aa"]
+    assert loaded.extractor == "openalex" and papers.known_author_id(loaded)[0] == "A100"
+    oa = OpenAlexClient(base_url="https://api.openalex.test", mailto="", api_key="", rps=1000, cache_dir=None,
+                        transport=httpx.MockTransport(openalex_handler()), sleep=lambda s: None)
+    res = papers.collect([loaded], [], oa, use_llm=True, text_dir=tmp_path / "text")
+    index_store().write_papers(list(res.works.values()), res.matches, {})
+    assert _sql("SELECT decided_by, chosen_author_id, candidates FROM nav.author_match") == [("known_id", "A100", [])]
 
 
 def test_search_finds_person_through_paper(env, monkeypatch):

@@ -150,7 +150,7 @@ class AuthorMatch(BaseModel):
     entity_name: str
     candidates: list[dict]
     chosen_author_id: str | None = None
-    decided_by: Literal["llm", "rules"]
+    decided_by: Literal["llm", "rules", "known_id"]   # known_id: the entity came from OpenAlex with its author id
     reason: str
     model: str | None = None
 
