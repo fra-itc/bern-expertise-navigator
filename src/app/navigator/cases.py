@@ -274,15 +274,16 @@ _df_cache: dict[int, tuple[int, dict[str, int]]] = {}
 
 
 def _doc_freq() -> tuple[int, dict[str, int]]:
-    bm = index.load_bm25()
-    if id(bm) not in _df_cache:   # the index object changes only when it is rebuilt
+    """Document frequency of each token over the indexed profiles (the same text BM25 indexes), on any backend."""
+    ents = index.load_entities()
+    if id(ents) not in _df_cache:   # the file store returns the same object until the index is rebuilt
         df: dict[str, int] = {}
-        for d in bm["bm25"].doc_freqs:
-            for t in d:
+        for e in ents.values():
+            for t in set(index.tokenize(e.search_text())):
                 df[t] = df.get(t, 0) + 1
         _df_cache.clear()
-        _df_cache[id(bm)] = (len(bm["ids"]), df)
-    return _df_cache[id(bm)]
+        _df_cache[id(ents)] = (len(ents), df)
+    return _df_cache[id(ents)]
 
 
 def topic_words(query: str) -> set[str]:
