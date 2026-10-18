@@ -60,7 +60,7 @@ stats:
 	$(PY) -m navigator.cli stats
 
 PAPERS_STEP ?= all
-papers:        ## explicit only (network: OpenAlex + OA PDFs): make papers [PAPERS_STEP=collect|embed|link] (embed/link: Postgres)
+papers:        ## explicit only (network: OpenAlex + OA PDFs): make papers [PAPERS_STEP=collect|embed|link|topics|stats] (embed/link: Postgres)
 	$(PY) -m navigator.cli papers $(PAPERS_STEP)
 
 TAG ?=

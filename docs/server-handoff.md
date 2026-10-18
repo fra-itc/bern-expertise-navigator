@@ -30,7 +30,7 @@ State described here was verified on **2026-10-18** (read-only audit
 >   across deploys.
 > - **PR #11 (papers graph) is merged** into `main`. It is used only by the Postgres backend, which the app does
 >   not use yet (`DATABASE_URL` is empty), so the live site is unchanged. Its runbook is `docs/papers-runbook.md`;
->   the full overnight run on `/opt/bern/papers` and Postgres still needs the team's go.
+>   the full overnight run on `/opt/bern/papers` and Postgres is planned after the cases fixes.
 > - **Still open:**
 >   - no backups;
 >   - no record of the deployed commit;
@@ -79,7 +79,7 @@ deployed commit on the server (for example a `SOURCE_SHA` file in
 | Wildcard DNS | `*.bern-expertise.ch` is **not** set: add an `A *` record to `116.203.127.208` if subdomains are needed |
 | TLS | Let's Encrypt via Caddy, apex + www, expires 2027-01-16 (auto-renewed by Caddy) |
 | Docker | Docker CE 29.9.1, Compose v5.6.0, json-file logs (max 5 × 20 MB per container) |
-| Stacks | `bern-app` (`/opt/bern/app/deploy`: `api` + `caddy`), `bern-db` (`/opt/bern/db`: Postgres), one-off crawl container in `/opt/bern/crawl` |
+| Stacks | `bern-app` (`/opt/bern/app/deploy`: `api` + `caddy`), `bern-db` (`/opt/bern/db`: Postgres), one-off crawl container in `/opt/bern/crawl`, one-off papers containers in `/opt/bern/papers` (image `bern-papers:<sha>`, [runbook](papers-runbook.md)) |
 
 ### Real state
 
@@ -93,7 +93,7 @@ deployed commit on the server (for example a `SOURCE_SHA` file in
 | Vectors (`data/vectors.npy`) | INSTALLED · POPULATED · CONNECTED · USED | NumPy matrix (10493 × 768, float32); `QDRANT_URL` is empty |
 | Cases (`data/cases.db`) | INSTALLED · POPULATED · CONNECTED · USED | SQLite, 8 cases at audit time, owner `root`; written by `POST /cases` and also by `GET /cases/{id}` (summary refresh) |
 | Qdrant | NOT INSTALLED | Only the Python client library; no container, no data |
-| PostgreSQL (`/opt/bern/db`) | INSTALLED · **EMPTY** · NOT CONNECTED · NOT USED | Only migration `0001_initial`; all `nav` tables 0 rows (`n_tup_ins` 0); graph 0 vertices / 0 edges; no client connections; `DATABASE_URL` absent from the app `.env` |
+| PostgreSQL (`/opt/bern/db`) | INSTALLED · NOT CONNECTED · NOT USED by the app | At audit time empty (only `0001_initial`, 0 rows, 0 graph vertices). Since then the papers pilots (PR #11) filled it from a copy of the app data: index + papers of 100 people ([pilot report](papers-pilot-report.md)). `DATABASE_URL` is still absent from the app `.env` |
 | Postgres backend code | On `main` (PR #3, `d77de8e`) | **Not active on the server**; activation blocked by issue #7 (see [Database](#database)) |
 | LLM | Remote, used | `apertus-v1-5-70b` via `https://gateway.keera.ch/api/v1` |
 | Embeddings | Local CPU | `intfloat/multilingual-e5-base`, dim 768, model baked into the image, `HF_HUB_OFFLINE=1` |
@@ -111,8 +111,8 @@ deployed commit on the server (for example a `SOURCE_SHA` file in
   `openalex` entities (556 persons + 63 units) and 8838 evidence items. It was
   most likely generated on a developer machine and copied up by rsync
   (inference).
-- The name `unibe` means something else on branch `feat/papers-graph` and in
-  `/opt/bern/crawl`: there it is a web crawl of unibe.ch pages.
+- On `main` the unibe.ch web crawl is the separate source `unibe_web`; in
+  `/opt/bern/crawl` the data directory named `unibe` is that web crawl, not OpenAlex.
 - `data/eval_report.json` (recall@10 88%, synonyms 71%, traceability and
   abstention 100%, 30 queries) is a **rules-only** baseline (0 LLM calls per
   query, default 8B model name), with no commit or corpus recorded. It is not
@@ -197,7 +197,8 @@ literal), then run `make deploy` or recreate the `caddy` container.
 | `/opt/bern/app/data/*.log` | | No (excluded) | Logs |
 | `/opt/bern/app/data/` (everything else) | `deploy` | **Yes: overwritten or deleted** | Corpus, pages, index, vectors, eval report |
 | `/opt/bern/db` | `deploy` | No (deployed separately from `src/db/`) | Postgres compose, `Dockerfile`, `initdb/`, `.env` with DB passwords; volume `pgdata` |
-| `/opt/bern/crawl` | `root` | No | Separate crawl run with image `bern-crawl:ac849ed` (branch `feat/papers-graph`, not merged), exited 0 at 15:36 UTC. Web pages: unibe 1500 (22 medtech domains), artorg 373, dcb 54, with links. **Not used by the app** |
+| `/opt/bern/papers` | `deploy` | No | Papers job (PR #11): copy of the app data in `data/`, source tarballs and `bern-papers:<sha>` images; writes only to Postgres. See [`papers-runbook.md`](papers-runbook.md) |
+| `/opt/bern/crawl` | `root` | No | Separate crawl run with image `bern-crawl:ac849ed` (code since merged in PR #11), exited 0 at 15:36 UTC. Web pages: unibe 1500 (22 medtech domains), artorg 373, dcb 54, with links. **Not used by the app** |
 | `/root/backups/` | `root` | No | Copies of Caddyfile / compose / `deploy.sh` taken while adding the auth. **Not data backups** |
 
 ## Deploy
@@ -226,7 +227,7 @@ Consequences:
   `cases.db*` and `*.log`. Files on the server that are not in your tree are
   **deleted** (this is how `openalex.py`, `caddy.env` and the `.env.bak-*`
   files are at risk or gone).
-- Kept: `.env`, `caddy.env`, `data/cases.db*`, `data/*.log`, `data/usage.jsonl`, `/opt/bern/db`, `/opt/bern/crawl`.
+- Kept: `.env`, `caddy.env`, `data/cases.db*`, `data/*.log`, `data/usage.jsonl`, `/opt/bern/db`, `/opt/bern/crawl`, `/opt/bern/papers`.
 - The `api` container mounts `../data`, `../config` and `../eval` from the host.
 
 Before every deploy:
@@ -276,6 +277,11 @@ there are no client connections. The 1015 entities reported by `/health` come
 from `data/entities.jsonl`, not from Postgres. The `pgdata` volume (about
 66 MB) holds no application data.
 
+Update: the papers pilots (PR #11, [runbook](papers-runbook.md)) have since
+written an index and the papers of 100 people to this database, from a copy
+of the app data in `/opt/bern/papers/data`; counts in the
+[pilot report](papers-pilot-report.md). The app still does not read it.
+
 ### How it will be activated
 
 The Postgres backend (PR #3) is on `main` since 16:31:58 UTC (`d77de8e`). The
@@ -291,10 +297,14 @@ the server runs `main` (`f5b2ce1`). Then:
    ```bash
    docker compose exec -T db psql -U postgres -d bern -v ON_ERROR_STOP=1 < migrations/0002_index_order_and_match_ref.sql
    docker compose exec -T db psql -U postgres -d bern -v ON_ERROR_STOP=1 < migrations/0003_case_search_filters.sql
+   docker compose exec -T db psql -U postgres -d bern -v ON_ERROR_STOP=1 < migrations/0004_papers.sql
    docker compose exec -T db psql -U postgres -d bern -v ON_ERROR_STOP=1 < migrations/0005_case_company_sources.sql
+   docker compose exec -T db psql -U postgres -d bern -v ON_ERROR_STOP=1 < migrations/0006_evidence_publication_field.sql
    ```
 
-   All three are required: the app checks `nav.schema_migrations` at connect
+   (Skip any file already listed in `nav.schema_migrations`, e.g. applied by
+   the papers pilots.)
+   All are required: the app checks `nav.schema_migrations` at connect
    time and refuses to start with `schema_outdated` if one is missing.
    `0002_remove_technical_review` is **optional and destructive** (it drops
    the technical-review columns); it is not required by the app. Take a backup
@@ -414,7 +424,7 @@ assigned to the team (issue #7). What they must cover:
 | Case database | `/opt/bern/app/data/cases.db*` | Only copy of the cases, with personal data |
 | Corpus and index | `/opt/bern/app/data/` (`entities.jsonl`, `extracted.jsonl`, `bm25.pkl`, `vectors*`, `pages/`) | Deleted by a deploy from a tree without `data/` |
 | App settings | `/opt/bern/app/.env`, `/opt/bern/app/caddy.env` | Not in git; contain secrets: store encrypted |
-| Postgres | `pg_dump -Fc` of `bern` | Empty today; required once `DATABASE_URL` is active |
+| Postgres | `pg_dump -Fc` of `bern` | Holds the papers pilots (reproducible from the runbook); required once `DATABASE_URL` is active |
 | Crawl output | `/opt/bern/crawl` | Optional; reproducible but slow |
 
 Keep copies off the server and encrypted, test a restore (for Postgres:
@@ -437,6 +447,7 @@ sudo tar czf ~/data-$(date +%F-%H%M).tgz -C /opt/bern/app data
 | `make deploy` deletes `data/` corpus and index; exclude `data/` from rsync or designate one data owner | |
 | No record of the deployed commit (`SOURCE_SHA`) | |
 | Postgres backend merged (PR #3) but not active; SQLite → Postgres case import missing | issue #7 |
+| Postgres case store does not persist `Case.offer`: on that backend every `GET /cases/{id}` rebuilds the offer and resets the partner selection (`tests/test_pg_backend.py::test_cases_roundtrip_and_api` fails); fixed in a separate PR (migration 0007) | |
 | LLM key owner to be decided | issue / PR #4 |
 | Failed LLM calls not logged (successful ones are, in `data/usage.jsonl`); `llm_used` only means "endpoint reachable" | |
 | Eval report is rules-only and unversioned; rerun with the 70B model, recording commit and corpus | |

@@ -1,6 +1,6 @@
 # Papers graph — pilot report and full-run proposal (2026-10-18)
 
-For: Prachi / the team. Branch: `feat/papers-graph`. Runbook: [`papers-runbook.md`](papers-runbook.md).
+For: Prachi / the team. Merged into `main` (PR #11). Runbook: [`papers-runbook.md`](papers-runbook.md).
 
 ## TL;DR
 
@@ -10,7 +10,7 @@ For: Prachi / the team. Branch: `feat/papers-graph`. Runbook: [`papers-runbook.m
   passed in the prompt. Embeddings: multilingual-e5-base on CPU. No proprietary model anywhere.
 - Two pilots ran on the server (100 people). They caught three bugs that would have broken the full run; all
   three are fixed and tested.
-- **Ask: go / no-go for the full overnight run** (788 people left, ≤ $0.32 OpenAlex, est. 3–5 h).
+- **Next: the full overnight run** (788 people left, ≤ $0.32 OpenAlex, est. 3–5 h), planned after the cases fixes.
 
 ## Why it helps the navigator
 
@@ -84,12 +84,14 @@ Imaging Techniques"): fewer wrong edges, somewhat less connectivity. A `BROADER`
 step if more connectivity is needed.
 
 Tests: 180 passed / 16 skipped without a DB; the Postgres suites pass on a fresh database with migrations 0001–0006.
+After merging `main` (2026-10-18): 217 passed / 17 skipped without a DB; with Postgres 233 passed and 1 failed
+(`test_cases_roundtrip_and_api`: the `Case.offer` gap under *What the run does not do yet*; it fails the same way on `main`; fixed in a separate PR, migration 0007).
 
 ## Full overnight run — proposal
 
 ```bash
-IMG=bern-papers:a922a10
-job papers stats --max-pdfs 1500      # dry run first, numbers attached to this PR before starting
+IMG=bern-papers:<sha of main>
+job papers stats --max-pdfs 1500      # dry run first, numbers recorded here before starting
 job papers all   --max-pdfs 1500      # everyone left; resumable with the same command
 ```
 
@@ -114,12 +116,11 @@ Safety:
 ## What the run does not do yet
 
 - **The app does not read Postgres.** After the run the RAG is complete in Postgres, but the frontend keeps
-  using JSONL/SQLite until `DATABASE_URL` is set for the app. That waits on committing the server-only code
-  (`openalex.py`, the case flow — issue #7) and importing the cases from SQLite.
+  using JSONL/SQLite until `DATABASE_URL` is set for the app. The server code (`openalex.py`, the case flow) is
+  now on `main`; activation still needs the SQLite case import and the steps in issue #7. The Postgres case store
+  also does not persist `Case.offer` yet (fixed in a separate PR, migration 0007; see `docs/server-handoff.md`, Known issues).
 
 ## Asks
 
-1. **Go / no-go for the full overnight run** (reply on this PR). It starts only after your go.
+1. **The full overnight run** is planned after the cases fixes (`load_bm25`, `Case.offer`; separate PR, migration 0007). It starts only after the team's go.
 2. Review: `papers.py` (prompts, `dedupe_by_doi`, `clean_text`), `0004_papers.sql`.
-3. Merge PR #6 (basic auth) before the next `make deploy`: `rsync --delete` removes `caddy.env` and the
-   protection on `/cases` is lost.

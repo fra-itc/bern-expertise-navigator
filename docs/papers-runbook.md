@@ -60,7 +60,7 @@ Back up first (same command as `src/db/README.md`):
 docker exec bern-db-db-1 pg_dump -U postgres -d bern -Fc > ~/bern_$(date +%F)_pre-papers.dump
 ```
 
-Apply only what is missing, in this order. All four are additive and idempotent; `0004` and `0005` touch
+Apply only what is missing, in this order. All five are additive and idempotent; `0004` and `0005` touch
 disjoint objects, so a database that already has `0005` takes `0004` as-is.
 
 ```bash
@@ -74,8 +74,9 @@ docker exec bern-db-db-1 psql -U postgres -d bern -tAc "SELECT version FROM nav.
 ```
 
 `0002_remove_technical_review` is not required by the app and drops columns: leave it out unless it is already
-there. `0004` also widens `nav.entity.extractor` to accept `openalex`, without which the entities of the
-team's OpenAlex source cannot be indexed into Postgres.
+there. `0004` and `0006` both widen `nav.entity.extractor` to accept `openalex` (same constraint, either order);
+`0006` also allows the `publication` evidence field. Without them the entities of the team's OpenAlex source
+cannot be indexed into Postgres.
 
 ## 4. Environment of the job
 
