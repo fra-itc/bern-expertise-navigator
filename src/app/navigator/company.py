@@ -140,7 +140,9 @@ def _key_links(tree: HTMLParser, page_url: str) -> list[str]:
     return sorted(out, key=lambda u: urlparse(u).path.count("/"))[:MAX_EXTRA]
 
 
-def read(url: str) -> CompanyWebsite:
+def read(url: str, max_extra: int = MAX_EXTRA) -> CompanyWebsite:
+    """The page behind the link plus up to `max_extra` key pages of the same site (0: the homepage only, enough to
+    check that a suggested company exists and what it does)."""
     url = normalise(url)
     _check_public(url)
     with httpx.Client(headers={"User-Agent": USER_AGENT}, follow_redirects=False, timeout=12, transport=_transport) as client:
@@ -175,7 +177,7 @@ def read(url: str) -> CompanyWebsite:
                 site.pages.append(WebPage(url=u, title=title))
 
         add(final, r.text, tree)
-        for link in _key_links(tree, final):
+        for link in _key_links(tree, final)[:max_extra]:
             if sum(map(len, texts)) >= MAX_TEXT or not robots.can_fetch(link):
                 continue
             time.sleep(DELAY)

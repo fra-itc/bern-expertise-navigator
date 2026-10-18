@@ -10,7 +10,7 @@ import numpy as np
 from pydantic import BaseModel
 
 from . import index, llm
-from .config import load_glossary, settings
+from .config import load_glossary, load_sources, settings
 from .extract import name_key, unit_key
 from .storage import PaperHit, index_store
 from .schema import Affiliation, Entity, SearchResponse, SearchResult, SourceRef
@@ -50,7 +50,7 @@ def llm_analyze(q: str) -> _QueryAnalysis:
                 "in English, German and French. No explanations.\n"
                 "- person_names: names of specific people mentioned in the query (empty if none).\n"
                 f"QUERY: {q}")},
-        ], _QueryAnalysis, max_tokens=250, temperature=0.0)
+        ], _QueryAnalysis, mode="none", max_tokens=250, temperature=0.0)
         terms = [t.strip().lower() for t in r.terms if 1 < len(t.strip()) < 60][:8]  # type: ignore[attr-defined]
         return _QueryAnalysis(terms=terms, person_names=[n for n in r.person_names if n.strip()])  # type: ignore[attr-defined]
     except llm.LLMError:
@@ -111,6 +111,11 @@ def vector_rank(q: str, extra: list[str], top: int = 200,
             if j == 0:
                 orig[eid] = max(orig.get(eid, 0.0), score)
     return sorted(best, key=lambda k: -best[k]), orig
+
+
+@lru_cache(maxsize=1)
+def _record_only_sources() -> frozenset[str]:
+    return frozenset(s.name for s in load_sources() if s.type == "openalex")
 
 
 def rrf(*rankings: list[str], weights: list[float] | None = None) -> dict[str, float]:
@@ -188,10 +193,11 @@ def fair_top(ids: list[str], ents: dict[str, Entity], k: int) -> list[str]:
         if not e:
             continue
         is_person = e.entity_type == "person"
-        unit = (unit_key(e.unit or e.name) if not is_person else unit_key(e.unit or e.source), is_person)
+        # people are capped per lab; someone whose lab is unknown counts on their own (no shared bucket)
+        unit = (unit_key(e.unit or e.name) if not is_person else (unit_key(e.unit) if e.unit else "id:" + e.id), is_person)
         if is_person and per_unit[unit] >= settings.max_per_unit:
             # the lab is full: a more senior person (e.g. the group head) replaces its most junior pick
-            same = [x for x in out if ents[x].entity_type == "person" and unit_key(ents[x].unit or ents[x].source) == unit[0]]
+            same = [x for x in out if ents[x].entity_type == "person" and ents[x].unit and unit_key(ents[x].unit) == unit[0]]
             weakest = min(same, key=lambda x: seniority(ents[x]), default=None)
             if weakest and seniority(e) > seniority(ents[weakest]):
                 out[out.index(weakest)] = eid
@@ -310,7 +316,7 @@ def _llm_why(q: str, name: str, etype: str, numbered: str, valid: tuple[int, ...
                 "In max 30 words, say why this candidate matches the query. Cite the evidence ids you used. "
                 "Do not add facts that are not in the evidence. "
                 "If the evidence does not support a match, say 'Weak match'.")},
-        ], _Why, max_tokens=150)
+        ], _Why, mode="none", max_tokens=150)
     except llm.LLMError:
         return None
     if not r.evidence_ids or not set(r.evidence_ids) <= set(valid):  # type: ignore[attr-defined]
@@ -319,15 +325,16 @@ def _llm_why(q: str, name: str, etype: str, numbered: str, valid: tuple[int, ...
 
 
 def explain_similar(q: str, person: Entity, parent: Entity, sim: float, terms: list[str],
-                    paper: PaperHit | None) -> tuple[str, list[SourceRef]]:
+                    paper: PaperHit | None, use_llm: bool = True) -> tuple[str, list[SourceRef]]:
     """Person reached through SIMILAR_TO: say so, and cite the person's own evidence (paper first)."""
-    why, refs = explain(q, person, terms, paper)
+    why, refs = explain(q, person, terms, paper, use_llm)
     return f"Research profile similar to {parent.name} (cosine {sim:.2f}). {why}", refs
 
 
-def explain_via(q: str, person: Entity, parent: Entity, terms: list[str]) -> tuple[str, list[SourceRef]]:
+def explain_via(q: str, person: Entity, parent: Entity, terms: list[str],
+                use_llm: bool = True) -> tuple[str, list[SourceRef]]:
     """Person found through a matching unit/project: cite the link AND why the unit/project matches."""
-    why_parent, refs = explain(q, parent, terms)
+    why_parent, refs = explain(q, parent, terms, use_llm)
     link = [ev for ev in person.evidence if ev.field in ("unit", "institute", "projects", "role", "name")
             and (parent.name in ev.value or ev.field in ("role", "name"))][:2]
     link_refs = [SourceRef(url=ev.url, snippet=ev.snippet, field=ev.field, retrieved_at=person.retrieved_at) for ev in link]
@@ -357,7 +364,8 @@ def fallback_why(q: str, terms: list[str], hits) -> str:
     return f"Mentions {_join([f'“{p}”' for p in phrases[:3]])} in its {_join(fields[:3])}."
 
 
-def explain(q: str, e: Entity, terms: list[str], paper: PaperHit | None = None) -> tuple[str, list[SourceRef]]:
+def explain(q: str, e: Entity, terms: list[str], paper: PaperHit | None = None,
+            use_llm: bool = True) -> tuple[str, list[SourceRef]]:
     hits = matched_evidence(e, [q, *terms])[:4]
     refs = [SourceRef(url=ev.url, snippet=ev.snippet, field=ev.field, retrieved_at=e.retrieved_at)
             for _, _, ev in hits]
@@ -371,7 +379,7 @@ def explain(q: str, e: Entity, terms: list[str], paper: PaperHit | None = None) 
         else:                              # found through the paper: it is the main evidence
             refs, fallback = [pref] + refs[:3], f"{pwhy}."
         numbered_paper = [(len(e.evidence), f"(publication “{paper.title}”) {pref.snippet}")]
-    if not settings.use_llm_explain or not (hits or numbered_paper) or not llm.available():
+    if not use_llm or not settings.use_llm_explain or not (hits or numbered_paper) or not llm.available():
         return fallback, refs
     items = [(i, f"({ev.field}) {ev.snippet}") for _, i, ev in hits] + numbered_paper
     numbered = "\n".join(f"[{i}] {t}" for i, t in items)
@@ -387,7 +395,9 @@ def _abstain(q: str, terms: list[str], msg: str = NO_SOURCE_MSG) -> SearchRespon
     return SearchResponse(query=q, expanded_terms=terms, abstained=True, message=msg, results=[])
 
 
-def search(q: str, k: int = 10, sources: list[str] | None = None, types: list[str] | None = None) -> SearchResponse:
+def search(q: str, k: int = 10, sources: list[str] | None = None, types: list[str] | None = None,
+           llm_explain: bool = True) -> SearchResponse:
+    """llm_explain=False: rule-based "why" only (fast); callers can explain the few results they keep."""
     q = q.strip()
     ents = index.load_entities()
     if not ents:
@@ -422,6 +432,10 @@ def search(q: str, k: int = 10, sources: list[str] | None = None, types: list[st
 
     paper_ids = sorted(phits, key=lambda x: (-phits[x].cos, x))
     fused = rrf(bm_q, bm_x, vec_ids, paper_ids, weights=[1.0, 1.0, 1.0, settings.paper_weight])
+    record_only = _record_only_sources()
+    for eid in fused:
+        if eid in ents and ents[eid].source in record_only:
+            fused[eid] *= settings.record_only_weight
     via = propagate(fused, ents)
     via_sim = propagate_similar(fused, ents) if phits else {}
     for eid in via_sim:
@@ -445,13 +459,13 @@ def search(q: str, k: int = 10, sources: list[str] | None = None, types: list[st
 
     def _explain(eid: str):
         if eid in via and via[eid] in ents:
-            return explain_via(q, ents[eid], ents[via[eid]], terms)
+            return explain_via(q, ents[eid], ents[via[eid]], terms, llm_explain)
         if eid in via_sim and via_sim[eid][0] in ents:
             parent, sim = via_sim[eid]
-            return explain_similar(q, ents[eid], ents[parent], sim, terms, phits.get(eid))
-        return explain(q, ents[eid], terms, phits.get(eid))
+            return explain_similar(q, ents[eid], ents[parent], sim, terms, phits.get(eid), llm_explain)
+        return explain(q, ents[eid], terms, phits.get(eid), llm_explain)
 
-    explained = list(_pool.map(_explain, top))
+    explained = list(_pool.map(llm.bound(_explain), top))
     nb = neighbors(top)
     results = []
     for eid, (why, refs) in zip(top, explained):

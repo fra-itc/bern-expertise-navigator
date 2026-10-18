@@ -53,6 +53,40 @@ ARCHETYPES: list[dict] = [
      "label": {"en": "Competences", "de": "Kompetenzen", "fr": "Compétences"}},
 ]
 ORDER = {a["id"]: a["n"] for a in ARCHETYPES}
+
+# The team's entity model (five groups, as in the data-model diagram). Every archetype belongs to one
+# type; Membership is the person → unit link, shown on each person rather than as its own list.
+GROUPS: list[dict] = [
+    {"id": "agents", "label": {"en": "Agents", "de": "Akteure", "fr": "Acteurs"}, "types": [
+        {"id": "person", "archetypes": ["expert", "clinician", "specialist", "workforce", "lived"], "max": 12,
+         "label": {"en": "People", "de": "Personen", "fr": "Personnes"}},
+        {"id": "membership", "archetypes": [], "label": {"en": "Memberships", "de": "Zugehörigkeiten", "fr": "Affiliations"}},
+        {"id": "organization", "archetypes": ["unit", "hub"],
+         "label": {"en": "Organizations (labs & units)", "de": "Organisationen (Labore & Einheiten)",
+                   "fr": "Organisations (laboratoires & unités)"}},
+        {"id": "company", "archetypes": ["company"], "label": {"en": "Companies", "de": "Firmen", "fr": "Entreprises"}}]},
+    {"id": "offering", "label": {"en": "Offering", "de": "Angebot", "fr": "Offre"}, "types": [
+        {"id": "facility", "archetypes": ["facility"], "label": {"en": "Facilities", "de": "Infrastrukturen", "fr": "Infrastructures"}},
+        {"id": "instrument", "archetypes": ["instrument"], "label": {"en": "Instruments", "de": "Geräte", "fr": "Instruments"}},
+        {"id": "service", "archetypes": ["service"], "label": {"en": "Services", "de": "Dienstleistungen", "fr": "Services"}},
+        {"id": "digital", "archetypes": ["digital"],
+         "label": {"en": "Digital assets", "de": "Digitale Ressourcen", "fr": "Ressources numériques"}}]},
+    {"id": "activities", "label": {"en": "Activities", "de": "Aktivitäten", "fr": "Activités"}, "types": [
+        {"id": "project", "archetypes": ["project"], "label": {"en": "Projects", "de": "Projekte", "fr": "Projets"}},
+        {"id": "study", "archetypes": ["study"], "label": {"en": "Clinical studies", "de": "Klinische Studien", "fr": "Études cliniques"}},
+        {"id": "technology", "archetypes": ["technology"], "label": {"en": "Technology", "de": "Technologie", "fr": "Technologies"}},
+        {"id": "programme", "archetypes": ["programme"], "label": {"en": "Programmes", "de": "Programme", "fr": "Programmes"}}]},
+    {"id": "capital", "label": {"en": "Capital", "de": "Kapital", "fr": "Capital"}, "types": [
+        {"id": "funding", "archetypes": ["funding"], "label": {"en": "Funding", "de": "Förderung", "fr": "Financement"}},
+        {"id": "proof", "archetypes": ["proof"], "label": {"en": "Proof points", "de": "Belege", "fr": "Preuves"}}]},
+    {"id": "concepts", "label": {"en": "Concepts", "de": "Konzepte", "fr": "Concepts"}, "types": [
+        {"id": "method", "archetypes": ["competence"], "label": {"en": "Methods", "de": "Methoden", "fr": "Méthodes"}},
+        {"id": "condition", "archetypes": [], "label": {"en": "Conditions", "de": "Krankheitsbilder", "fr": "Pathologies"}},
+        {"id": "anatomy", "archetypes": [], "label": {"en": "Anatomy", "de": "Anatomie", "fr": "Anatomie"}},
+        {"id": "modality", "archetypes": [], "label": {"en": "Modalities", "de": "Modalitäten", "fr": "Modalités"}}]},
+]
+TYPE_OF = {a: t["id"] for g in GROUPS for t in g["types"] for a in t["archetypes"]}
+MAX_PER_TYPE = {t["id"]: t.get("max", 8) for g in GROUPS for t in g["types"]}
 _FALLBACK = {"person": "workforce", "unit": "unit", "project": "project", "infrastructure": "facility"}
 
 _RX = lambda p: re.compile(p, re.I)  # noqa: E731

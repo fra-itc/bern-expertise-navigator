@@ -23,7 +23,7 @@ def client(tmp_path, monkeypatch):
     fake = [Match(id=f"e{i}", name=n, entity_type=t, institution="DCB", url=f"https://www.dcberne.com/{i}", why="test")
             for i, (n, t) in enumerate([("Prof. A", "person"), ("Lab B", "unit"), ("Dr. C", "person")])]
     monkeypatch.setattr(cases, "find_matches", lambda analysis, k=12: ([m.model_copy() for m in fake], None))
-    monkeypatch.setattr(cases.showcase, "build", lambda: {"highlights": [{"quote": "Verified sentence.", "url": "https://x.ch/a"}]})
+    monkeypatch.setattr(cases.showcase, "build", lambda: {"highlights": [{"figure": "100+", "label": {"en": "start-ups"}, "quote": "Verified sentence.", "url": "https://x.ch/a"}]})
     return TestClient(api.app)
 
 
@@ -38,7 +38,12 @@ def test_full_workflow(client):
     c = client.post("/cases", json=REQ).json()
     cid = c["id"]
     assert c["status"] == "new" and c["analysis"]["generated_by"] == "rules" and len(c["matches"]) == 3
-    assert client.post(f"/cases/{cid}/draft", json=OFF).status_code == 400          # no partner chosen yet
+    # one sourced paragraph: every cited asset is numbered, linked, and becomes a pitch partner
+    o = c["offer"]
+    assert [x["n"] for x in o["sources"]] == [1, 2, 3] and all(f"[{x['n']}]" in o["text"] for x in o["sources"])
+    assert all(x["url"].startswith("https://") for x in o["sources"]) and all(m["selected"] for m in c["matches"])
+    client.post(f"/cases/{cid}/selection", json={"selected": [], **OFF})
+    assert client.post(f"/cases/{cid}/draft", json=OFF).status_code == 400          # no partner chosen
     client.post(f"/cases/{cid}/selection", json={"selected": ["e0", "e2"], **OFF})
     d = client.post(f"/cases/{cid}/draft", json={"lang": "de", "slots": ["Di 10:00"], "sender": "Maria", **OFF}).json()
     assert "Prof. A" in d["body"] and "Dr. C" in d["body"] and "Lab B" not in d["body"]  # only chosen partners
@@ -87,10 +92,10 @@ def test_search_first_request_with_filters(client, monkeypatch):
     assert any(a["id"] == "diabetes" and any(n["id"] == "glucose" for n in a["niches"]) for a in areas)
 
 
-def test_company_details_needed_before_pitch(client):
+def test_pitch_does_not_wait_for_company_details(client):
     cid = client.post("/cases", json={"request_text": "partner for a sensor study", **OFF}).json()["id"]
     client.post(f"/cases/{cid}/selection", json={"selected": ["e0"], **OFF})
-    assert client.post(f"/cases/{cid}/brief", json={"lang": "en", **OFF}).status_code == 400   # no company yet
+    assert client.post(f"/cases/{cid}/brief", json={**OFF}).status_code == 200    # no company yet: still generated
     d = client.post(f"/cases/{cid}/details", json={"company": "X AG", "contact_email": "ceo@x.ch", **OFF}).json()
     assert d["company"] == "X AG" and d["contact_email"] == "ceo@x.ch"
 
@@ -116,3 +121,82 @@ def test_broad_search_reads_place_and_topic(client, monkeypatch):
     assert c3["country"] == "" and c3["understood"] == []
     live = client.get("/understand", params={"q": "azienda di glucosio a Milano"}).json()
     assert live["city"] == "Milan" and live["niche"] == "glucose"
+
+
+def test_offer_paragraph_cites_only_listed_assets(monkeypatch):
+    from navigator.cases import Case, summarize_offer
+    monkeypatch.setattr(llm, "available", lambda *a, **k: False)
+    ms = [Match(id=f"p{i}", name=f"Prof. P{i}", entity_type="person", role="Group Head", unit="Lab X", institution="ARTORG",
+                url=f"https://x.ch/p{i}") for i in range(6)]
+    ms += [Match(id="u", name="Lab X", entity_type="unit", institution="ARTORG", url="https://x.ch/u"),
+           Match(id="f", name="Organs-on-Chip Facility", entity_type="infrastructure", institution="ARTORG", url="https://x.ch/f")]
+    case = Case(id="c", created_at="", updated_at="", company="Acme", analysis=plain.RequestAnalysis(summary="s"), matches=ms)
+    o = summarize_offer(case, "en")
+    cited = [x["n"] for x in [s.model_dump() for s in o.sources]]
+    assert len([s for s in o.sources if s.kind == "People"]) == 4            # at most 4 people
+    assert o.text.startswith("For Acme, Bern offers four matching experts: Prof. P0 (Group Head, Lab X) [1]") and "Organs-on-Chip Facility [6]" in o.text
+    assert all(f"[{n}]" in o.text for n in cited) and "[7]" not in o.text
+    assert [m.id for m in ms if m.selected] == ["p0", "p1", "p2", "p3", "u", "f"]
+
+
+def test_offer_roles_are_short_and_units_not_repeated():
+    from navigator.cases import _who
+    m = Match(id="x", name="Prof. R", entity_type="person", unit="Urogenital Engineering",
+              role="Director of the Department of Urology, Inselspital, Bern University Hospital, University of Bern")
+    assert _who(m) == "Director of the Department of Urology, Inselspital, Urogenital Engineering"
+    m = Match(id="y", name="Prof. G", entity_type="person", role="Head Organs-on-Chip Technologies", unit="Organs-on-Chip Technologies")
+    assert _who(m) == "Head Organs-on-Chip Technologies"
+
+
+def test_discursive_paragraph_is_checked_citation_by_citation():
+    from navigator.cases import OfferSource, _check
+    src = [OfferSource(n=1, id="a", name="Prof. Dr. Anna Muster", kind="People", entity_type="person"),
+           OfferSource(n=2, id="b", name="Organs-on-Chip Facility", kind="Facilities", entity_type="infrastructure")]
+    good = ("For sensor validation, Prof. Dr. Anna Muster [1] leads a group on wearable sensing, and the "
+            "Organs-on-Chip Facility [2] offers lab space for tests.")
+    assert _check(good, src)
+    assert not _check("The Organs-on-Chip Facility [1] and Prof. Muster [2] work together.", src)   # swapped citations
+    assert not _check("Prof. Anna Muster [1] leads a group on wearable sensing.", src)              # asset 2 left out
+    assert not _check(good + " A partner [3] helps too.", src)                                     # unknown source
+    assert not _check(good.replace("leads", "is the best expert and leads"), src)                    # superlative
+    assert _check(good.replace("leads", "leading"), src)                                            # "heading" is fine
+
+
+def test_promotional_adjectives_are_removed():
+    from navigator.cases import _clean
+    assert _clean("Bern offers a unique ecosystem and world-class labs.") == "Bern offers an ecosystem and labs."
+
+
+def test_sources_carry_structured_details(client):
+    c = client.post("/cases", json=REQ).json()
+    s = c["offer"]["sources"][0]
+    assert {"role", "unit", "institution", "contact", "expertise", "projects", "infrastructure", "why", "url", "links"} <= set(s)
+    assert s["why"] == "test" and s["url"].startswith("https://")
+
+
+def test_citations_are_inserted_by_name_not_by_the_model():
+    from navigator.cases import OfferSource, _check, _cite
+    src = [OfferSource(n=1, id="a", name="Prof. Dr. Anna Muster", kind="People", entity_type="person"),
+           OfferSource(n=2, id="b", name="enhance-d: Enhanced Diabetes Self-Management", kind="Projects", entity_type="project"),
+           OfferSource(n=3, id="c", name="Mechanical Production", kind="Services", entity_type="infrastructure")]
+    out = _cite("Prof. Muster [3] works with enhance-d, and Mechanical Production makes prototypes.", src)
+    assert out == "Prof. Muster [1] works with enhance-d [2], and Mechanical Production [3] makes prototypes."
+    assert _check(out, src)
+    out = _cite("Prof. Muster works with enhance-d.", src)                   # one of three left out: added at the end
+    assert out == "Prof. Muster [1] works with enhance-d [2]. Also relevant: Mechanical Production [3]." and _check(out, src)
+    assert _cite("Prof. Muster works here.", src) is None                    # two of three left out -> template
+
+
+def test_long_asset_names_may_be_shortened():
+    from navigator.cases import OfferSource, _cite
+    src = [OfferSource(n=1, id="p", name="A Fragility Fracture Integrative Risk Model for CT Recycling", kind="Projects",
+                       entity_type="project")]
+    assert _cite("Projects such as the Fragility Fracture Integrative Risk Model apply AI.", src) == \
+        "Projects such as the Fragility Fracture Integrative Risk Model [1] apply AI."
+
+
+def test_request_without_bern_assets_is_flagged_as_no_match(client, monkeypatch):
+    monkeypatch.setattr(cases, "find_matches", lambda analysis, k=12: ([], "No Bern assets found"))
+    cid = client.post("/cases", json={"request_text": "we make garden furniture", **OFF}).json()["id"]
+    row = next(c for c in client.get("/cases").json() if c["id"] == cid)
+    assert row["matched"] is False

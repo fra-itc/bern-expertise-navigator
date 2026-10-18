@@ -47,7 +47,7 @@ class Settings:
     llm_concurrency: int = int(os.getenv("LLM_CONCURRENCY", "8"))
     llm_stream: bool = os.getenv("LLM_STREAM", "1") == "1"   # stream completions (gateways time out silent requests)
     embed_model: str = os.getenv("EMBED_MODEL", "intfloat/multilingual-e5-base")
-    # Empty -> embedded Qdrant on disk (data/qdrant), no server needed
+    # Empty -> in-process NumPy store (data/vectors.npy, see filestore.py); set -> Qdrant server at this URL
     qdrant_url: str = os.getenv("QDRANT_URL", "")
     collection: str = os.getenv("QDRANT_COLLECTION", "expertise")
     # Set -> Postgres backend (nav schema + pgvector + AGE graph), see storage.py. Empty -> files.
@@ -60,8 +60,15 @@ class Settings:
     min_coverage: float = float(os.getenv("MIN_COVERAGE", "0.5"))
     # Fairness: max results from the same unit in the top-k
     max_per_unit: int = int(os.getenv("MAX_PER_UNIT", "3"))
+    # a researcher known only from publication records (OpenAlex: no role, no lab page) ranks slightly below
+    # the institutes' own profiles at equal relevance
+    record_only_weight: float = float(os.getenv("RECORD_ONLY_WEIGHT", "0.9"))
     use_llm_expansion: bool = os.getenv("USE_LLM_EXPANSION", "1") == "1"
     use_llm_explain: bool = os.getenv("USE_LLM_EXPLAIN", "1") == "1"
+    # Cost on the dashboard: CHF per million tokens. Unset -> a placeholder, shown as such until the real price is known
+    llm_price_in: float = float(os.getenv("LLM_PRICE_IN_CHF_PER_M", "0.50"))
+    llm_price_out: float = float(os.getenv("LLM_PRICE_OUT_CHF_PER_M", "1.50"))
+    llm_price_set: bool = bool(os.getenv("LLM_PRICE_IN_CHF_PER_M") or os.getenv("LLM_PRICE_OUT_CHF_PER_M"))
 
     # ---- papers (navigator.papers, `cli papers`) -------------------------------------
     openalex_base_url: str = os.getenv("OPENALEX_BASE_URL", "https://api.openalex.org").rstrip("/")
@@ -113,6 +120,8 @@ class Source:
     priority_keywords: list[str]
     skip_keywords: list[str]
     page_types: dict[str, list[str]] = field(default_factory=dict)
+    type: str = "web"                                   # "web" (crawl a website) or "openalex" (scholarly API)
+    options: dict = field(default_factory=dict)         # type-specific settings (e.g. institution, subfields)
 
     def allows(self, url: str) -> bool:
         host = (urlparse(url).hostname or "").lower()
@@ -158,6 +167,8 @@ def load_sources(only: str | None = None) -> list[Source]:
             # extra_skip_keywords adds to the defaults instead of replacing them
             skip_keywords=s.get("skip_keywords", d.get("skip_keywords", [])) + s.get("extra_skip_keywords", []),
             page_types=s.get("page_types", {}),
+            type=s.get("type", "web"),
+            options=s.get("openalex", {}),
         ))
     if only and not out:
         raise SystemExit(f"Unknown source '{only}' in sources.yaml")

@@ -7,7 +7,7 @@ import time
 from collections import Counter
 from concurrent.futures import ThreadPoolExecutor, as_completed
 
-from . import classify, crawl, extract, index, llm
+from . import classify, crawl, extract, index, llm, openalex
 from .config import DATA_DIR, load_sources, settings
 from .schema import Entity, Page
 
@@ -22,11 +22,20 @@ def cmd_crawl(a):
             # Be polite: never hit a site again by accident. Re-crawling is an explicit decision.
             print(f"[crawl] {s.name}: using saved pages ({saved}); pass --recrawl (make crawl RECRAWL=1) to fetch again")
             continue
-        crawl.crawl(s)
+        openalex.fetch(s) if s.type == "openalex" else crawl.crawl(s)
 
 
 def _process(p: Page, src, use_llm_classify: bool, extractor: str) -> tuple[Page, list, list[dict], str | None]:
     rejected: list[dict] = []
+    if src and src.type == "openalex":
+        # structured scholarly record: no classification or AI needed, same snippet verifier as the websites
+        ext, pubs = openalex.to_extracted(p)
+        v = extract.verify(ext, p, rejected)
+        if not v:
+            return p, [], rejected, None
+        ent = extract.to_entity(v, p, src.label, "openalex")
+        ent.evidence += openalex.publication_evidence(p, pubs)
+        return p, [ent], rejected, None
     p.page_type = classify.classify(p, src, use_llm=use_llm_classify)
     if p.page_type == "other" and extractor == "apertus":
         return p, [], rejected, None
@@ -82,7 +91,9 @@ def cmd_extract(a):
                 print(f"  ! {p.url}: {err[:200]}")
             if i % 25 == 0:
                 print(f"[extract] {i}/{len(pages)} pages, {len(ents)} entities, {len(rejected)} rejected claims")
-    merged = extract.derive_units(extract.link_site_structure(extract.merge(existing + ents)))
+    merged = extract.link_site_structure(extract.merge(existing + ents))
+    merged = openalex.attach_to_web_profiles(merged, {s.name for s in srcs.values() if s.type == "openalex"})
+    merged = extract.derive_units(merged)
     crawl.dump_jsonl(merged, out_path)
     extract.write_rejected(rejected, a.source)
     n_llm_pages = sum(v for k, v in types.items() if k != "other")

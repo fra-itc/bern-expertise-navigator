@@ -39,13 +39,17 @@ def find_terms(text: str, lang: str = "en") -> list[dict]:
     found = []
     for t in glossary():
         for f in t["forms"]:
-            if re.search(rf"(?<![\w-]){re.escape(f)}(?![\w-])", low):
+            # an abbreviation counts only in capitals: "AID" is automated insulin delivery, "hearing aid" is not,
+            # nor the Italian "ai" or "Oct" in a date
+            short = " " not in f and len(f) <= 4
+            if re.search(rf"(?<![\w-]){re.escape(f.upper() if short else f)}(?![\w-])", text if short else low):
                 found.append({"term": t["term"], "found_as": f, "plain": t.get(lang) or t["en"], "source": "glossary"})
                 break
     return found
 
 
 class RequestAnalysis(BaseModel):
+    company_name: str = Field("", description="The company's own name as written in the text, if any")
     summary: str = Field(description="2-3 sentence company profile in clear, professional business language")
     company_does: str = Field("", description="One sentence: the company's business activity")
     company_needs: list[str] = Field([], description="Business needs the canton can address, as short phrases")
@@ -58,13 +62,16 @@ class RequestAnalysis(BaseModel):
 
 
 class _LLMAnalysis(BaseModel):
+    # only the summary is required: in the fast (prompt-only) mode the model sometimes drops a field,
+    # and a missing one is filled from the rule-based analysis instead of discarding the whole answer
     summary: str
-    company_does: str
-    company_needs: list[str]
-    offerings: list[str]
-    keywords: list[str]
-    sector: str
-    search_query: str
+    company_name: str = ""
+    company_does: str = ""
+    company_needs: list[str] = []
+    offerings: list[str] = []
+    keywords: list[str] = []
+    sector: str = ""
+    search_query: str = ""
 
 
 _NEED = re.compile(r"\b(looking for|look for|seek|seeking|need|needs|want|wish|interested in|would like|plan to|"
@@ -159,7 +166,7 @@ def analyze_company(name: str, description: str, text: str, need: str = "", lang
     terms = find_terms(" ".join([need, description, text]), lang)
     query = " ".join(dict.fromkeys([need.strip(), *(t["term"] for t in terms[:8])])).strip() \
         or (description or text)[:200]
-    base = RequestAnalysis(summary=summary, company_does=does, company_needs=needs,
+    base = RequestAnalysis(company_name=name, summary=summary, company_does=does, company_needs=needs,
                            offerings=_offerings(name, page_titles or []),
                            keywords=_keywords(f"{description}\n{text}", terms), sector="",
                            search_query=query[:300], terms=terms, generated_by="rules")
@@ -181,6 +188,8 @@ def analyze_company(name: str, description: str, text: str, need: str = "", lang
                 + "Text from the company's website, its documents or the officer's notes:\n<<<\n" + text[:7000]
                 + "\n>>>\n\n"
                 "Return:\n"
+                "- company_name: the company's own name exactly as written in the text (e.g. \"Dexcom\"), or \"\" "
+                "if the text does not name it.\n"
                 "- summary: a 2-3 sentence company profile (what the company is, its market, its stage if stated).\n"
                 "- company_does: one sentence describing its business activity.\n"
                 "- company_needs: at most 4 business needs Bern's research, clinical and industrial ecosystem could "
@@ -194,11 +203,12 @@ def analyze_company(name: str, description: str, text: str, need: str = "", lang
                 "- sector: e.g. medtech / diabetes technology.\n"
                 "- search_query: 5-10 technical keywords to find matching university researchers, labs, "
                 "clinical partners and facilities.")},
-        ], _LLMAnalysis, max_tokens=900)
+        ], _LLMAnalysis, mode="none", max_tokens=900)
     except llm.LLMError:
         return base
     query = " ".join(x for x in [need.strip(), r.search_query] if x) or base.search_query
-    return RequestAnalysis(summary=r.summary, company_does=r.company_does,
+    return RequestAnalysis(company_name=name or r.company_name.strip()[:120] or base.company_name,
+                           summary=r.summary, company_does=r.company_does or base.company_does,
                            company_needs=needs + [n for n in r.company_needs if n not in needs],
                            offerings=r.offerings[:6] or base.offerings, keywords=r.keywords[:10] or base.keywords,
                            sector=r.sector, search_query=query[:300], terms=terms, generated_by="apertus")

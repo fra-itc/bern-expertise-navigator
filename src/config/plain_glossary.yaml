@@ -73,6 +73,14 @@ terms:
     aka: [cochlear implants, hearing implant, hörimplantat]
     en: An electronic device placed in the inner ear that lets deaf people hear again.
     de: Ein elektronisches Gerät im Innenohr, mit dem gehörlose Menschen wieder hören können.
+  - term: hearing aid
+    aka: [hearing aids, hörgerät, hörgeräte, appareil auditif, appareils auditifs, apparecchio acustico, apparecchi acustici]
+    en: A small device worn in or behind the ear that makes sounds louder for people who hear poorly.
+    de: Ein kleines Gerät im oder hinter dem Ohr, das Töne für schwerhörige Menschen lauter macht.
+  - term: hearing loss
+    aka: [hearing impairment, hörverlust, schwerhörigkeit, perte auditive, ipoacusia, perdita uditiva]
+    en: When a person hears less well than normal, from mild difficulty to deafness.
+    de: Wenn jemand schlechter hört als normal, von leichten Schwierigkeiten bis zur Gehörlosigkeit.
   - term: neurosurgery
     en: Surgery on the brain, spine or nerves.
     de: Operationen am Gehirn, an der Wirbelsäule oder an Nerven.

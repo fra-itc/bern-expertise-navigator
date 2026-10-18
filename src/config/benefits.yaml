@@ -1,0 +1,207 @@
+# ---------------------------------------------------------------------------
+# How Bern resolves a company's need, and an ESTIMATED benefit, for the CEO pitch.
+#
+# Each company need (from the request analysis) gets the first rule whose `match` regex finds it
+# (case-insensitive); a rule already used for another need is skipped, so two needs never show the
+# same figure. A need no rule matches gets the rule of its partners' group (`fallback`).
+#
+# The figures are INDICATIVE ORDERS OF MAGNITUDE, not facts about Bern: the pitch always labels them
+# "Estimate" and prints `basis` underneath. Review them with the business-development team before
+# relying on them; change a figure here and every new pitch uses it.
+#
+#   solve      CEO pitch: how Bern addresses the need (business language)
+#   figure     the estimated benefit; gain: what the figure means
+#   basis      how the estimate is reasoned (shown under the figure)
+#   need_plain preface: the need in everyday words ("they need ...")
+#   plain      preface: how it helps, in everyday words
+#   calc       CEO pitch: how the figure is calculated (assumptions and arithmetic)
+#   mail       email to the CEO: the benefit as part of a sentence ({figure} = the figure)
+#   groups     partner groups that can address this need (used when no partner names the need)
+# ---------------------------------------------------------------------------
+
+fallback: {people: expertise, org: expertise, activities: expertise, company: expertise,
+           offering: facility, capital: funding}
+
+rules:
+  - id: regulatory
+    match: "\\bce\\b|ce[- ]mark|\\bmdr\\b|\\bivdr\\b|\\bfda\\b|\\bregulat|\\bcertif|\\bapproval|conformity|zulassung|konformit|marquage|homologation|réglementaire"
+    groups: [people, org]
+    figure: {en: "3–6 months", de: "3–6 Monate", fr: "3 à 6 mois"}
+    gain: {en: "earlier market access", de: "früherer Marktzugang", fr: "accès au marché plus rapide"}
+    solve:
+      en: "Prepare the regulatory file and the clinical evidence with Bern teams that already handle regulatory and quality questions for medical devices."
+      de: "Zulassungsdossier und klinische Evidenz mit Berner Teams vorbereiten, die regulatorische und Qualitätsfragen für Medizinprodukte bereits bearbeiten."
+      fr: "Préparer le dossier réglementaire et les preuves cliniques avec des équipes bernoises qui traitent déjà les questions réglementaires et de qualité des dispositifs médicaux."
+    basis:
+      en: "Estimate: time typically lost to rework when documentation and clinical evidence are planned without experienced support."
+      de: "Schätzung: Zeit, die typischerweise durch Nacharbeit verloren geht, wenn Dokumentation und klinische Evidenz ohne erfahrene Unterstützung geplant werden."
+      fr: "Estimation : temps généralement perdu en reprises lorsque la documentation et les preuves cliniques sont préparées sans soutien expérimenté."
+    need_plain: {en: "official approval to sell a medical product", de: "die offizielle Zulassung, um ein Medizinprodukt zu verkaufen", fr: "l'autorisation officielle pour vendre un produit médical"}
+    plain:
+      en: "People in Bern who know the approval rules can help them get it right the first time. We estimate this saves 3 to 6 months."
+      de: "Fachleute in Bern, die die Zulassungsregeln kennen, helfen, es beim ersten Mal richtig zu machen. Wir schätzen, das spart 3 bis 6 Monate."
+      fr: "Des personnes à Berne qui connaissent les règles d'autorisation les aident à bien faire du premier coup. Nous estimons le gain à 3 à 6 mois."
+    calc:
+      en: "Without experienced support, a first conformity review usually leads to 1–2 extra rounds of corrections of about 3 months each: 1–2 × 3 months = 3–6 months. With specialists preparing the file from the start, we assume no extra round."
+      de: "Ohne erfahrene Unterstützung führt eine erste Konformitätsprüfung meist zu 1–2 zusätzlichen Korrekturrunden von je etwa 3 Monaten: 1–2 × 3 Monate = 3–6 Monate. Mit Fachleuten, die das Dossier von Anfang an vorbereiten, nehmen wir keine zusätzliche Runde an."
+      fr: "Sans soutien expérimenté, un premier examen de conformité entraîne généralement 1 à 2 tours de corrections supplémentaires d'environ 3 mois chacun : 1–2 × 3 mois = 3 à 6 mois. Avec des spécialistes qui préparent le dossier dès le départ, nous supposons aucun tour supplémentaire."
+    mail:
+      en: "your path to market approval could be about {figure} shorter, because the regulatory file and the clinical evidence would be prepared with people who already handle these questions for medical devices"
+      de: "Ihr Weg zur Marktzulassung könnte etwa {figure} kürzer werden, weil Zulassungsdossier und klinische Evidenz mit Fachleuten vorbereitet würden, die solche Fragen für Medizinprodukte bereits bearbeiten"
+      fr: "votre chemin vers l'autorisation de mise sur le marché pourrait être raccourci d'environ {figure}, car le dossier réglementaire et les preuves cliniques seraient préparés avec des personnes qui traitent déjà ces questions pour des dispositifs médicaux"
+  - id: clinical
+    match: "clinic|trial|\\bstud(y|ies)|studie|étude|patient|validat|pilot|test (it|our|the)|testing with"
+    groups: [activities, people, org]
+    figure: {en: "6–12 months", de: "6–12 Monate", fr: "6 à 12 mois"}
+    gain: {en: "earlier clinical evidence", de: "frühere klinische Evidenz", fr: "preuves cliniques plus tôt"}
+    solve:
+      en: "Run the clinical work with Bern teams that already conduct studies in this field, with study staff and access to patients in place."
+      de: "Die klinische Arbeit mit Berner Teams durchführen, die in diesem Gebiet bereits Studien machen, mit Studienpersonal und Zugang zu Patientinnen und Patienten."
+      fr: "Mener le travail clinique avec des équipes bernoises qui réalisent déjà des études dans ce domaine, avec le personnel d'étude et l'accès aux patients en place."
+    basis:
+      en: "Estimate: typical time to set up a new study site (ethics approval, contracts, recruitment) compared with working with a centre that already runs comparable studies."
+      de: "Schätzung: typische Zeit für den Aufbau eines neuen Studienzentrums (Ethikbewilligung, Verträge, Rekrutierung) im Vergleich zu einem Zentrum, das vergleichbare Studien bereits durchführt."
+      fr: "Estimation : délai habituel pour ouvrir un nouveau centre d'étude (avis éthique, contrats, recrutement) par rapport à un centre qui mène déjà des études comparables."
+    need_plain: {en: "to test their product with patients", de: "ihr Produkt mit Patientinnen und Patienten zu testen", fr: "tester leur produit avec des patients"}
+    plain:
+      en: "Teams in Bern already test products like theirs with patients, so they do not have to start from zero. We estimate this saves 6 to 12 months."
+      de: "Teams in Bern testen solche Produkte bereits mit Patienten, die Firma muss also nicht bei null anfangen. Wir schätzen, das spart 6 bis 12 Monate."
+      fr: "Des équipes à Berne testent déjà ce genre de produit avec des patients : l'entreprise ne part pas de zéro. Nous estimons le gain à 6 à 12 mois."
+    calc:
+      en: "New study site: ethics approval and contracts 4–6 months + building study staff and patient recruitment 5–9 months = 9–15 months. Centre that already runs comparable studies: about 3 months to start. 9–15 − 3 = 6–12 months."
+      de: "Neues Studienzentrum: Ethikbewilligung und Verträge 4–6 Monate + Aufbau von Studienpersonal und Rekrutierung 5–9 Monate = 9–15 Monate. Zentrum mit vergleichbaren laufenden Studien: etwa 3 Monate bis zum Start. 9–15 − 3 = 6–12 Monate."
+      fr: "Nouveau centre d'étude : avis éthique et contrats 4 à 6 mois + mise en place du personnel et du recrutement 5 à 9 mois = 9 à 15 mois. Centre qui mène déjà des études comparables : environ 3 mois pour démarrer. 9–15 − 3 = 6 à 12 mois."
+    mail:
+      en: "your clinical evidence could be available about {figure} earlier, by working with teams in Bern that already run studies in this field, with study staff and access to patients in place"
+      de: "Ihre klinische Evidenz könnte etwa {figure} früher vorliegen, wenn Sie mit Berner Teams arbeiten, die in diesem Gebiet bereits Studien durchführen, mit Studienpersonal und Zugang zu Patientinnen und Patienten"
+      fr: "vos preuves cliniques pourraient être disponibles environ {figure} plus tôt, en travaillant avec des équipes bernoises qui mènent déjà des études dans ce domaine, avec le personnel d'étude et l'accès aux patients en place"
+  - id: location
+    match: "office|subsidiar|settle|establish|relocat|presence|branch|headquarter|expan|market entry|niederlassung|standort|ansied|filiale|implant|bureau"
+    groups: []
+    figure: {en: "1 contact", de: "1 Ansprechstelle", fr: "1 interlocuteur"}
+    gain: {en: "for premises, permits and introductions", de: "für Räume, Bewilligungen und Kontakte", fr: "pour locaux, autorisations et mises en relation"}
+    solve:
+      en: "The Canton of Bern's business development team accompanies the set-up — premises, permits and introductions to the local ecosystem — through a single contact."
+      de: "Die Wirtschaftsförderung des Kantons Bern begleitet die Ansiedlung — Räume, Bewilligungen und Kontakte im lokalen Ökosystem — über eine einzige Ansprechstelle."
+      fr: "La promotion économique du canton de Berne accompagne l'implantation — locaux, autorisations et mises en relation avec l'écosystème local — par un interlocuteur unique."
+    basis:
+      en: "Service of the cantonal business development; the time saved depends on the project."
+      de: "Dienstleistung der kantonalen Wirtschaftsförderung; die Zeitersparnis hängt vom Projekt ab."
+      fr: "Service de la promotion économique cantonale ; le gain de temps dépend du projet."
+    need_plain: {en: "to open an office in Switzerland", de: "ein Büro in der Schweiz zu eröffnen", fr: "ouvrir un bureau en Suisse"}
+    plain:
+      en: "Our team can help them find space and deal with permits, with one person as their contact."
+      de: "Unser Team hilft bei Räumen und Bewilligungen, mit einer einzigen Ansprechperson."
+      fr: "Notre équipe les aide pour les locaux et les autorisations, avec une seule personne de contact."
+    calc:
+      en: "Not expressed in time or money: one contact at the canton replaces separate searches for premises, permits and local partners. The time saved depends on the project."
+      de: "Nicht in Zeit oder Geld ausgedrückt: Eine Ansprechstelle beim Kanton ersetzt die getrennte Suche nach Räumen, Bewilligungen und lokalen Partnern. Die Zeitersparnis hängt vom Projekt ab."
+      fr: "Non exprimé en temps ou en argent : un interlocuteur au canton remplace des recherches séparées de locaux, d'autorisations et de partenaires locaux. Le gain de temps dépend du projet."
+    mail:
+      en: "setting up in Switzerland would be simpler: our team would be your single contact for premises, permits and introductions"
+      de: "die Ansiedlung in der Schweiz würde einfacher: Unser Team wäre Ihre einzige Ansprechstelle für Räume, Bewilligungen und Kontakte"
+      fr: "votre implantation en Suisse serait plus simple : notre équipe serait votre interlocuteur unique pour les locaux, les autorisations et les mises en relation"
+  - id: facility
+    match: "prototyp|manufactur|production|fabricat|testing|test bench|laborator|\\blab\\b|equipment|facilit|infrastructure|imaging|measur|herstell|fertig|labor|gerät"
+    groups: [offering]
+    figure: {en: "CHF 0.1–0.5 M", de: "CHF 0,1–0,5 Mio.", fr: "CHF 0,1 à 0,5 M"}
+    gain: {en: "investment avoided", de: "vermiedene Investition", fr: "d'investissement évité"}
+    solve:
+      en: "Use existing laboratories, test benches and prototyping workshops in Bern instead of buying and qualifying equipment."
+      de: "Bestehende Labore, Prüfstände und Prototypen-Werkstätten in Bern nutzen, statt Geräte zu kaufen und zu qualifizieren."
+      fr: "Utiliser les laboratoires, bancs d'essai et ateliers de prototypage existants à Berne au lieu d'acheter et de qualifier des équipements."
+    basis:
+      en: "Estimate: order of magnitude for buying and qualifying a comparable laboratory or test set-up; access is usually paid per use."
+      de: "Schätzung: Grössenordnung für Kauf und Qualifizierung einer vergleichbaren Labor- oder Prüfeinrichtung; die Nutzung wird meist pro Einsatz verrechnet."
+      fr: "Estimation : ordre de grandeur de l'achat et de la qualification d'un laboratoire ou d'un banc comparable ; l'accès est généralement facturé à l'usage."
+    need_plain: {en: "labs and machines to build and test their product", de: "Labore und Maschinen, um ihr Produkt zu bauen und zu prüfen", fr: "des laboratoires et des machines pour fabriquer et tester leur produit"}
+    plain:
+      en: "They can use labs and machines that already exist in Bern instead of buying their own. We estimate this avoids spending CHF 100,000 to 500,000."
+      de: "Sie können bestehende Labore und Maschinen in Bern nutzen, statt eigene zu kaufen. Wir schätzen, das erspart CHF 100'000 bis 500'000."
+      fr: "Ils peuvent utiliser des laboratoires et des machines qui existent déjà à Berne au lieu d'acheter les leurs. Nous estimons l'économie à CHF 100 000 à 500 000."
+    calc:
+      en: "Buying a comparable laboratory or test set-up: equipment CHF 80,000–400,000 + installation and qualification CHF 20,000–100,000 = CHF 0.1–0.5 M. Using existing facilities in Bern is paid per use; that cost is not deducted here."
+      de: "Kauf einer vergleichbaren Labor- oder Prüfeinrichtung: Geräte CHF 80'000–400'000 + Installation und Qualifizierung CHF 20'000–100'000 = CHF 0,1–0,5 Mio. Die Nutzung bestehender Einrichtungen in Bern wird pro Einsatz verrechnet; diese Kosten sind hier nicht abgezogen."
+      fr: "Achat d'un laboratoire ou d'un banc comparable : équipements CHF 80 000 à 400 000 + installation et qualification CHF 20 000 à 100 000 = CHF 0,1 à 0,5 M. L'utilisation des infrastructures bernoises est facturée à l'usage ; ce coût n'est pas déduit ici."
+    mail:
+      en: "you could avoid an investment of roughly {figure} by using existing laboratories, test benches and prototyping workshops in Bern"
+      de: "Sie könnten eine Investition von rund {figure} vermeiden, indem Sie bestehende Labore, Prüfstände und Prototypen-Werkstätten in Bern nutzen"
+      fr: "vous pourriez éviter un investissement d'environ {figure} en utilisant les laboratoires, bancs d'essai et ateliers de prototypage existants à Berne"
+  - id: data
+    match: "\\bdata\\b|daten|données|software|algorithm|artificial intelligence|\\bai\\b|\\bki\\b|machine learning|digital|dataset"
+    groups: [people, org, activities, offering]
+    figure: {en: "6–12 months", de: "6–12 Monate", fr: "6 à 12 mois"}
+    gain: {en: "development time saved", de: "eingesparte Entwicklungszeit", fr: "de développement économisés"}
+    solve:
+      en: "Build on Bern research teams that already develop algorithms and work with clinical data, instead of starting the development alone."
+      de: "Auf Berner Forschungsteams aufbauen, die bereits Algorithmen entwickeln und mit klinischen Daten arbeiten, statt die Entwicklung allein zu beginnen."
+      fr: "S'appuyer sur des équipes bernoises qui développent déjà des algorithmes et travaillent avec des données cliniques, au lieu de commencer seul."
+    basis:
+      en: "Estimate: time to a first validated algorithm or data pipeline when starting without an experienced partner."
+      de: "Schätzung: Zeit bis zu einem ersten validierten Algorithmus oder einer Datenpipeline ohne erfahrenen Partner."
+      fr: "Estimation : délai pour un premier algorithme ou flux de données validé sans partenaire expérimenté."
+    need_plain: {en: "computer and data skills", de: "Fachwissen zu Software und Daten", fr: "des compétences en informatique et en données"}
+    plain:
+      en: "Teams in Bern already write this kind of software, so the company can build on their work. We estimate this saves 6 to 12 months."
+      de: "Teams in Bern schreiben bereits solche Software, die Firma kann darauf aufbauen. Wir schätzen, das spart 6 bis 12 Monate."
+      fr: "Des équipes à Berne écrivent déjà ce type de logiciel ; l'entreprise peut s'appuyer sur leur travail. Nous estimons le gain à 6 à 12 mois."
+    calc:
+      en: "First validated algorithm or data pipeline built from scratch: 12–18 months. Building on a team with existing methods and data: about 6 months. 12–18 − 6 = 6–12 months."
+      de: "Erster validierter Algorithmus oder Datenpipeline von Grund auf: 12–18 Monate. Aufbauend auf einem Team mit bestehenden Methoden und Daten: etwa 6 Monate. 12–18 − 6 = 6–12 Monate."
+      fr: "Premier algorithme ou flux de données validé à partir de zéro : 12 à 18 mois. En s'appuyant sur une équipe disposant de méthodes et de données : environ 6 mois. 12–18 − 6 = 6 à 12 mois."
+    mail:
+      en: "your development could move about {figure} faster by building on research teams that already develop algorithms and work with clinical data"
+      de: "Ihre Entwicklung könnte etwa {figure} schneller vorankommen, wenn Sie auf Forschungsteams aufbauen, die bereits Algorithmen entwickeln und mit klinischen Daten arbeiten"
+      fr: "votre développement pourrait gagner environ {figure} en vous appuyant sur des équipes qui développent déjà des algorithmes et travaillent avec des données cliniques"
+  - id: funding
+    match: "fund|grant|financ|innosuisse|förder|subvention|investor|capital"
+    groups: [capital, people, org]
+    figure: {en: "", de: "", fr: ""}
+    gain: {en: "", de: "", fr: ""}
+    solve:
+      en: "A joint project with a Bern research partner can apply to Swiss innovation programmes such as Innosuisse, which fund the research partner's share of the work."
+      de: "Ein gemeinsames Projekt mit einem Berner Forschungspartner kann bei Schweizer Innovationsprogrammen wie Innosuisse eingereicht werden, die den Anteil des Forschungspartners finanzieren."
+      fr: "Un projet commun avec un partenaire de recherche bernois peut être soumis à des programmes d'innovation suisses comme Innosuisse, qui financent la part du partenaire de recherche."
+    basis:
+      en: "Eligibility and amounts are decided by the programme for each application."
+      de: "Über Berechtigung und Beträge entscheidet das Programm bei jedem Gesuch."
+      fr: "L'éligibilité et les montants sont décidés par le programme pour chaque demande."
+    need_plain: {en: "money for research", de: "Geld für Forschung", fr: "de l'argent pour la recherche"}
+    plain:
+      en: "If they work with a research team in Bern, Swiss programmes can pay for the research team's part."
+      de: "Arbeiten sie mit einem Berner Forschungsteam, können Schweizer Programme dessen Anteil bezahlen."
+      fr: "S'ils travaillent avec une équipe de recherche bernoise, des programmes suisses peuvent payer la part de cette équipe."
+    calc:
+      en: "No figure: whether a project is funded, and how much, is decided by the programme for each application."
+      de: "Keine Zahl: Ob und wie viel ein Projekt erhält, entscheidet das Programm bei jedem Gesuch."
+      fr: "Pas de chiffre : le programme décide pour chaque demande si un projet est financé, et à quelle hauteur."
+    mail:
+      en: "a joint project with a Bern research partner could apply to Swiss innovation programmes such as Innosuisse, which fund the research partner's share of the work"
+      de: "ein gemeinsames Projekt mit einem Berner Forschungspartner könnte bei Schweizer Innovationsprogrammen wie Innosuisse eingereicht werden, die den Anteil des Forschungspartners finanzieren"
+      fr: "un projet commun avec un partenaire de recherche bernois pourrait être soumis à des programmes d'innovation suisses comme Innosuisse, qui financent la part du partenaire de recherche"
+  - id: expertise
+    match: "expert|expertise|know-how|advice|advis|consult|scientif|research|partner|kompetenz|beratung|fachwissen|conseil|savoir"
+    groups: [people, org, activities]
+    figure: {en: "3–6 months", de: "3–6 Monate", fr: "3 à 6 mois"}
+    gain: {en: "faster access to know-how", de: "schnellerer Zugang zu Fachwissen", fr: "accès plus rapide au savoir-faire"}
+    solve:
+      en: "Work directly with Bern scientists who already work on this topic, instead of recruiting and training specialised staff."
+      de: "Direkt mit Berner Forschenden zusammenarbeiten, die bereits an diesem Thema arbeiten, statt spezialisiertes Personal zu rekrutieren und einzuarbeiten."
+      fr: "Travailler directement avec des scientifiques bernois qui travaillent déjà sur ce sujet, au lieu de recruter et former du personnel spécialisé."
+    basis:
+      en: "Estimate: usual time to recruit and onboard specialised R&D profiles in medtech."
+      de: "Schätzung: übliche Zeit, um spezialisierte F&E-Profile in der Medtech zu rekrutieren und einzuarbeiten."
+      fr: "Estimation : délai habituel pour recruter et intégrer des profils R&D spécialisés en medtech."
+    need_plain: {en: "experts who know their field", de: "Fachleute, die ihr Gebiet kennen", fr: "des experts de leur domaine"}
+    plain:
+      en: "They can work with experts in Bern right away instead of hiring new staff. We estimate this saves 3 to 6 months."
+      de: "Sie können sofort mit Fachleuten in Bern arbeiten, statt neues Personal einzustellen. Wir schätzen, das spart 3 bis 6 Monate."
+      fr: "Ils peuvent travailler tout de suite avec des experts à Berne au lieu d'embaucher. Nous estimons le gain à 3 à 6 mois."
+    calc:
+      en: "Recruiting a specialised R&D profile: 2–4 months + onboarding 1–2 months = 3–6 months. Working with scientists already active on the topic can start right away."
+      de: "Rekrutierung eines spezialisierten F&E-Profils: 2–4 Monate + Einarbeitung 1–2 Monate = 3–6 Monate. Die Zusammenarbeit mit Forschenden, die bereits am Thema arbeiten, kann sofort beginnen."
+      fr: "Recrutement d'un profil R&D spécialisé : 2 à 4 mois + intégration 1 à 2 mois = 3 à 6 mois. Le travail avec des scientifiques déjà actifs sur le sujet peut commencer tout de suite."
+    mail:
+      en: "you could gain the know-how you are looking for about {figure} sooner, by working directly with scientists who already work on it instead of recruiting"
+      de: "Sie könnten das gesuchte Fachwissen etwa {figure} früher nutzen, indem Sie direkt mit Forschenden arbeiten, die bereits daran arbeiten, statt zu rekrutieren"
+      fr: "vous pourriez accéder au savoir-faire recherché environ {figure} plus tôt, en travaillant directement avec des scientifiques qui y travaillent déjà plutôt qu'en recrutant"

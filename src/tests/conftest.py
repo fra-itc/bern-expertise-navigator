@@ -7,9 +7,10 @@ import pytest
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "app"))
 
-from navigator import config  # noqa: E402
+from navigator import config, dashboard  # noqa: E402
 
 
 @pytest.fixture(autouse=True)
-def _file_backend_by_default(monkeypatch):
+def _file_backend_by_default(monkeypatch, tmp_path):
     monkeypatch.setattr(config.settings, "database_url", "")
+    monkeypatch.setattr(dashboard, "USAGE_PATH", tmp_path / "usage.jsonl")   # never the real usage log
