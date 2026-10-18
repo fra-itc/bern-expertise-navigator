@@ -53,18 +53,58 @@ sources:
       unit: ["/focus-area", "/innovation/"]
 
   - name: unibe
-    label: University of Bern
-    # Seeds are generated from the supplied subdomain inventory (one host per line)
-    seeds_file: config/unibe_subdomains.txt
-    domains_from_seeds: true
+    label: University of Bern (medtech / biomedical)
+    # Medtech/biomedical perimeter only. Domains are suffix-matched (dbmr.unibe.ch also covers www.dbmr.unibe.ch).
+    # Never list unibe.ch / www.unibe.ch: that would admit every faculty and duplicate ARTORG (a separate source).
+    # Seeds and robots.txt verified 2026-10-18. Faculty/staff directory pages (/personenpool_index/) are included on purpose.
+    domains: [medizin.unibe.ch, dbmr.unibe.ch, dcr.unibe.ch, ddm.unibe.ch, sitem.unibe.ch,
+              ispm.unibe.ch, tki.unibe.ch, pki.unibe.ch, ibmm.unibe.ch, igmp.unibe.ch,
+              ana.unibe.ch, physiologie.unibe.ch, ifik.unibe.ch, mcid.unibe.ch, bcpm.unibe.ch,
+              scrm.unibe.ch, mic.unibe.ch, ngs.unibe.ch, bioinformatics.unibe.ch, cvrc.unibe.ch,
+              iap.unibe.ch, neuroscience.unibe.ch]
+    seeds:
+      # groups/units first: equal priority is FIFO in seed order
+      - https://www.dbmr.unibe.ch/research/research_programs/index_eng.html
+      - https://www.tki.unibe.ch/research/research_groups/index_eng.html
+      - https://www.pki.unibe.ch/research/research_groups/index_eng.html
+      - https://www.ibmm.unibe.ch/research/group_leaders/index_eng.html
+      - https://physiologie.unibe.ch/research/research_groups/index_eng.html
+      - https://www.ispm.unibe.ch/research/research_groups_and_themes/index_eng.html
+      - https://ddm.unibe.ch/research/research_programs/index_eng.html
+      - https://www.iap.unibe.ch/research/biomedical_photonics/index_eng.html
+      - https://www.bioinformatics.unibe.ch/research/projects/index_eng.html
+      - https://www.medizin.unibe.ch/research/research_units/index_eng.html
+      - https://www.medizin.unibe.ch/plattformen/index_eng.html
+      # infrastructure / core facilities
+      - https://www.medizin.unibe.ch/core_facilities/index_eng.html
+      - https://www.dbmr.unibe.ch/services/core_facilities/index_eng.html
+      - https://www.mic.unibe.ch/services
+      - https://www.ngs.unibe.ch/services/applications
+      - https://www.bioinformatics.unibe.ch/services/index_eng.html
+      - https://dcr.unibe.ch/services/index_eng.html
+      - https://www.pki.unibe.ch/services/index_eng.html
+      - https://www.igmp.unibe.ch/services/index_eng.html
+      - https://www.scrm.unibe.ch/platform/index_eng.html
+      # institutes / people
+      - https://www.sitem.unibe.ch/about_us/index_eng.html
+      - https://www.bcpm.unibe.ch/research/projects_lighthouse
+      - https://www.mcid.unibe.ch/about_us/mcid_members/index_eng.html
+      - https://www.ispm.unibe.ch/about_us/ispm_team/index_eng.html
+      - https://www.dbmr.unibe.ch/about_us/staff/personenpool_index/index_eng.html
+      - https://www.igmp.unibe.ch/research/index_eng.html
     max_pages: 1500
     max_depth: 3
-    extra_skip_keywords: [index_ger.html, index_fra.html, /studium/, /studies/, /publications/, /publikationen/]
+    delay_seconds: 1.0
+    extra_skip_keywords: [artorg.unibe.ch, index_ger.html, index_fra.html, index_ita.html,
+                          /studium/, /studies/, /studies_, /publications/, /publikationen/,
+                          /continuing_education/, /teaching/, /about_us/job, /open_positions,
+                          /annual_report, /media_release, /safety/, /annual_meeting, /newsletter]
     page_types:
-      person: ["/ueber_uns/personen/", "/about_us/people/", "/personen/", "/people/", "/group_members/", "/team/"]
-      unit: ["/ueber_uns/", "/about_us/", "/forschung/", "/research/"]
-      project: ["/forschungsprojekte/", "/research_projects/", "/projekte/"]
-      infrastructure: ["/dienstleistungen/", "/services/", "/infrastruktur/", "/facilities/"]
+      person: ["/personenpool_index/", "/about_us/personen/", "/mcid_members/", "/ispm_team/",
+               "/about_us/members", "/members/", "/people/", "/group_members/", "/team/"]
+      infrastructure: ["/core_facilities/", "/plattformen/", "/services/", "/platform/", "/dienstleistungen/", "/facilities/"]
+      project: ["/projects", "/research_projects/", "/projekte/"]
+      unit: ["/research_programs/", "/research_groups", "/research/group_", "/research/", "/about_us/", "/forschung/"]
 
   # Example of adding a 4th site (used in the live demo):
   # - name: insel
