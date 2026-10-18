@@ -21,6 +21,7 @@ services:
   caddy:
     image: caddy:2.8.4
     restart: unless-stopped
+    env_file: ../caddy.env       # STAFF_AUTH_HASH for basic auth on the staff API (server only, never in git)
     ports: ["80:80", "443:443"]
     volumes:
       - ./Caddyfile:/etc/caddy/Caddyfile:ro
