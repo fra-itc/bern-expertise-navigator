@@ -1,4 +1,4 @@
-"""Pipeline CLI:  python -m navigator.cli {crawl,extract,index,all,stats} [--source NAME]  |  papers {collect,embed,link,all}"""
+"""Pipeline CLI:  python -m navigator.cli {crawl,extract,index,all,stats} [--source NAME]  |  papers {collect,embed,link,topics,all}"""
 from __future__ import annotations
 
 import argparse
@@ -121,7 +121,8 @@ def cmd_stats(a):
 
 
 def cmd_papers(a):
-    """papers {collect,embed,link,all}: OpenAlex papers of the indexed people (see navigator/papers.py)."""
+    """papers {collect,embed,link,topics,all}: OpenAlex papers of the indexed people (see navigator/papers.py).
+    topics = only the topic mapping and the ABOUT edges (--remap: decide every topic again on a populated DB)."""
     from . import papers
     from .openalex_client import OpenAlexClient
     from .storage import index_store
@@ -169,7 +170,8 @@ def cmd_papers(a):
         out["embed"] = papers.embed_pending(st)
     if "link" in steps:
         out["similar"] = papers.link_similar(st)
-        out["topics"] = papers.link_topics(st, use_llm=False if a.no_llm else None)
+    if "link" in steps or "topics" in steps:
+        out["topics"] = papers.link_topics(st, use_llm=False if a.no_llm else None, remap=a.remap)
     out["llm_usage"] = dict(llm.usage)
     (DATA_DIR / "papers").mkdir(parents=True, exist_ok=True)
     (DATA_DIR / "papers" / f"stats_{a.step}.json").write_text(json.dumps(out, indent=2, default=str),
@@ -181,7 +183,7 @@ def main():
     ap = argparse.ArgumentParser(prog="navigator")
     sub = ap.add_subparsers(required=True)
     pp = sub.add_parser("papers", help="OpenAlex papers: collect -> embed -> link (embed/link: Postgres only)")
-    pp.add_argument("step", nargs="?", default="all", choices=["collect", "embed", "link", "all", "stats"],
+    pp.add_argument("step", nargs="?", default="all", choices=["collect", "embed", "link", "topics", "all", "stats"],
                     help="stats = estimate only (same as --dry-run)")
     pp.add_argument("--limit-people", "--limit", dest="limit_people", type=int, default=0,
                     help="collect: at most N people not decided yet (incremental runs; 0 = all)")
@@ -193,6 +195,9 @@ def main():
     pp.add_argument("--max-pdfs", type=int, default=0, help="collect: max OA PDFs to download this run (0 = all)")
     pp.add_argument("--no-pdf", action="store_true", help="collect: metadata and abstracts only")
     pp.add_argument("--no-llm", action="store_true", help="author/topic matching with the deterministic rules only")
+    pp.add_argument("--remap", action="store_true",
+                    help="link/topics: decide every OpenAlex topic again against the entities' Topic vocabulary and "
+                         "rewrite topic_map + ABOUT (no collect, no embed; idempotent)")
     pp.add_argument("--workers", type=int, default=4, help="collect: people processed in parallel")
     pp.set_defaults(fn=cmd_papers)
     for name, fn in [("crawl", cmd_crawl), ("extract", cmd_extract), ("index", cmd_index),

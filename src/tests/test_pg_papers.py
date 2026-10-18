@@ -183,3 +183,30 @@ def test_similar_to_propagation(env):
     why, refs = search.explain_similar("cochlear implant electrode insertion", index.load_entities()[maxm],
                                        index.load_entities()[jane], 0.9, [], hit)
     assert why.startswith("Research profile similar to Jane Doe") and refs[-1].url == "https://doi.org/10.1000/w2001"
+
+
+def test_topics_remap_on_populated_db(env, monkeypatch):
+    """`papers topics --remap`: a pilot whose LLM said NEW everywhere is re-decided without collect/embed; the
+    paper-created Topic vanishes, ABOUT points to the existing Topic, and a second remap changes nothing."""
+    tmp_path, ents = env
+    monkeypatch.setattr(llm, "chat_json", FakeLLM(topics={}))  # every topic -> "new"
+    _run_papers(tmp_path, ents)
+    m = "SELECT openalex_topic_id, topic_key, is_new FROM nav.topic_map ORDER BY 1"
+    assert ("diabetes management and glucose monitoring", True) in {(k, n) for _, k, n in _sql(m)}
+
+    def openalex_topics():
+        return sorted(json.loads(r[0]) for r in _sql(
+            "SELECT * FROM cypher('expertise_graph', $$ MATCH (t:Topic) WHERE t.origin = 'openalex' "
+            "RETURN t.key $$) AS (k agtype)"))
+    assert "diabetes management and glucose monitoring" in openalex_topics()
+    chunks = _sql("SELECT count(*) FROM nav.paper_chunk")[0][0]
+    monkeypatch.setattr(llm, "chat_json", FakeLLM(topics=TOPICS))
+    st = index_store()
+    first = papers.link_topics(st, use_llm=True, remap=True)
+    snap = (_sql(m), openalex_topics(), _graph_count("ABOUT"))
+    assert ("continuous glucose monitoring", False) in {(k, n) for _, k, n in snap[0]}
+    assert "diabetes management and glucose monitoring" not in snap[1]
+    second = papers.link_topics(st, use_llm=True, remap=True)
+    assert (_sql(m), openalex_topics(), _graph_count("ABOUT")) == snap
+    assert first["topics_decided"] == second["topics_decided"] == len(snap[0]) and first["mode"] == "remap"
+    assert _sql("SELECT count(*) FROM nav.paper_chunk")[0][0] == chunks  # nothing collected or embedded

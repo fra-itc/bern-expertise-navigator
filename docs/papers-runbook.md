@@ -124,6 +124,12 @@ free key) and the CPU time (e5 on CPU: ~3.7 chunks/s at 8 CPUs) before the real 
 Repeat the last line to go through everyone, 50 at a time. When `stats` shows `people.selected: 0`, everyone
 has been decided; `job papers embed` and `job papers link` can be re-run alone at any time.
 
+`job papers topics` maps only the OpenAlex topics not decided yet and rewrites the `ABOUT` edges.
+`job papers topics --remap` decides **every** OpenAlex topic of the papers again against the entities' Topic
+vocabulary (Topics created by earlier paper runs are not candidates), then rewrites `nav.topic_map`,
+`nav.paper_topic` and `ABOUT`: no collect, no embedding, same graph when repeated. Use it after a change of
+the topic logic (one LLM call per topic whose normalised label is not already a Topic key).
+
 People from the team's OpenAlex source (`extractor: openalex`, exactly one OpenAlex author URL or id in their
 `source_urls`/evidence) are matched by that id (`decided_by = known_id`): no author search, no LLM call. They show
 up as `people.known_openalex_id` in `stats`.

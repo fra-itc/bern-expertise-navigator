@@ -517,11 +517,18 @@ class PgIndexStore:
             cur.executemany("INSERT INTO nav.similarity(kind, a, b, score, method, threshold) "
                             "VALUES (%s,%s,%s,%s,%s,%s)", [(kind, a, b, s, method, threshold) for a, b, s in edges])
 
-    def existing_topics(self) -> list[tuple[str, str]]:
-        """(key, label) of the Topic vertices: the whitelist the LLM chooses from."""
+    def existing_topics(self, base_only: bool = False) -> list[tuple[str, str]]:
+        """(key, label) of the Topic vertices: the whitelist the LLM chooses from. base_only: only the vocabulary
+        of the indexed entities (Topics not created by a paper run, or created so but also someone's expertise)."""
         with self.pg.op("existing_topics") as cur:
-            _cypher(cur, "MATCH (t:Topic) RETURN t.key, t.label", cols="k agtype, l agtype")
-            return sorted((json.loads(k), json.loads(l) if l else json.loads(k)) for k, l in cur.fetchall())
+            _cypher(cur, "MATCH (t:Topic) RETURN t.key, t.label, t.origin", cols="k agtype, l agtype, o agtype")
+            rows = [(json.loads(k), json.loads(l) if l else json.loads(k), json.loads(o) if o else None)
+                    for k, l, o in cur.fetchall()]
+            if base_only:
+                _cypher(cur, "MATCH ()-[:HAS_EXPERTISE]->(t:Topic) RETURN DISTINCT t.key", cols="k agtype")
+                expertise = {json.loads(r[0]) for r in cur.fetchall()}
+                rows = [r for r in rows if r[2] != "openalex" or r[0] in expertise]
+            return sorted((k, l) for k, l, _ in rows)
 
     def paper_topics(self) -> list[tuple[str, list[dict]]]:
         with self.pg.op("paper_topics") as cur:

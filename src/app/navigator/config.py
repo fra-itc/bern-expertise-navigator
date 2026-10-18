@@ -90,6 +90,7 @@ class Settings:
     similar_min: float = float(os.getenv("SIMILAR_MIN", "0.80"))          # ... but never below this
     similar_person_threshold: str = os.getenv("SIMILAR_PERSON_THRESHOLD", "auto")  # 'auto' or a cosine
     similar_paper_threshold: str = os.getenv("SIMILAR_PAPER_THRESHOLD", "auto")
+    topic_shortlist: int = int(os.getenv("TOPIC_SHORTLIST", "8"))         # topic candidates shown to the LLM
     # search: papers as evidence (Postgres backend only)
     use_papers: bool = os.getenv("USE_PAPERS", "1") == "1"
     paper_weight: float = float(os.getenv("PAPER_WEIGHT", "0.8"))         # RRF weight of the paper ranking

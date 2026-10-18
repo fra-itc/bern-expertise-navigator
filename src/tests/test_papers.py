@@ -292,3 +292,131 @@ def test_map_topic_whitelist_llm_and_rules(monkeypatch):
     monkeypatch.setattr(llm, "chat_json", down)
     assert papers.map_topic("Audiology", "Medicine", wl, True)[:2] == ("audiology", "rules")
     assert papers.map_topic("Diabetes Management", "Medicine", wl, True)[0] is None
+
+
+# ---------------- topics: parsing the LLM choice (whitelist-bound) ------------------------------------
+WL = [("continuous glucose monitoring", "Continuous Glucose Monitoring"),
+      ("audiology", "Audiology"),
+      ("covid-19 diagnosis using ai", "COVID-19 diagnosis using AI")]
+
+
+@pytest.mark.parametrize("answer, expected", [
+    ("audiology", ("audiology", "key")),                                   # the key, as asked
+    ("  Audiology ", ("audiology", "normalised key")),                     # case / spaces
+    ("COVID 19 diagnosis using AI.", ("covid-19 diagnosis using ai", "normalised key")),  # punctuation
+    ("Continuous Glucose Monitoring", ("continuous glucose monitoring", "normalised key")),  # label (pilot bug)
+    ("2", ("audiology", "number")), ("#3", ("covid-19 diagnosis using ai", "number")),  # candidate number
+    ("NEW", (None, "new")), ("new", (None, "new")), ("none", (None, "new")),
+    ("", (None, "invalid")), ("volcanology", (None, "invalid")), ("4", (None, "invalid")), ("0", (None, "invalid")),
+    ("glucose monitoring", (None, "invalid")),                             # a fragment is not a match
+])
+def test_resolve_topic_choice(answer, expected):
+    assert papers.resolve_topic_choice(answer, WL) == expected
+
+
+def test_resolve_topic_choice_is_bound_to_the_shortlist():
+    # an existing Topic that was not shortlisted cannot be chosen, even by its exact key
+    assert papers.resolve_topic_choice("audiology", WL[:1]) == (None, "invalid")
+    # two candidates normalising to the same answer: ambiguous, never guessed
+    dup = [("x-ray imaging", "X-ray imaging"), ("x ray imaging", "X ray imaging")]
+    assert papers.resolve_topic_choice("X-Ray Imaging!", dup) == (None, "ambiguous")
+    assert papers.resolve_topic_choice("x-ray imaging", dup) == ("x-ray imaging", "key")  # exact key wins
+
+
+def test_topic_prompt_shape():
+    msgs = papers.topic_messages("Diabetes Management", "subfield: Endocrinology; field: Medicine", WL)
+    user = msgs[-1]["content"]
+    assert user.split('"')[1] == "Diabetes Management"                     # first quoted string = the label
+    assert "subfield: Endocrinology; field: Medicine" in user
+    assert "1. key: continuous glucose monitoring | label: Continuous Glucose Monitoring" in user
+    assert "3. key: covid-19 diagnosis using ai | label: COVID-19 diagnosis using AI" in user
+    assert '"choice"' in user and papers.TOPIC_NEW in user and "same research concept" in user
+    assert "broader or narrower" in user                                  # guard against over-merging
+
+
+class ScriptedLLM:
+    """chat_json stand-in answering a fixed `choice` and recording the prompts."""
+
+    def __init__(self, choice):
+        self.choice, self.prompts = choice, []
+
+    def __call__(self, messages, schema, **kw):
+        self.prompts.append(messages[-1]["content"])
+        return schema(choice=self.choice, reason="mock")
+
+
+def test_map_topic_label_answer_is_reused_and_identity_skips_the_llm(monkeypatch):
+    fake = ScriptedLLM("Continuous Glucose Monitoring")
+    monkeypatch.setattr(llm, "chat_json", fake)
+    key, by, reason = papers.map_topic("Diabetes Management", "Medicine", WL, True)
+    assert (key, by) == ("continuous glucose monitoring", "llm") and "choice by normalised key" in reason
+    # a label that differs from its key is resolved through the label
+    wl = [("cgm", "Continuous Glucose Monitoring")]
+    assert papers.map_topic("Diabetes Management", "Medicine", wl, True)[0] == "cgm"
+    # identical normalised label of any existing Topic: reused by rule, no LLM call
+    n = len(fake.prompts)
+    assert papers.map_topic("Audiology", "Medicine", WL[:1], True, existing={k for k, _ in WL})[:2] == \
+        ("audiology", "rules")
+    assert len(fake.prompts) == n
+    # a key outside the shortlist is discarded -> new Topic, audited as invalid
+    monkeypatch.setattr(llm, "chat_json", ScriptedLLM("audiology"))
+    key, by, reason = papers.map_topic("Hearing Science", "Medicine", WL[:1], True, existing={k for k, _ in WL})
+    assert key is None and reason.startswith("invalid choice 'audiology' (invalid)")
+
+
+class TopicStore:
+    """In-memory stand-in for the Postgres topic API (topic_map, paper_topics, existing_topics, write_topics)."""
+    supports_papers = True
+
+    def __init__(self, base, papers_topics):
+        self.base, self.papers_topics, self.map, self.created, self.about = dict(base), papers_topics, {}, {}, []
+
+    def topic_map(self):
+        return {k: v["key"] for k, v in self.map.items()}
+
+    def paper_topics(self):
+        return self.papers_topics
+
+    def existing_topics(self, base_only=False):
+        return sorted({**self.base, **({} if base_only else self.created)}.items())
+
+    def write_topics(self, decisions, rows):
+        for d in decisions:
+            self.map[d["id"]] = d
+        self.about = rows
+        used = {k for _, k, _ in rows}
+        self.created = {k: self.map_label(k) for k in used if k not in self.base}  # orphans dropped
+        return {"paper_topics": len(rows)}
+
+    def map_label(self, k):
+        return next(d["topic_label"] for d in self.map.values() if d["key"] == k)
+
+
+def test_link_topics_remap_is_idempotent_and_ignores_paper_created_topics(monkeypatch):
+    from test_pg_backend import fake_embed
+    from navigator import index
+    monkeypatch.setattr(index, "embed", fake_embed)
+    pt = [("W1", [{"id": "T1", "display_name": "Diabetes Management", "subfield": "Endocrinology", "field": "Medicine",
+                   "score": 0.9}, {"id": "T2", "display_name": "Audiology", "score": 0.5}]),
+          ("W2", [{"id": "T1", "display_name": "Diabetes Management", "score": 0.7}])]
+    st = TopicStore(WL, pt)
+    # first run: the LLM says NEW -> a paper-created Topic "diabetes management"
+    monkeypatch.setattr(llm, "chat_json", ScriptedLLM("NEW"))
+    out = papers.link_topics(st, use_llm=True, shortlist=3)
+    assert out["new"] == 1 and out["identical_key"] == 1 and out["llm_calls"] == 0  # ScriptedLLM bypasses usage
+    assert st.map["T1"]["is_new"] and "diabetes management" in st.created
+    # remap with a better answer: decided again against the base vocabulary only (the created Topic is not a
+    # candidate, else it would be reused by identity), the orphaned Topic disappears
+    fake = ScriptedLLM("continuous glucose monitoring")
+    monkeypatch.setattr(llm, "chat_json", fake)
+    first = papers.link_topics(st, use_llm=True, shortlist=3, remap=True)
+    assert "diabetes management" not in fake.prompts[0].split('"', 2)[2]  # not shortlisted
+    snap = ({k: (d["key"], d["is_new"]) for k, d in st.map.items()}, list(st.about), dict(st.created))
+    assert snap[0] == {"T1": ("continuous glucose monitoring", False), "T2": ("audiology", False)}
+    assert snap[1] == [("W1", "audiology", 0.5), ("W1", "continuous glucose monitoring", 0.9),
+                       ("W2", "continuous glucose monitoring", 0.7)] and snap[2] == {}
+    second = papers.link_topics(st, use_llm=True, shortlist=3, remap=True)
+    assert ({k: (d["key"], d["is_new"]) for k, d in st.map.items()}, list(st.about), dict(st.created)) == snap
+    assert first["topics_decided"] == second["topics_decided"] == 2 and first["mode"] == "remap"
+    # a normal (non-remap) run afterwards decides nothing: everything is in the topic map
+    assert papers.link_topics(st, use_llm=True, shortlist=3)["topics_decided"] == 0

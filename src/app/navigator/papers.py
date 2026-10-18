@@ -675,43 +675,101 @@ def knn_pairs(ids: list[str], vecs: np.ndarray, k: int) -> list[tuple[str, str, 
 
 # =============================================================================
 # Paper topics -> existing Topic vertices (LLM chooses from a whitelist; new Topic only if none fits)
+#
+# Decision table, one OpenAlex topic at a time (first matching row wins):
+#   topic_key(label) is already a Topic key        -> reuse it        rules  (identity: Topic vertices are keyed so)
+#   LLM on and a shortlist of candidates            -> ask the LLM, then resolve its `choice` (resolve_topic_choice):
+#       exactly one candidate by key / label / number -> reuse it    llm
+#       "NEW" (or "none")                           -> new Topic       llm
+#       anything else (outside the shortlist, ambiguous) -> new Topic  llm, reason "invalid choice ... discarded"
+#   no LLM, or the LLM failed                       -> new Topic       rules
+# Matching an answer is exact after normalisation (accents, case, punctuation, spaces) and only ever against
+# the shortlist that was in the prompt: no alias dictionary, no fuzzy or semantic matching in code.
 # =============================================================================
 class _TopicChoice(BaseModel):
     choice: str
     reason: str
 
 
-def map_topic(label: str, context: str, whitelist: list[tuple[str, str]], use_llm: bool) -> tuple[str | None, str, str]:
-    """-> (existing topic key or None for 'create a new Topic', decided_by, reason).
+TOPIC_NEW = "NEW"
+_NEW_SENTINELS = ("new", "none")  # the prompt asks for NEW; "none" is the same "no candidate" answer
 
-    `whitelist` = [(key, label)] of existing Topics preselected by embedding similarity."""
+
+def _norm_choice(s: str) -> str:
+    """Accent-free, lowercase, punctuation as spaces, single spaces (tokenisation, not matching logic)."""
+    from .extract import strip_accents
+    return " ".join(re.sub(r"[\W_]+", " ", strip_accents(s or "").lower()).split())
+
+
+def resolve_topic_choice(choice: str, whitelist: list[tuple[str, str]]) -> tuple[str | None, str]:
+    """LLM answer -> (candidate key or None, how), how in key | normalised key | label | number | new | invalid |
+    ambiguous.
+
+    The candidates are numbered 1..n in the prompt; the answer may be a candidate's key, its label or its
+    number. Nothing outside `whitelist` can ever be returned."""
+    raw = (choice or "").strip()
+    keys = [k for k, _ in whitelist]
+    if raw in keys:
+        return raw, "key"
+    n = _norm_choice(raw)
+    if not n:
+        return None, "invalid"
+    if n in _NEW_SENTINELS:
+        return None, "new"
+    by_key = {k for k, _ in whitelist if _norm_choice(k) == n}
+    by_label = {k for k, l in whitelist if _norm_choice(l) == n}
+    hits = by_key or by_label
+    if len(hits) == 1:
+        return next(iter(hits)), "normalised key" if by_key else "label"
+    if len(hits) > 1:
+        return None, "ambiguous"
+    if n.isdigit() and 1 <= int(n) <= len(whitelist):
+        return whitelist[int(n) - 1][0], "number"
+    return None, "invalid"
+
+
+def topic_messages(label: str, context: str, whitelist: list[tuple[str, str]]) -> list[dict]:
+    """The prompt: the OpenAlex topic (first quoted string) with its hierarchy, numbered candidates, JSON answer."""
+    return [
+        {"role": "system", "content": "You curate the research topic vocabulary of an expertise graph. JSON only."},
+        {"role": "user", "content": (
+            f"A paper is tagged with the bibliographic (OpenAlex) topic \"{label}\" ({context}).\n\n"
+            "Candidate topics already in our expertise graph, preselected by text similarity:\n"
+            + "\n".join(f"{i}. key: {k} | label: {l}" for i, (k, l) in enumerate(whitelist, 1))
+            + "\n\nReuse a candidate ONLY if it names the same research concept as the bibliographic topic: a "
+              "synonym, a translation, a spelling or word-order variant, or a near-identical formulation. A "
+              "broader or narrower area, a neighbouring field, a related method or disease, or a topic that "
+              f"merely shares words is NOT the same concept: answer {TOPIC_NEW}. When in doubt, answer {TOPIC_NEW}.\n"
+              "Answer with a JSON object {\"choice\": ..., \"reason\": ...}: `choice` = the candidate key copied "
+              f"exactly as written after \"key:\", or \"{TOPIC_NEW}\"; `reason` = one short sentence.")},
+    ]
+
+
+def map_topic(label: str, context: str, whitelist: list[tuple[str, str]], use_llm: bool,
+              existing: set[str] | None = None) -> tuple[str | None, str, str]:
+    """-> (existing topic key or None for 'create a new Topic', decided_by, reason). See the decision table above.
+
+    `whitelist` = [(key, label)] of existing Topics preselected by embedding similarity; `existing` = every
+    existing Topic key (identity check; defaults to the whitelist keys)."""
     from .graph import topic_key
-    keys = {k for k, _ in whitelist}
+    own = topic_key(label)
+    if own in (existing if existing is not None else {k for k, _ in whitelist}):
+        return own, "rules", "identical normalised label (existing Topic)"
     prefix = ""
     if use_llm and whitelist:
         try:
-            r = llm.chat_json([
-                {"role": "system", "content": "You curate a research topic vocabulary. JSON only."},
-                {"role": "user", "content": (
-                    f"A paper is tagged with the bibliographic topic: \"{label}\" ({context}).\n"
-                    "Existing topics of our expertise graph (key: label):\n"
-                    + "\n".join(f"- {k}: {l}" for k, l in whitelist)
-                    + "\n\nIf one existing topic names the same research area (a synonym, translation or a "
-                      "very close formulation), answer `choice` = its key exactly as listed. If none of them "
-                      "fits, answer `choice` = \"new\". `reason`: one short sentence.")},
-            ], _TopicChoice, max_tokens=120, temperature=0.0)
+            r = llm.chat_json(topic_messages(label, context, whitelist), _TopicChoice, max_tokens=120,
+                              temperature=0.0)
         except llm.LLMError as ex:
             prefix = f"LLM unavailable ({str(ex)[:80]}); "
         else:
             choice, reason = r.choice.strip(), r.reason.strip()[:300]  # type: ignore[attr-defined]
-            if choice in keys:
-                return choice, "llm", reason
-            if choice.lower() == "new":
+            key, how = resolve_topic_choice(choice, whitelist)
+            if key is not None:
+                return key, "llm", reason if how == "key" else f"choice by {how} {choice!r}: {reason}"
+            if how == "new":
                 return None, "llm", reason
-            return None, "llm", f"invalid choice {choice!r} discarded, new topic ({reason})"
-    k = topic_key(label)
-    if k in keys:
-        return k, "rules", prefix + "identical normalised label"
+            return None, "llm", f"invalid choice {choice!r} ({how}) discarded, new topic ({reason})"
     return None, "rules", prefix + "no existing topic with the identical normalised label"
 
 
@@ -770,23 +828,31 @@ def link_similar(store) -> dict:
     return out
 
 
-def link_topics(store, use_llm: bool | None = None, shortlist: int = 12) -> dict:
-    """OpenAlex topics of the papers -> Topic vertices: the LLM picks among the `shortlist` existing Topics most
-    similar to the label (embedding preselection = grounding), or asks for a new Topic. Decisions are cached in
-    nav.topic_map: each OpenAlex topic is decided once."""
+def link_topics(store, use_llm: bool | None = None, shortlist: int | None = None, remap: bool = False) -> dict:
+    """OpenAlex topics of the papers -> Topic vertices (decision table above): identical key = reuse, else the LLM
+    picks among the `shortlist` existing Topics most similar to the label (embedding preselection = grounding)
+    or asks for a new Topic. Decisions are cached in nav.topic_map: each OpenAlex topic is decided once.
+
+    remap=True decides every OpenAlex topic of the papers again against the base vocabulary only (Topics of the
+    indexed entities, not the ones earlier paper runs created), then rewrites topic_map, paper_topic and the
+    ABOUT edges. No collect, no paper embedding; running it twice gives the same graph."""
     from . import index
     from .graph import topic_key
     _require_papers(store)
     if use_llm is None:
         use_llm = llm.available()
-    decided = store.topic_map()
+    shortlist = settings.topic_shortlist if shortlist is None else shortlist
+    decided = {} if remap else store.topic_map()
     papers = store.paper_topics()
     labels: dict[str, dict] = {}
     for _, topics in papers:
         for t in topics or []:
             if t.get("id") and t["id"] not in decided:
                 labels.setdefault(t["id"], t)
-    existing = [(k, l) for k, l in store.existing_topics() if k]
+    existing = [(k, l) for k, l in store.existing_topics(base_only=remap) if k]
+    existing_keys = {k for k, _ in existing}
+    existing_label = dict(existing)
+    calls0 = llm.usage["calls"]
     decisions: list[dict] = []
     if labels and existing:
         tvecs = index.embed([l for _, l in existing]).astype(np.float32)
@@ -794,12 +860,11 @@ def link_topics(store, use_llm: bool | None = None, shortlist: int = 12) -> dict
         sims = qvecs @ tvecs.T
     for j, (tid, t) in enumerate(labels.items()):
         wl = [existing[i] for i in np.argsort(-sims[j])[:shortlist]] if existing else []
-        ctx = ", ".join(x for x in (t.get("subfield"), t.get("field")) if x) or "no field"
-        key, by, reason = map_topic(t["display_name"], ctx, wl, use_llm)
-        label = dict(existing).get(key, t["display_name"]) if key else t["display_name"]
+        ctx = "; ".join(f"{n}: {t[n]}" for n in ("subfield", "field") if t.get(n)) or "no subfield/field"
+        key, by, reason = map_topic(t["display_name"], ctx, wl, use_llm, existing=existing_keys)
         decisions.append({"id": tid, "label": t["display_name"], "key": key or topic_key(t["display_name"]),
-                          "topic_label": label, "is_new": key is None, "by": by, "reason": reason,
-                          "cands": [k for k, _ in wl]})
+                          "topic_label": existing_label.get(key, t["display_name"]) if key else t["display_name"],
+                          "is_new": key is None, "by": by, "reason": reason, "cands": [k for k, _ in wl]})
         decided[tid] = key or topic_key(t["display_name"])
     rows = sorted({(pid, decided[t["id"]], t.get("score")) for pid, topics in papers for t in topics or []
                    if t.get("id") in decided and decided[t["id"]]}, key=lambda r: (r[0], r[1]))
@@ -809,6 +874,9 @@ def link_topics(store, use_llm: bool | None = None, shortlist: int = 12) -> dict
         if (pid, k) not in best or (s or 0) > (best[(pid, k)] or 0):
             best[(pid, k)] = s
     stats = store.write_topics(decisions, [(p, k, s) for (p, k), s in sorted(best.items())])
-    return {"topics_decided": len(decisions), "reused": sum(not d["is_new"] for d in decisions),
-            "new": sum(d["is_new"] for d in decisions),
+    return {"mode": "remap" if remap else "pending", "topics_decided": len(decisions),
+            "reused": sum(not d["is_new"] for d in decisions), "new": sum(d["is_new"] for d in decisions),
+            "identical_key": sum(d["reason"].startswith("identical normalised label") for d in decisions),
+            "invalid_choice": sum(d["reason"].startswith("invalid choice") for d in decisions),
+            "llm_calls": llm.usage["calls"] - calls0, "shortlist": shortlist,
             "decided_by": {b: sum(d["by"] == b for d in decisions) for b in ("llm", "rules")}, **stats}
