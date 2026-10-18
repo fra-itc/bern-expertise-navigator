@@ -38,12 +38,12 @@ T = {
                   "state that any person has already agreed to one.",
         "from": "Prepared by {who}",
         # officer explainer
-        "x.what": "What you are sending",
+        "x.what": "Summary of the pitch",
         "x.what1": "A one-page invitation for the leadership of {company}, in English. It introduces {n} research "
                    "partner(s) in Bern and proposes a half-day visit. Nothing is said about money or contracts.",
-        "x.why": "Why these partners — in plain words",
+        "x.why": "Rationale for the selected partners",
         "x.why1": "{name} ({where}) works on {topic}.",
-        "x.mean": "That means: {plain}",
+        "x.mean": "Context: {plain}",
         "x.why2": "{name} ({where}) was chosen for this request; see the quoted sources in the brief.",
         "x.check": "What the CEO can check",
         "x.check1": "{c} statement(s), each linked to the public page it comes from, and {p} scientific publication(s) "
@@ -51,7 +51,7 @@ T = {
         "x.not": "What we deliberately do not say",
         "x.not1": "No promises: we do not say that anyone has agreed to meet, we do not mention money, funding or "
                   "conditions, and we do not compare Bern with other places.",
-        "x.next": "Your next step",
+        "x.next": "Recommended next step",
         "x.next1": "Send the link (or the PDF) with the short email below. If they are interested, propose a call or "
                    "a visit date.",
     },
@@ -70,13 +70,13 @@ T = {
                   "oder ist eine dort aufgeführte Publikation und mit ihrer Quelle verlinkt. Dieses Dokument schlägt "
                   "ein Treffen vor; es behauptet nicht, dass jemand bereits zugesagt hat.",
         "from": "Erstellt von {who}",
-        "x.what": "Was Sie versenden",
+        "x.what": "Zusammenfassung des Pitchs",
         "x.what1": "Eine einseitige Einladung an die Geschäftsleitung von {company}, auf Deutsch. Sie stellt {n} "
                    "Forschungspartner in Bern vor und schlägt einen halbtägigen Besuch vor. Über Geld oder Verträge "
                    "wird nichts gesagt.",
-        "x.why": "Warum diese Partner — in einfachen Worten",
+        "x.why": "Begründung der ausgewählten Partner",
         "x.why1": "{name} ({where}) arbeitet an {topic}.",
-        "x.mean": "Das heisst: {plain}",
+        "x.mean": "Einordnung: {plain}",
         "x.why2": "{name} ({where}) wurde für diese Anfrage ausgewählt; die Belege stehen im Dokument.",
         "x.check": "Was die Geschäftsleitung prüfen kann",
         "x.check1": "{c} Aussage(n), jede mit der öffentlichen Seite verlinkt, von der sie stammt, und {p} "
@@ -84,7 +84,7 @@ T = {
         "x.not": "Was wir bewusst nicht sagen",
         "x.not1": "Keine Versprechen: Wir sagen nicht, dass jemand einem Treffen zugestimmt hat, erwähnen weder Geld, "
                   "Förderung noch Konditionen und vergleichen Bern nicht mit anderen Standorten.",
-        "x.next": "Ihr nächster Schritt",
+        "x.next": "Empfohlener nächster Schritt",
         "x.next1": "Senden Sie den Link (oder das PDF) mit der kurzen E-Mail unten. Bei Interesse schlagen Sie ein "
                    "Gespräch oder einen Besuchstermin vor.",
     },
@@ -103,13 +103,13 @@ T = {
                   "publication qui y figure, avec un lien vers sa source. Ce document propose une rencontre ; il "
                   "n'affirme pas que quiconque l'a déjà acceptée.",
         "from": "Préparé par {who}",
-        "x.what": "Ce que vous envoyez",
+        "x.what": "Résumé du pitch",
         "x.what1": "Une invitation d'une page pour la direction de {company}, en français. Elle présente {n} "
                    "partenaire(s) de recherche à Berne et propose une visite d'une demi-journée. Rien n'est dit sur "
                    "l'argent ou les contrats.",
-        "x.why": "Pourquoi ces partenaires — en termes simples",
+        "x.why": "Justification des partenaires retenus",
         "x.why1": "{name} ({where}) travaille sur {topic}.",
-        "x.mean": "Autrement dit : {plain}",
+        "x.mean": "Contexte : {plain}",
         "x.why2": "{name} ({where}) a été choisi(e) pour cette demande ; les sources figurent dans la note.",
         "x.check": "Ce que la direction peut vérifier",
         "x.check1": "{c} affirmation(s), chacune liée à la page publique d'où elle provient, et {p} publication(s) "
@@ -117,7 +117,7 @@ T = {
         "x.not": "Ce que nous ne disons volontairement pas",
         "x.not1": "Aucune promesse : nous ne disons pas que quelqu'un a accepté de rencontrer l'entreprise, ne parlons "
                   "ni d'argent, ni de financement, ni de conditions, et ne comparons pas Berne à d'autres lieux.",
-        "x.next": "Votre prochaine étape",
+        "x.next": "Prochaine étape recommandée",
         "x.next1": "Envoyez le lien (ou le PDF) avec le court e-mail ci-dessous. En cas d'intérêt, proposez un appel "
                    "ou une date de visite.",
     },
@@ -165,7 +165,7 @@ def pubs_for(e: Entity, limit: int = 2) -> list[dict]:
 # ---------------- topic overlap: request terms <-> partner evidence --------------------------------
 def _topics(case: Case, e: Entity, lang: str) -> list[dict]:
     """Glossary topics named in the company's request AND in this partner's own evidence."""
-    req_terms = {t["term"] for t in plain.find_terms(case.request_text, lang)}
+    req_terms = {t["term"] for t in plain.find_terms(case.source_text(), lang)}
     text = e.search_text()
     return [t for t in plain.find_terms(text, lang) if t["term"] in req_terms]
 

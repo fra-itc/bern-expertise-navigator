@@ -56,10 +56,13 @@ before `.env`): `cd app && NAV_DATA_DIR=/path/to/data python -m navigator.cli cr
 
 ## Using it
 
-1. Open **Staff workspace** → choose *Business development*, enter your name → **New request**: type what the
-   company is looking for (or paste their email), optionally set the company's country (Switzerland → canton) and a
-   medtech area → niche (e.g. *Diabetes → Glucose sensing*), or click a fictional example → **Find partners in Bern**
-   → tick the partners to propose.
+1. Open **Staff workspace** → choose *Business development*, enter your name → **New request**: paste the
+   company's **website link** and/or information about the company (an email, a description), optionally say what
+   they are looking for, set the company's country (Switzerland → canton) and a medtech area → niche (e.g.
+   *Diabetes → Glucose sensing*), or click a fictional example → **Find partners in Bern**. The navigator reads the
+   linked page plus up to 5 key pages of the same site (About, Products, Technology; robots.txt respected), explains
+   the company in plain words, and lists the matching people, labs and facilities in Bern → tick the partners to
+   propose. Links to private or internal network addresses are refused.
 2. In **Pitch & invite**, add the company name and contact (asked only now) → **Prepare the pitch** → read *For you*,
    open the **executive brief**, *Save as PDF*, then **Prepare the email** (it links the brief) or download a
    calendar invite → **Mark as sent**.

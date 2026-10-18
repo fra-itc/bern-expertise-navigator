@@ -267,3 +267,55 @@ def test_cases_roundtrip_and_api(env, monkeypatch):
     assert done["status"] == "contacted" and _sql('SELECT status FROM nav."case" WHERE id = %s', cid)[0][0] == "contacted"
     assert client.delete(f"/cases/{cid}").status_code in (200, 204)
     assert _sql('SELECT count(*) FROM nav.case_match WHERE case_id = %s', cid)[0][0] == 0
+
+
+def test_company_link_documents_and_broad_search_roundtrip(env, monkeypatch, tmp_path):
+    """Main's request from a company link / shared documents and the broad search (migration 0005):
+    every new field survives the Postgres round trip and matches what the file backend stores."""
+    use, ents = env
+    use("file"); index.build(ents)
+    use("pg"); index.build(ents)
+    from fastapi.testclient import TestClient
+    from navigator import api, company as company_web
+    from navigator.storage import case_store
+    monkeypatch.setattr(cases, "DB", tmp_path / "cases.db")
+    site = company_web.CompanyWebsite(url="https://example.com/", name="Example Sensors (fictional)",
+                                      description="Glucose sensors.", text="We build continuous glucose monitoring sensors.",
+                                      pages=[company_web.WebPage(url="https://example.com/", title="Home")])
+    monkeypatch.setattr(company_web, "read", lambda url: site)
+    off = {"actor": "Maria"}
+    doc = {"name": "pitch.pdf", "kind": "PDF", "pages": 2, "text": "Closed-loop insulin delivery for type 1 diabetes."}
+    reqs = [
+        {"request_text": "glucose company in Milan", "broad": True, **off},
+        {"company_url": "https://example.com", "documents": [doc], "need": "clinical validation partner", **off},
+    ]
+    seen = {}
+    for backend in ("file", "pg"):
+        use(backend)
+        assert case_store().name == ("postgres" if backend == "pg" else "sqlite")
+        client = TestClient(api.app)
+        out = []
+        for r in reqs:
+            c = client.post("/cases", json=r).json()
+            assert client.get(f"/cases/{c['id']}").json() == c
+            out.append(c)
+        seen[backend] = out
+    broad, linked = seen["pg"]
+    assert (broad["city"], broad["country"], broad["area"], broad["niche"]) == ("Milan", "Italy", "diabetes", "glucose")
+    assert {d["kind"] for d in broad["understood"]} >= {"city", "country", "niche"}
+    assert linked["company"] == "Example Sensors (fictional)" and linked["company_url"] == "https://example.com/"
+    assert linked["website"]["pages"][0]["title"] == "Home" and linked["documents"][0]["name"] == "pitch.pdf"
+    assert linked["need"] == "clinical validation partner" and linked["matches"]
+    assert all(m["archetype"] for m in linked["matches"])
+    stored = _sql('SELECT city, understood, company_url, need, website->>\'name\', documents->0->>\'kind\' '
+                  'FROM nav."case" WHERE id = %s', linked["id"])[0]
+    assert stored[2:] == ("https://example.com/", "clinical validation partner", "Example Sensors (fictional)", "PDF")
+    assert _sql('SELECT city FROM nav."case" WHERE id = %s', broad["id"])[0][0] == "Milan"
+    arch = [a for (a,) in _sql("SELECT archetype FROM nav.case_match WHERE case_id = %s ORDER BY rank", linked["id"])]
+    assert arch == [m["archetype"] for m in linked["matches"]]
+    # same content on both backends (ids and timestamps differ; FTS vs BM25 may reorder matches and
+    # nudge their confidence, see test_search_parity_file_vs_pg)
+    volatile = {"id", "created_at", "updated_at", "events", "matches"}
+    for f, p in zip(seen["file"], seen["pg"]):
+        assert {k: v for k, v in f.items() if k not in volatile} == {k: v for k, v in p.items() if k not in volatile}
+        assert {m["id"]: m["archetype"] for m in f["matches"]} == {m["id"]: m["archetype"] for m in p["matches"]}

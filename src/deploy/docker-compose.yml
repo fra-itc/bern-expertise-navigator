@@ -1,0 +1,38 @@
+# Team server (bern-expertise.ch). Lives at /opt/bern/app/deploy on the server; `make deploy` syncs and starts it.
+#   api   -> the navigator, same as `make serve LOCAL=1` (NumPy vectors, rules mode unless LLM_BASE_URL is set)
+#   caddy -> HTTPS (Let's Encrypt) for bern-expertise.ch, reverse proxy to api
+# Both join the `bern` network created by /opt/bern/db, so the app can reach Postgres at db:5432 later.
+name: bern-app
+
+services:
+  api:
+    build: { context: .., dockerfile: app/Dockerfile }
+    restart: unless-stopped
+    env_file: ../.env
+    environment:
+      - HF_HUB_OFFLINE=1          # embedding model is baked into the image
+    volumes:
+      - ../data:/srv/data
+      - ../config:/srv/config
+      - ../eval:/srv/eval
+    ports: ["127.0.0.1:8080:8080"]   # for debugging over SSH only; the public entry is caddy
+    networks: [bern]
+
+  caddy:
+    image: caddy:2.8.4
+    restart: unless-stopped
+    ports: ["80:80", "443:443"]
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    depends_on: [api]
+    networks: [bern]
+
+volumes:
+  caddy_data:
+  caddy_config:
+
+networks:
+  bern:
+    external: true

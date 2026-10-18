@@ -74,7 +74,7 @@ def test_brief_only_chosen_partners_and_everything_sourced(client):
     assert any(s["kind"] == "doi" and s["url"] == "https://doi.org/10.1234/dc25-0001" for s in b["sources"])
     assert "agreed" not in b["hook"].lower() and "money" not in b["hook"].lower()
     titles = [s["title"] for s in r["explainer"]]
-    assert titles[0] == "What you are sending" and "What we deliberately do not say" in titles
+    assert titles[0] == "Summary of the pitch" and "What we deliberately do not say" in titles
     assert any("A small sensor worn on the skin" in ln.get("plain", "") for s in r["explainer"] for ln in s["lines"])
     # public link: works, read-only, stable across updates
     pub = client.get(f"/briefs/{r['token']}").json()

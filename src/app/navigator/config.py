@@ -45,6 +45,7 @@ class Settings:
     llm_api_key: str = _env("LLM_API_KEY", default="not-needed")
     llm_timeout: float = float(os.getenv("LLM_TIMEOUT", "120"))
     llm_concurrency: int = int(os.getenv("LLM_CONCURRENCY", "8"))
+    llm_stream: bool = os.getenv("LLM_STREAM", "1") == "1"   # stream completions (gateways time out silent requests)
     embed_model: str = os.getenv("EMBED_MODEL", "intfloat/multilingual-e5-base")
     # Empty -> embedded Qdrant on disk (data/qdrant), no server needed
     qdrant_url: str = os.getenv("QDRANT_URL", "")

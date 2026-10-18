@@ -29,7 +29,8 @@ GRAPH = "expertise_graph"
 DIM = 768
 FTS_CONFIG = "nav.simple_unaccent"
 # 0002_remove_technical_review (main) is not required: the store neither reads nor writes the review columns.
-REQUIRED_MIGRATIONS = ("0001_initial", "0002_index_order_and_match_ref", "0003_case_search_filters", "0004_papers")
+REQUIRED_MIGRATIONS = ("0001_initial", "0002_index_order_and_match_ref", "0003_case_search_filters",
+                       "0004_papers", "0005_case_company_sources")
 _REINDEX_LOCK = 0x6E617669  # pg_advisory_xact_lock key: one reindex at a time
 
 
@@ -681,30 +682,37 @@ class PgCaseStore:
         with self.pg.op("case_save") as cur:
             cur.execute(
                 'INSERT INTO nav."case"(id, created_at, updated_at, status, company, contact_name, contact_email, '
-                "country, canton, area, niche, request_text, analysis, no_match_message, outreach) "
-                "VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s) ON CONFLICT (id) DO UPDATE SET "
+                "country, canton, area, niche, request_text, analysis, no_match_message, outreach, "
+                "city, understood, company_url, need, website, documents) "
+                "VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s) ON CONFLICT (id) DO UPDATE SET "
                 "updated_at = EXCLUDED.updated_at, status = EXCLUDED.status, company = EXCLUDED.company, "
                 "contact_name = EXCLUDED.contact_name, contact_email = EXCLUDED.contact_email, country = EXCLUDED.country, "
                 "canton = EXCLUDED.canton, area = EXCLUDED.area, niche = EXCLUDED.niche, "
                 "request_text = EXCLUDED.request_text, analysis = EXCLUDED.analysis, "
-                "no_match_message = EXCLUDED.no_match_message, outreach = EXCLUDED.outreach",
+                "no_match_message = EXCLUDED.no_match_message, outreach = EXCLUDED.outreach, city = EXCLUDED.city, "
+                "understood = EXCLUDED.understood, company_url = EXCLUDED.company_url, need = EXCLUDED.need, "
+                "website = EXCLUDED.website, documents = EXCLUDED.documents",
                 (case.id, case.created_at, case.updated_at, case.status, case.company, case.contact_name,
                  case.contact_email, case.country, case.canton, case.area, case.niche, case.request_text,
-                 Jsonb(case.analysis.model_dump(mode="json")), case.no_match_message, Jsonb(case.outreach)))
+                 Jsonb(case.analysis.model_dump(mode="json")), case.no_match_message, Jsonb(case.outreach),
+                 case.city, Jsonb(case.understood), case.company_url, case.need,
+                 Jsonb(case.website.model_dump(mode="json")) if case.website else None,
+                 Jsonb([d.model_dump(mode="json") for d in case.documents])))
             cur.execute("DELETE FROM nav.case_match WHERE case_id = %s", (case.id,))
             cur.executemany(
                 "INSERT INTO nav.case_match(case_id, entity_id, entity_ref, rank, name, entity_type, role, unit, "
-                "institution, why, plain, url, contact, confidence, via, selected) "
-                "VALUES (%s,(SELECT id FROM nav.entity WHERE id = %s),%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)",
+                "institution, why, plain, url, contact, confidence, via, selected, archetype) "
+                "VALUES (%s,(SELECT id FROM nav.entity WHERE id = %s),%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)",
                 [(case.id, m.id, m.id, i, m.name, m.entity_type, m.role, m.unit, m.institution, m.why,
-                  m.plain or "", m.url, m.contact, m.confidence, m.via, m.selected)
+                  m.plain or "", m.url, m.contact, m.confidence, m.via, m.selected, m.archetype)
                  for i, m in enumerate(case.matches)])
             cur.execute("DELETE FROM nav.case_event WHERE case_id = %s", (case.id,))
             cur.executemany("INSERT INTO nav.case_event(case_id, at, actor, kind, text) VALUES (%s,%s,%s,%s,%s)",
                             [(case.id, ev.at, ev.actor, ev.kind, ev.text) for ev in case.events])
 
     _CASE_COLS = ('id, created_at, updated_at, status, company, contact_name, contact_email, country, canton, area, '
-                  'niche, request_text, analysis, no_match_message, outreach')
+                  'niche, request_text, analysis, no_match_message, outreach, city, understood, company_url, need, website, '
+                  'documents')
 
     def _load(self, cur, where: str, params: tuple) -> list:
         from .cases import Case, Event, Match
@@ -714,13 +722,13 @@ class PgCaseStore:
             return []
         ids = [h[0] for h in heads]
         cur.execute("SELECT case_id, entity_ref, name, entity_type, role, unit, institution, why, plain, url, contact, "
-                    "confidence, via, selected FROM nav.case_match WHERE case_id = ANY(%s) "
+                    "confidence, via, selected, archetype FROM nav.case_match WHERE case_id = ANY(%s) "
                     "ORDER BY case_id, rank", (ids,))
         matches: dict[str, list] = defaultdict(list)
-        for (cid, ref, name, et, role, unit, inst, why, plain, url, contact, conf, via, sel) in cur.fetchall():
+        for (cid, ref, name, et, role, unit, inst, why, plain, url, contact, conf, via, sel, arch) in cur.fetchall():
             matches[cid].append(Match(id=ref, name=name, entity_type=et, role=role, unit=unit, institution=inst,
                                       why=why, plain=plain or None, url=url or "", contact=contact, confidence=conf,
-                                      via=via, selected=sel))
+                                      via=via, selected=sel, archetype=arch or ""))
         cur.execute("SELECT case_id, at, actor, kind, text FROM nav.case_event WHERE case_id = ANY(%s) ORDER BY case_id, id",
                     (ids,))
         events: dict[str, list] = defaultdict(list)
@@ -728,11 +736,12 @@ class PgCaseStore:
             events[cid].append(Event(at=_iso(at, seconds=True), actor=actor, kind=kind, text=text))
         out = []
         for (cid, created, updated, status, company, cname, cemail, country, canton, area, niche, req, analysis,
-             nomatch, outreach) in heads:
+             nomatch, outreach, city, understood, curl, need, website, documents) in heads:
             out.append(Case(id=cid, created_at=_iso(created, seconds=True), updated_at=_iso(updated, seconds=True),
                             status=status, company=company, contact_name=cname, contact_email=cemail, country=country,
                             canton=canton, area=area, niche=niche, request_text=req, analysis=analysis, matches=matches.get(cid, []),
-                            no_match_message=nomatch,
+                            no_match_message=nomatch, city=city, understood=understood or [], company_url=curl,
+                            need=need, website=website, documents=documents or [],
                             outreach=outreach or {}, events=events.get(cid, [])))
         return out
 

@@ -41,6 +41,7 @@ class Server:
 def test_downgrades_when_json_schema_unsupported(monkeypatch):
     srv = Server(reject_schema=True)
     monkeypatch.setattr(llm.httpx, "post", srv)
+    monkeypatch.setattr(llm.settings, "llm_stream", False)
     monkeypatch.setattr(llm, "_mode_idx", 0)
     llm.reset_usage()
     out = llm.chat_json([{"role": "user", "content": "x"}], Extraction)
@@ -54,6 +55,7 @@ def test_downgrades_when_json_schema_unsupported(monkeypatch):
 def test_extraction_is_verified_and_cached(monkeypatch, tmp_path):
     srv = Server()
     monkeypatch.setattr(llm.httpx, "post", srv)
+    monkeypatch.setattr(llm.settings, "llm_stream", False)
     monkeypatch.setattr(llm, "_mode_idx", 0)
     monkeypatch.setattr(extract, "CACHE_DIR", tmp_path)
     rejected: list[dict] = []
@@ -64,3 +66,12 @@ def test_extraction_is_verified_and_cached(monkeypatch, tmp_path):
     extract.extract_page(PAGE, [])
     assert len(srv.calls) == 1  # second run served from cache
     assert json.loads(next(tmp_path.glob("*.json")).read_text())["entities"]
+
+
+def test_streamed_completion_is_reassembled():
+    lines = ['data: {"choices":[{"delta":{"role":"assistant"}}]}', "",
+             'data: {"choices":[{"delta":{"content":"{\\"a\\": "}}]}',
+             'data: {"choices":[{"delta":{"content":"1}"}}]}',
+             ': keep-alive', 'data: {"choices":[],"usage":{"prompt_tokens":5,"completion_tokens":2}}', "data: [DONE]"]
+    out = llm._from_sse(lines)
+    assert out["choices"][0]["message"]["content"] == '{"a": 1}' and out["usage"]["completion_tokens"] == 2

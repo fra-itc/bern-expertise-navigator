@@ -1,0 +1,8 @@
+www.bern-expertise.ch {
+	redir https://bern-expertise.ch{uri} permanent
+}
+
+bern-expertise.ch {
+	encode gzip
+	reverse_proxy api:8080
+}

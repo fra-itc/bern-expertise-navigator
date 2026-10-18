@@ -32,10 +32,41 @@ def reset_usage() -> None:
             usage[k] = 0
 
 
-def _post(body: dict) -> httpx.Response:
-    return httpx.post(f"{settings.llm_base_url}/chat/completions", json=body,
-                      headers={"Authorization": f"Bearer {settings.llm_api_key}"},
-                      timeout=settings.llm_timeout)
+def _from_sse(lines) -> dict:
+    """Server-sent events of a streamed completion -> the usual non-streamed response body."""
+    parts: list[str] = []
+    u: dict = {}
+    for line in lines:
+        if not line.startswith("data:"):
+            continue
+        d = line[5:].strip()
+        if d == "[DONE]":
+            break
+        try:
+            j = json.loads(d)
+        except json.JSONDecodeError:
+            continue
+        u = j.get("usage") or u
+        for ch in j.get("choices") or []:
+            parts.append((ch.get("delta") or {}).get("content") or "")
+    return {"choices": [{"message": {"content": "".join(parts)}}], "usage": u}
+
+
+def _post(body: dict, usage_in_stream: bool = True) -> httpx.Response:
+    url = f"{settings.llm_base_url}/chat/completions"
+    headers = {"Authorization": f"Bearer {settings.llm_api_key}"}
+    if not settings.llm_stream:
+        return httpx.post(url, json=body, headers=headers, timeout=settings.llm_timeout)
+    # Streamed, so a gateway in front of a slow 70B model never sees a silent connection and cuts it
+    # (gateway.keera.ch answers 504 after 60 s without a byte). The caller still gets one JSON body.
+    sbody = {**body, "stream": True, **({"stream_options": {"include_usage": True}} if usage_in_stream else {})}
+    with httpx.stream("POST", url, json=sbody, headers=headers, timeout=settings.llm_timeout) as r:
+        if r.status_code >= 400:
+            r.read()
+            if usage_in_stream and "stream_options" in r.text:  # gateway without usage-in-stream support
+                return _post(body, usage_in_stream=False)
+            return httpx.Response(r.status_code, text=r.text, request=r.request)
+        return httpx.Response(200, json=_from_sse(r.iter_lines()), request=r.request)
 
 
 def chat(messages: list[dict], *, schema: type[BaseModel] | None = None,

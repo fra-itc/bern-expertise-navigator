@@ -10,7 +10,7 @@ PY := docker compose run --rm api python
 PY_ROOT := docker compose run --rm api python
 endif
 
-.PHONY: up up-gpu down setup-local serve crawl extract index pipeline stats papers eval test logs demo
+.PHONY: up up-gpu down setup-local serve crawl extract index pipeline stats papers eval test logs demo deploy
 
 up:            ## API/UI on :8080 + Qdrant; Apertus at $$LLM_BASE_URL
 	cp -n .env.example .env || true
@@ -69,3 +69,6 @@ test:
 
 logs:
 	docker compose logs -f api
+
+deploy:        ## sync src/ to the team server and start it on https://bern-expertise.ch (DEPLOY_HOST=bern)
+	./deploy/deploy.sh

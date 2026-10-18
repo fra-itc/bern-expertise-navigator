@@ -1,0 +1,145 @@
+# Topic words that place a free-text search in a medtech area / niche (ids from medtech_areas.yaml).
+# Languages: English, German, French, Italian, Romansh. Matching ignores case and accents; words of 5+ letters
+# also match at the start of longer words, so German compounds work ("Glukose" finds "Glukosesensor").
+# Romansh (rm): medtech vocabulary is sparse; these entries are best-effort and should be checked by a native
+# speaker. Many international terms (diabetes, implant, robot) are shared across the languages anyway.
+
+areas:
+  diabetes:
+    keywords: [diabetes, diabetic, diabète, diabete, diabetiker, diabetico, diabetica]
+    niches:
+      glucose:
+        en: [glucose, cgm, blood sugar, glucose sensor, glucose monitoring]
+        de: [glukose, blutzucker, glukosesensor, glukosemessung, zuckermessung]
+        fr: [glycémie, capteur de glucose, mesure du glucose]
+        it: [glucosio, glicemia, sensore di glucosio]
+        rm: [glucosa, zutger en il sang]
+      insulin:
+        en: [insulin, insulin pump, artificial pancreas, closed loop, closed-loop, automated insulin delivery]
+        de: [insulinpumpe, künstliche bauchspeicheldrüse, insulinabgabe]
+        fr: [insuline, pompe à insuline, pancréas artificiel]
+        it: [insulina, microinfusore, pancreas artificiale]
+        rm: [insulina]
+      nutrition:
+        en: [nutrition, microbiome, obesity, gut bacteria, diet]
+        de: [ernährung, mikrobiom, adipositas, übergewicht, darmflora]
+        fr: [nutrition, microbiome, obésité, alimentation]
+        it: [nutrizione, microbioma, obesità, alimentazione]
+        rm: [nutriziun]
+      digital:
+        en: [diabetes app, digital diabetes, self-management]
+        de: [diabetes-app, digitale diabetes, selbstmanagement]
+        fr: [application diabète, diabète numérique]
+        it: [app per il diabete, diabete digitale]
+        rm: []
+  imaging:
+    keywords: [imaging, medical imaging, radiology, bildgebung, radiologie, imagerie, radiologia, diagnostica per immagini]
+    niches:
+      tumour:
+        en: [tumour, tumor, brain tumour, brain tumor, mri, segmentation]
+        de: [tumor, hirntumor, mrt, segmentierung]
+        fr: [tumeur, irm, segmentation]
+        it: [tumore, risonanza magnetica, segmentazione]
+        rm: [tumor]
+      eye:
+        en: [retina, ophthalmology, eye, oct]
+        de: [netzhaut, augenheilkunde, auge, augen]
+        fr: [rétine, ophtalmologie, œil, yeux]
+        it: [retina, oftalmologia, occhio, occhi]
+        rm: []
+      navigation:
+        en: [image-guided surgery, surgical navigation, instrument tracking]
+        de: [bildgeführte chirurgie, chirurgische navigation]
+        fr: [chirurgie guidée par l'image, navigation chirurgicale]
+        it: [chirurgia guidata, navigazione chirurgica]
+        rm: []
+  robotics:
+    keywords: [robot, robots, robotics, robotic, roboter, robotik, robotique, robotica]
+    niches:
+      neuro:
+        en: [neurosurgery, neurosurgical]
+        de: [neurochirurgie]
+        fr: [neurochirurgie]
+        it: [neurochirurgia]
+        rm: []
+      micro:
+        en: [microrobot, micro-robot, nanorobot, micro robot]
+        de: [mikroroboter]
+        fr: [microrobot, micro-robot]
+        it: [microrobot, micro-robot]
+        rm: []
+  organchip:
+    keywords: [organ-on-chip, organs-on-chip, organ on chip, organe sur puce]
+    niches:
+      lung:
+        en: [lung, lungs, alveoli]
+        de: [lunge, lungen]
+        fr: [poumon, poumons]
+        it: [polmone, polmoni]
+        rm: [pulmun]
+      microfluidics:
+        en: [microfluidic, microfluidics, drug testing]
+        de: [mikrofluidik, wirkstofftest]
+        fr: [microfluidique, test de médicaments]
+        it: [microfluidica, test di farmaci]
+        rm: []
+  ortho:
+    keywords: [orthopaedic, orthopedic, orthopädie, orthopédie, ortopedia, biomechanics, biomechanik, biomécanique, biomeccanica]
+    niches:
+      bone:
+        en: [bone, bones, osteoporosis]
+        de: [knochen, osteoporose]
+        fr: [ostéoporose, osseux]
+        it: [osteoporosi, ossa, osseo]
+        rm: []
+      implants:
+        en: [implant, implants, prosthesis, prostheses]
+        de: [implantat, implantate, prothese, prothesen]
+        fr: [implant, implants, prothèse]
+        it: [impianto, impianti, protesi]
+        rm: [implantat]
+      prototyping:
+        en: [3d printing, 3d-printing, prototyping, prototype]
+        de: [3d-druck, prototyp]
+        fr: [impression 3d, prototypage]
+        it: [stampa 3d, prototipazione, prototipo]
+        rm: []
+  neuro:
+    keywords: [neurology, neurologie, neurologia, rehabilitation, reha]
+    niches:
+      hearing:
+        en: [hearing, cochlear, cochlear implant, cochlear implants, hearing aid, hearing aids, inner ear]
+        de: [hören, hörgerät, hörgeräte, cochlea, cochlea-implantat, innenohr]
+        fr: [audition, cochléaire, implant cochléaire, implants cochléaires, appareil auditif, oreille interne]
+        it: [udito, cocleare, cocleari, impianto cocleare, impianti cocleari, apparecchio acustico, orecchio interno]
+        rm: [udida]
+      rehab:
+        en: [rehabilitation, ageing, aging, elderly, telerehabilitation]
+        de: [rehabilitation, altern, ältere menschen, telerehabilitation]
+        fr: [réadaptation, rééducation, vieillissement, personnes âgées]
+        it: [riabilitazione, invecchiamento, anziani]
+        rm: []
+  cardio:
+    keywords: [cardiovascular, cardiology, heart, kardiologie, herz, cardiologie, cœur, cardiologia, cuore, cardiovascolare]
+    niches:
+      valves:
+        en: [heart valve, heart valves, valve repair, aortic valve, mitral valve]
+        de: [herzklappe, herzklappen]
+        fr: [valve cardiaque, valves cardiaques]
+        it: [valvola cardiaca, valvole cardiache]
+        rm: []
+      flow:
+        en: [blood flow, circulation, haemodynamics, hemodynamics]
+        de: [blutfluss, kreislauf, durchblutung]
+        fr: [flux sanguin, circulation sanguine]
+        it: [flusso sanguigno, circolazione]
+        rm: []
+  urology:
+    keywords: [urology, urologie, urologia]
+    niches:
+      urinary:
+        en: [urinary, bladder, kidney, urinary tract]
+        de: [harnwege, harnblase, blase, niere]
+        fr: [vessie, voies urinaires, urinaire]
+        it: [vescica, vie urinarie, urinario, rene]
+        rm: []

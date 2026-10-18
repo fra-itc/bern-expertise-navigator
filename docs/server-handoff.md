@@ -140,6 +140,23 @@ SQLite for cases. To switch it to Postgres:
 `src/db/README.md` has example queries for vector search, FTS, Cypher 1-hop,
 and hybrid graph + vector search.
 
+## App deployment
+
+Source: [`src/deploy/`](../src/deploy/). Deployed copy: `/opt/bern/app` on the
+server. It needs the `bern` entry in `~/.ssh/config` (see above).
+
+```bash
+cd src && make deploy        # rsync src/ to /opt/bern/app, then docker compose up -d --build
+```
+
+- `api` runs the navigator as `make serve LOCAL=1` does: NumPy vectors from
+  `data/`, rules mode unless `LLM_BASE_URL` is set in `/opt/bern/app/.env`.
+- `caddy` serves `https://bern-expertise.ch` (Let's Encrypt) and redirects
+  `www`. Ports 80 and 443 must be free on the server.
+- The server keeps its own `.env` and `data/cases.db`; a redeploy never
+  overwrites them.
+- Logs: `ssh bern 'cd /opt/bern/app/deploy && docker compose logs -f'`.
+
 ## Verified state (2026-10-18)
 
 | Check | Result |

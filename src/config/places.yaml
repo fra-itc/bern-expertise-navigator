@@ -1,0 +1,152 @@
+# Places recognised in a free-text company search ("glucose company in Milan", "Firma aus München",
+# "entreprise à Lyon", "azienda a Milano", "interpresa a Turitg").
+# Names in English, German, French, Italian and Romansh (Rumantsch Grischun). Matching ignores case and accents.
+# `strict: true` = the name is also an everyday word (e.g. German "Zug" = train), so it only counts after a
+# place preposition ("in Zug", "aus Zug", "à Zoug").
+# The `country` / `canton` values must match the app's lists (English names).
+
+countries:
+  - {name: Switzerland, names: [switzerland, swiss, schweiz, schweizer, schweizerische, suisse, svizzera, svizzero, svizra, svizzer]}
+  - {name: Germany, names: [germany, german, deutschland, deutsche, deutsches, deutscher, allemagne, allemande, allemand, germania, tedesca, tedesco]}
+  - {name: France, names: [france, french, française, francaise, français, francais, frankreich, französische, franzosische, francia, francese, frantscha]}
+  - {name: Italy, names: [italy, italian, italien, italienische, italie, italienne, italia, italiana, italiano]}
+  - {name: Austria, names: [austria, austrian, österreich, österreichische, autriche, autrichienne, austriaca, austriaco]}
+  - {name: Liechtenstein, names: [liechtenstein]}
+  - {name: United Kingdom, names: [united kingdom, uk, great britain, britain, england, grossbritannien, großbritannien, vereinigtes königreich, royaume-uni, angleterre, regno unito, inghilterra]}
+  - {name: Netherlands, names: [netherlands, holland, niederlande, pays-bas, paesi bassi, olanda]}
+  - {name: Belgium, names: [belgium, belgien, belgique, belgio]}
+  - {name: Denmark, names: [denmark, dänemark, danemark, danimarca]}
+  - {name: Sweden, names: [sweden, schweden, suède, svezia]}
+  - {name: Ireland, names: [ireland, irland, irlande, irlanda]}
+  - {name: Spain, names: [spain, spanien, espagne, spagna]}
+  - {name: Israel, names: [israel, israël, israele]}
+  - {name: United States, names: [united states, usa, u.s., america, vereinigte staaten, états-unis, etats-unis, stati uniti]}
+  - {name: Canada, names: [canada, kanada]}
+  - {name: Japan, names: [japan, japon, giappone]}
+  - {name: China, names: [china, chine, cina]}
+  - {name: Singapore, names: [singapore, singapur, singapour]}
+  - {name: India, names: [india, indien, inde]}
+
+# The 26 Swiss cantons (name = the app's English canton name)
+cantons:
+  - {name: Aargau, names: [aargau, argovie, argovia]}
+  - {name: Appenzell Ausserrhoden, names: [appenzell ausserrhoden, appenzell rhodes-extérieures, appenzello esterno, appenzell dadora]}
+  - {name: Appenzell Innerrhoden, names: [appenzell innerrhoden, appenzell rhodes-intérieures, appenzello interno, appenzell dadens]}
+  - {name: Basel-Landschaft, names: [basel-landschaft, baselland, bâle-campagne, basilea campagna]}
+  - {name: Basel-Stadt, names: [basel-stadt, bâle-ville, basilea città]}
+  - {name: Bern, names: [canton of bern, kanton bern, canton de berne, canton berna, chantun berna]}
+  - {name: Fribourg, names: [fribourg, friburgo, friburg]}
+  - {name: Geneva, names: [canton of geneva, kanton genf, canton de genève, canton ginevra]}
+  - {name: Glarus, names: [glarus, glaris, glarona, glaruna]}
+  - {name: Graubünden, names: [graubünden, graubuenden, grisons, grigioni, grischun]}
+  - {name: Jura, names: [jura, giura], strict: true}
+  - {name: Lucerne, names: [canton of lucerne, kanton luzern, canton de lucerne, canton lucerna]}
+  - {name: Neuchâtel, names: [canton of neuchâtel, kanton neuenburg, canton de neuchâtel]}
+  - {name: Nidwalden, names: [nidwalden, nidwald, nidvaldo]}
+  - {name: Obwalden, names: [obwalden, obwald, obvaldo]}
+  - {name: Schaffhausen, names: [canton of schaffhausen, kanton schaffhausen, canton de schaffhouse]}
+  - {name: Schwyz, names: [schwyz, schwytz, svitto, sviz]}
+  - {name: Solothurn, names: [canton of solothurn, kanton solothurn, canton de soleure]}
+  - {name: St. Gallen, names: [canton of st. gallen, kanton st. gallen, canton de saint-gall]}
+  - {name: Thurgau, names: [thurgau, thurgovie, turgovia]}
+  - {name: Ticino, names: [ticino, tessin]}
+  - {name: Uri, names: [uri], strict: true}
+  - {name: Valais, names: [valais, wallis, vallese, vallais]}
+  - {name: Vaud, names: [vaud, waadt]}
+  - {name: Zug, names: [canton of zug, kanton zug, canton de zoug]}
+  - {name: Zurich, names: [canton of zurich, kanton zürich, canton de zurich, canton zurigo, chantun turitg]}
+
+cities:
+  # Switzerland (country + canton)
+  - {name: Zurich, country: Switzerland, canton: Zurich, names: [zurich, zürich, zurigo, turitg]}
+  - {name: Bern, country: Switzerland, canton: Bern, names: [bern, berne, berna]}
+  - {name: Geneva, country: Switzerland, canton: Geneva, names: [geneva, genf, genève, geneve, ginevra, genevra]}
+  - {name: Basel, country: Switzerland, canton: Basel-Stadt, names: [basel, bâle, bale, basilea]}
+  - {name: Lausanne, country: Switzerland, canton: Vaud, names: [lausanne, losanna]}
+  - {name: Lugano, country: Switzerland, canton: Ticino, names: [lugano]}
+  - {name: Bellinzona, country: Switzerland, canton: Ticino, names: [bellinzona, bellenz]}
+  - {name: Locarno, country: Switzerland, canton: Ticino, names: [locarno]}
+  - {name: Lucerne, country: Switzerland, canton: Lucerne, names: [lucerne, luzern, lucerna]}
+  - {name: St. Gallen, country: Switzerland, canton: St. Gallen, names: [st. gallen, st gallen, sankt gallen, saint-gall, san gallo, son gagl]}
+  - {name: Winterthur, country: Switzerland, canton: Zurich, names: [winterthur]}
+  - {name: Biel/Bienne, country: Switzerland, canton: Bern, names: [biel, bienne, bienna]}
+  - {name: Thun, country: Switzerland, canton: Bern, names: [thun, thoune]}
+  - {name: Neuchâtel, country: Switzerland, canton: Neuchâtel, names: [neuchâtel, neuchatel, neuenburg]}
+  - {name: Sion, country: Switzerland, canton: Valais, names: [sion, sitten]}
+  - {name: Chur, country: Switzerland, canton: Graubünden, names: [chur, coire, coira, cuira]}
+  - {name: Davos, country: Switzerland, canton: Graubünden, names: [davos, tavau]}
+  - {name: Zug, country: Switzerland, canton: Zug, names: [zug, zoug, zugo], strict: true}
+  - {name: Schaffhausen, country: Switzerland, canton: Schaffhausen, names: [schaffhausen, schaffhouse, sciaffusa]}
+  - {name: Aarau, country: Switzerland, canton: Aargau, names: [aarau]}
+  - {name: Solothurn, country: Switzerland, canton: Solothurn, names: [solothurn, soleure, soletta]}
+  - {name: Yverdon-les-Bains, country: Switzerland, canton: Vaud, names: [yverdon, yverdon-les-bains]}
+  # Italy
+  - {name: Milan, country: Italy, names: [milan, milano, mailand, milaun]}
+  - {name: Rome, country: Italy, names: [rome, roma, rom]}
+  - {name: Turin, country: Italy, names: [turin, torino]}
+  - {name: Bologna, country: Italy, names: [bologna, bologne]}
+  - {name: Florence, country: Italy, names: [florence, firenze, florenz]}
+  - {name: Naples, country: Italy, names: [naples, napoli, neapel]}
+  - {name: Genoa, country: Italy, names: [genoa, genova, genua, gênes]}
+  - {name: Venice, country: Italy, names: [venice, venezia, venedig, venise]}
+  - {name: Bergamo, country: Italy, names: [bergamo]}
+  - {name: Brescia, country: Italy, names: [brescia]}
+  - {name: Verona, country: Italy, names: [verona, vérone]}
+  - {name: Padua, country: Italy, names: [padua, padova, padoue]}
+  - {name: Pisa, country: Italy, names: [pisa, pise]}
+  - {name: Como, country: Italy, names: [como, côme], strict: true}
+  - {name: Varese, country: Italy, names: [varese]}
+  - {name: Bolzano, country: Italy, names: [bolzano, bozen]}
+  # Germany
+  - {name: Munich, country: Germany, names: [munich, münchen, muenchen, monaco di baviera]}
+  - {name: Berlin, country: Germany, names: [berlin, berlino]}
+  - {name: Hamburg, country: Germany, names: [hamburg, hambourg, amburgo]}
+  - {name: Frankfurt, country: Germany, names: [frankfurt, francfort, francoforte]}
+  - {name: Stuttgart, country: Germany, names: [stuttgart, stoccarda]}
+  - {name: Cologne, country: Germany, names: [cologne, köln, koeln, colonia]}
+  - {name: Düsseldorf, country: Germany, names: [düsseldorf, duesseldorf, dusseldorf]}
+  - {name: Heidelberg, country: Germany, names: [heidelberg]}
+  - {name: Freiburg im Breisgau, country: Germany, names: [freiburg im breisgau, fribourg-en-brisgau, friburgo in brisgovia]}
+  - {name: Tübingen, country: Germany, names: [tübingen, tuebingen, tubingen]}
+  - {name: Erlangen, country: Germany, names: [erlangen]}
+  - {name: Karlsruhe, country: Germany, names: [karlsruhe]}
+  - {name: Leipzig, country: Germany, names: [leipzig, lipsia]}
+  - {name: Dresden, country: Germany, names: [dresden, dresde, dresda]}
+  - {name: Nuremberg, country: Germany, names: [nuremberg, nürnberg, nuernberg, norimberga]}
+  - {name: Aachen, country: Germany, names: [aachen, aix-la-chapelle, aquisgrana]}
+  # France
+  - {name: Paris, country: France, names: [paris, parigi]}
+  - {name: Lyon, country: France, names: [lyon, lione]}
+  - {name: Marseille, country: France, names: [marseille, marsiglia]}
+  - {name: Toulouse, country: France, names: [toulouse, tolosa]}
+  - {name: Grenoble, country: France, names: [grenoble]}
+  - {name: Strasbourg, country: France, names: [strasbourg, straßburg, strassburg, strasburgo]}
+  - {name: Lille, country: France, names: [lille]}
+  - {name: Bordeaux, country: France, names: [bordeaux]}
+  - {name: Montpellier, country: France, names: [montpellier]}
+  - {name: Nantes, country: France, names: [nantes]}
+  - {name: Mulhouse, country: France, names: [mulhouse, mülhausen]}
+  - {name: Annecy, country: France, names: [annecy]}
+  # Austria
+  - {name: Vienna, country: Austria, names: [vienna, wien, vienne]}
+  - {name: Graz, country: Austria, names: [graz]}
+  - {name: Linz, country: Austria, names: [linz]}
+  - {name: Innsbruck, country: Austria, names: [innsbruck]}
+  - {name: Salzburg, country: Austria, names: [salzburg, salzbourg, salisburgo]}
+  # Elsewhere
+  - {name: London, country: United Kingdom, names: [london, londres, londra]}
+  - {name: Cambridge, country: United Kingdom, names: [cambridge]}
+  - {name: Oxford, country: United Kingdom, names: [oxford]}
+  - {name: Amsterdam, country: Netherlands, names: [amsterdam]}
+  - {name: Eindhoven, country: Netherlands, names: [eindhoven]}
+  - {name: Brussels, country: Belgium, names: [brussels, brüssel, bruxelles]}
+  - {name: Copenhagen, country: Denmark, names: [copenhagen, kopenhagen, copenhague, copenaghen]}
+  - {name: Stockholm, country: Sweden, names: [stockholm, stoccolma]}
+  - {name: Dublin, country: Ireland, names: [dublin, dublino]}
+  - {name: Madrid, country: Spain, names: [madrid]}
+  - {name: Barcelona, country: Spain, names: [barcelona, barcelone, barcellona]}
+  - {name: Boston, country: United States, names: [boston]}
+  - {name: San Francisco, country: United States, names: [san francisco]}
+  - {name: New York, country: United States, names: [new york]}
+  - {name: Tel Aviv, country: Israel, names: [tel aviv]}
+  - {name: Tokyo, country: Japan, names: [tokyo, tokio]}

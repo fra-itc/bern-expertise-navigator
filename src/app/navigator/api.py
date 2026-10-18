@@ -13,11 +13,12 @@ from pathlib import Path
 from typing import Literal
 
 from fastapi import FastAPI, HTTPException, Query, Request
+from fastapi.concurrency import run_in_threadpool
 from fastapi.responses import FileResponse, JSONResponse, Response
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
 
-from . import brief, cases, crawl, index, llm, plain, search as search_mod, showcase
+from . import archetypes, brief, cases, crawl, documents, index, llm, plain, search as search_mod, showcase, understand
 from .config import DATA_DIR, load_sources, settings
 from .schema import EntityDetail, RelatedRef, SearchResponse
 from .storage import StorageError
@@ -149,6 +150,18 @@ def _case_or_404(cid: str) -> cases.Case:
     return c
 
 
+@app.get("/archetypes")
+def get_archetypes():
+    return archetypes.ARCHETYPES
+
+
+@app.get("/understand")
+def get_understand(q: str = Query("", max_length=500)):
+    """Live preview for the broad search: place (city / canton / country), medtech area / niche and the
+    words that remain to search, read from free text in EN/DE/FR/IT/Romansh (config-driven, no AI)."""
+    return understand.understand(q)
+
+
 @app.get("/medtech-areas")
 def get_medtech_areas():
     """Medtech areas and niches offered as filters on a new request (config/medtech_areas.yaml)."""
@@ -165,9 +178,34 @@ def list_cases():
             for c in cases.list_cases()]
 
 
+@app.post("/documents", response_model=documents.Document)
+async def read_document(request: Request, name: str = Query(..., min_length=1, max_length=255)):
+    """Raw file bytes in the body (no multipart). Returns the extracted text; the file is not stored."""
+    if int(request.headers.get("content-length") or 0) > documents.MAX_BYTES:
+        raise HTTPException(413, f"The file is larger than {documents.MAX_BYTES // 1_000_000} MB.")
+    data = bytearray()
+    async for chunk in request.stream():
+        data += chunk
+        if len(data) > documents.MAX_BYTES:
+            raise HTTPException(413, f"The file is larger than {documents.MAX_BYTES // 1_000_000} MB.")
+    try:
+        # parsing is CPU-bound; keep the event loop free for other users
+        return await run_in_threadpool(documents.read, name, bytes(data))
+    except documents.DocumentError as e:
+        raise HTTPException(422, str(e)) from None
+
+
+@app.get("/documents/types")
+def document_types():
+    return {"accept": documents.ACCEPT, "max_mb": documents.MAX_BYTES // 1_000_000}
+
+
 @app.post("/cases", response_model=cases.Case)
 def create_case(req: cases.NewCase):
-    return cases.create(req)
+    try:
+        return cases.create(req)
+    except cases.company_web.FetchError as e:
+        raise HTTPException(422, str(e)) from None
 
 
 @app.get("/cases/{cid}", response_model=cases.Case)

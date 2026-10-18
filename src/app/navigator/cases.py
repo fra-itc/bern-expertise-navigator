@@ -1,4 +1,4 @@
-"""Company requests ("cases"): understand -> choose partners -> pitch & invite to Bern.
+"""Company requests ("cases"): company link or info -> plain summary -> partners in Bern -> pitch & invite.
 
 Stored through storage.case_store(): SQLite (data/cases.db, one JSON document per case plus its
 activity log) when DATABASE_URL is empty, nav."case"/case_match/case_event when it is set.
@@ -18,7 +18,7 @@ from pydantic import BaseModel, Field, model_validator
 
 import yaml
 
-from . import index, plain, search, showcase
+from . import archetypes, company as company_web, documents as docs, index, plain, search, showcase, understand
 from .config import CONFIG_DIR, DATA_DIR
 from .storage import case_store
 
@@ -44,6 +44,13 @@ class Match(BaseModel):
     confidence: float = 0.0
     via: str | None = None
     selected: bool = False
+    archetype: str = ""                # see archetypes.py; filled in for older requests too
+
+    @model_validator(mode="after")
+    def _archetype(self):
+        if not self.archetype:
+            self.archetype = archetypes.classify(self.entity_type, self.name, self.role, self.contact, self.plain)
+        return self
 
 
 class Event(BaseModel):
@@ -63,9 +70,15 @@ class Case(BaseModel):
     contact_email: str = ""
     country: str = ""
     canton: str = ""                 # when the company is in Switzerland
+    city: str = ""                   # from a broad search ("glucose company in Milan")
+    understood: list[dict] = []      # what the broad search recognised, with the words that triggered it
     area: str = ""                   # medtech area id   (config/medtech_areas.yaml)
     niche: str = ""                  # niche id within the area
-    request_text: str
+    company_url: str = ""
+    need: str = ""                   # what the company is looking for, if the officer knows
+    website: company_web.CompanyWebsite | None = None   # what was read from company_url
+    documents: list[docs.Document] = []                  # text read from files the company shared
+    request_text: str = ""           # the officer's pasted information about the company
     analysis: plain.RequestAnalysis
     matches: list[Match] = []
     no_match_message: str | None = None
@@ -79,10 +92,19 @@ class Case(BaseModel):
             data = {**data, "status": _LEGACY_STATUS[data["status"]]}
         return data
 
+    def source_text(self) -> str:
+        """Everything known about the company, for finding the topics it shares with Bern."""
+        return "\n".join(x for x in [self.need, *(d.text for d in self.documents), self.request_text,
+                                      self.website.text if self.website else ""] if x)
+
 
 class NewCase(BaseModel):
-    """Search-first: what the company is looking for + optional filters. Contact details come later."""
-    request_text: str = Field(..., min_length=3, max_length=12000)
+    """The company's website link, shared documents (already read by POST /documents) and/or pasted
+    information, an optional need, optional filters. Contact details can come later."""
+    company_url: str = Field("", max_length=500)
+    documents: list[docs.Document] = Field([], max_length=5)
+    request_text: str = Field("", max_length=12000)
+    need: str = Field("", max_length=500)
     company: str = Field("", max_length=200)
     contact_name: str = Field("", max_length=200)
     contact_email: str = Field("", max_length=200)
@@ -92,6 +114,13 @@ class NewCase(BaseModel):
     niche: str = Field("", max_length=40)
     lang: str = "en"
     actor: str = Field(..., min_length=1, max_length=120)
+    broad: bool = False   # request_text is a one-line search ("glucose company in Milan"): read place and topic from it
+
+    @model_validator(mode="after")
+    def _something(self):
+        if not self.company_url.strip() and not self.documents and len(self.request_text.strip()) < 3:
+            raise ValueError("Give the company's website link, upload a document or paste some information.")
+        return self
 
 
 def _now() -> str:
@@ -169,33 +198,64 @@ def niche_query(area: str, niche: str) -> str:
     return ""
 
 
-def find_matches(analysis: plain.RequestAnalysis, k: int = 12) -> tuple[list[Match], str | None]:
-    """People, labs and facilities first (someone to contact), projects after (context)."""
+PER_ARCHETYPE = 8
+
+
+def find_matches(analysis: plain.RequestAnalysis, k: int = 40) -> tuple[list[Match], str | None]:
+    """Everything Bern can offer this company, grouped by archetype (people, units, facilities, studies…).
+    Up to PER_ARCHETYPE per archetype, in relevance order; among people the leads come first, so a
+    company meets the professor or group head before an intern."""
     ents = index.load_entities()
-    r = search.search(analysis.search_query, k=k + 6)
+    r = search.search(analysis.search_query, k=k)
     if r.abstained:
         return [], r.message
     out = []
     for x in r.results:
         e = ents.get(x.id)
+        desc = " ".join(e.description) if e and e.description else ""
         out.append(Match(
             id=x.id, name=x.person_or_unit, entity_type=x.entity_type, role=x.role, unit=x.affiliation.unit,
             institution=x.institution, why=x.why_match, url=(x.sources[0].url if x.sources else ""),
             plain=(e.description[0] if e and e.description else None), contact=x.contact,
-            confidence=x.confidence, via=x.via))
-    # People first (someone to contact), and among people the leads first: a company should meet the
-    # professor or group head, not an intern. Stable sort keeps relevance order within each band.
-    def rank(m: Match) -> tuple:
+            confidence=x.confidence, via=x.via,
+            archetype=archetypes.classify(x.entity_type, x.person_or_unit, x.role, e.email if e else x.contact, desc)))
+
+    def band(m: Match) -> int:  # stable sort keeps relevance order within each band
         e = ents.get(m.id)
         sen = search.seniority(e) if e and m.entity_type == "person" else 1.0
-        band = 0 if sen >= 1.2 else 1 if sen >= 0.8 else 2
-        return (_ORDER.get(m.entity_type, 9), band if m.entity_type == "person" else 0)
-    out.sort(key=rank)
-    return out[:k], None
+        return 0 if sen >= 1.2 else 1 if sen >= 0.8 else 2
+    out.sort(key=lambda m: (archetypes.ORDER.get(m.archetype, 99), band(m)))
+    per: dict[str, int] = {}
+    kept = []
+    for m in out:
+        per[m.archetype] = per.get(m.archetype, 0) + 1
+        if per[m.archetype] <= PER_ARCHETYPE:
+            kept.append(m)
+    return kept, None
 
 
 def create(req: NewCase) -> Case:
-    analysis = plain.analyze_request(req.request_text, req.lang)
+    """Raises company_web.FetchError when the link cannot be read (the officer can paste the text instead)."""
+    site = company_web.read(req.company_url) if req.company_url.strip() else None
+    name = req.company.strip() or (site.name if site else "")
+    # the company's own pitch says most about what they do, then the officer's notes, then the website
+    text = "\n\n".join(x for x in [*(d.text for d in req.documents), req.request_text.strip(),
+                                    site.text if site else ""] if x)
+    u = understand.understand(req.request_text) if req.broad else None
+    if u:
+        # broad search: place and topic come from the sentence; explicit filters still win
+        req.country, req.canton = req.country or u.country, req.canton or u.canton
+        if not req.area:
+            req.area, req.niche = u.area, u.niche
+    if site or req.documents or req.need.strip():
+        analysis = plain.analyze_company(name, site.description if site else "", text, req.need, req.lang,
+                                         page_titles=[p.title for p in site.pages] if site else None)
+    elif u:
+        # search with what is left once the place and filler words are removed ("glucose", not "Milan")
+        analysis = plain.analyze_request(u.rest or req.request_text, req.lang)
+        analysis.search_query = u.rest or analysis.search_query
+    else:
+        analysis = plain.analyze_request(req.request_text, req.lang)   # an email from the company: the old path
     # the chosen medtech niche sharpens the search; the company's own words stay in the query
     extra = niche_query(req.area, req.niche)
     if extra:
@@ -203,11 +263,17 @@ def create(req: NewCase) -> Case:
     matches, msg = find_matches(analysis)
     now = _now()
     swiss = req.country.strip().lower() in ("switzerland", "schweiz", "suisse", "svizzera", "ch")
-    case = Case(id=uuid.uuid4().hex[:10], created_at=now, updated_at=now, company=req.company.strip(),
+    case = Case(id=uuid.uuid4().hex[:10], created_at=now, updated_at=now, company=name,
+                company_url=site.url if site else "", need=req.need.strip(), website=site, documents=req.documents,
                 contact_name=req.contact_name.strip(), contact_email=req.contact_email.strip(),
                 country=req.country.strip(), canton=req.canton.strip() if swiss else "", area=req.area, niche=req.niche,
+                city=u.city if u else "", understood=[d.model_dump() for d in u.detections] if u else [],
                 request_text=req.request_text.strip(), analysis=analysis, matches=matches, no_match_message=msg)
     log(case, req.actor, "created", f"Request received{' from ' + case.company if case.company else ''}")
+    for d in req.documents:
+        log(case, "Navigator", "document", f"Read {d.kind} document {d.name}")
+    if site:
+        log(case, "Navigator", "website", f"Read {len(site.pages)} page(s) of {site.url}")
     log(case, "Navigator", "analysed",
         f"Plain-language summary by {'Apertus' if analysis.generated_by == 'apertus' else 'glossary rules'}; "
         f"{len(matches)} possible partners found in Bern")

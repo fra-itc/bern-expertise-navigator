@@ -93,3 +93,26 @@ def test_company_details_needed_before_pitch(client):
     assert client.post(f"/cases/{cid}/brief", json={"lang": "en", **OFF}).status_code == 400   # no company yet
     d = client.post(f"/cases/{cid}/details", json={"company": "X AG", "contact_email": "ceo@x.ch", **OFF}).json()
     assert d["company"] == "X AG" and d["contact_email"] == "ceo@x.ch"
+
+
+def test_broad_search_reads_place_and_topic(client, monkeypatch):
+    seen = {}
+    real = cases.find_matches
+
+    def spy(analysis, k=12):
+        seen["q"] = analysis.search_query
+        return real(analysis, k)
+    monkeypatch.setattr(cases, "find_matches", spy)
+    c = client.post("/cases", json={"request_text": "glucose company in Milan", "broad": True, **OFF}).json()
+    assert (c["city"], c["country"], c["area"], c["niche"]) == ("Milan", "Italy", "diabetes", "glucose")
+    assert "milan" not in seen["q"].lower() and seen["q"].startswith("continuous glucose monitoring")
+    assert {d["kind"] for d in c["understood"]} >= {"city", "country", "niche"}
+    # explicit filters win over what the sentence says
+    c2 = client.post("/cases", json={"request_text": "Glukosesensor-Firma aus München", "broad": True,
+                                     "area": "imaging", **OFF}).json()
+    assert (c2["country"], c2["area"], c2["niche"]) == ("Germany", "imaging", "")
+    # the same text without broad mode is treated as pasted information (no place guessing)
+    c3 = client.post("/cases", json={"request_text": "We sell in Switzerland and Italy", **OFF}).json()
+    assert c3["country"] == "" and c3["understood"] == []
+    live = client.get("/understand", params={"q": "azienda di glucosio a Milano"}).json()
+    assert live["city"] == "Milan" and live["niche"] == "glucose"

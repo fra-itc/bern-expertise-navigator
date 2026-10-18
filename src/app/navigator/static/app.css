@@ -592,6 +592,13 @@ sup.ref a { font-size: 11px; font-weight: 700; color: var(--ok); text-decoration
 .nr-box > svg { width: 20px; height: 20px; margin-top: 11px; fill: none; stroke: var(--muted); stroke-width: 2; stroke-linecap: round; flex: none; }
 .nr-box textarea { flex: 1; border: 0 !important; box-shadow: none !important; background: transparent; resize: none; min-height: 44px; font-size: 17px; padding: 9px 2px; line-height: 1.45; }
 .nr-box .btn-primary { padding: 11px 16px; margin-top: 1px; }
+.nr-box input { flex: 1; min-width: 0; border: 0 !important; box-shadow: none !important; background: transparent; font-size: 17px; padding: 9px 2px; }
+.nr-wide { margin-top: 14px; }
+.nr-wide textarea { resize: vertical; min-height: 64px; font-size: 14.5px; }
+.web-src { display: flex; gap: 10px; margin-top: 14px; padding: 12px 14px; background: var(--surface-2); border-radius: 10px; font-size: 14px; }
+.web-src > svg { width: 18px; height: 18px; flex: none; margin-top: 2px; fill: none; stroke: var(--muted); stroke-width: 2; stroke-linecap: round; }
+.web-src ul { margin: 6px 0 0; padding-left: 18px; color: var(--ink-2); }
+.web-src a { overflow-wrap: anywhere; }
 .nr-try { justify-content: center; margin-top: 12px; }
 .nr-filters { display: grid; grid-template-columns: 1.2fr 1fr 1fr; gap: 10px; margin-top: 20px; }
 .nr-f { display: grid; gap: 4px; font-size: 12.5px; font-weight: 600; color: var(--muted); }
@@ -615,3 +622,56 @@ sup.ref a { font-size: 11px; font-weight: 700; color: var(--ok); text-decoration
 .kpis { grid-template-columns: repeat(3, 1fr); }
 @media (max-width: 860px) { .board { grid-template-columns: minmax(0, 1fr); } }
 .whoami button { white-space: nowrap; }
+
+/* document upload on the new-request form */
+.drop { display: flex; align-items: center; gap: 10px; padding: 14px 16px; border: 1.5px dashed var(--border-strong); border-radius: 12px;
+  background: var(--surface); color: var(--ink-2); font-weight: 500; font-size: 14px; cursor: pointer; }
+.drop:hover, .drop.over, .drop:focus-within { border-color: var(--focus); background: color-mix(in srgb, var(--focus) 6%, var(--surface)); }
+.drop > svg { width: 22px; height: 22px; flex: none; fill: none; stroke: var(--muted); stroke-width: 1.8; stroke-linejoin: round; }
+.drop input { position: absolute; width: 1px; height: 1px; opacity: 0; }
+.docs { list-style: none; margin: 6px 0 0; padding: 0; display: grid; gap: 6px; font-weight: 500; color: var(--ink); }
+.docs li { display: flex; align-items: center; gap: 8px; font-size: 14px; overflow-wrap: anywhere; }
+.docs li svg { width: 16px; height: 16px; flex: none; fill: none; stroke: currentColor; stroke-width: 2.4; stroke-linecap: round; }
+.docs li.ok > svg { color: var(--ok); }
+.docs li.bad { color: var(--warn); display: block; }
+.docs .icon-btn { margin-left: auto; background: none; border: 0; padding: 4px; cursor: pointer; color: var(--muted); border-radius: 6px; }
+.docs .icon-btn:hover { color: var(--ink); background: var(--surface-2); }
+.doc-text summary { cursor: pointer; font-size: 13px; color: var(--ink-2); }
+.doc-text .orig-text { max-height: 260px; overflow: auto; }
+
+/* company profile: offerings + keywords */
+.facts.biz { margin-top: 12px; }
+.kw { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 4px; }
+.orig .web-src { margin-top: 10px; }
+.orig .web-src b { display: block; margin-top: 6px; }
+.orig .web-src b:first-child { margin-top: 0; }
+
+/* matching assets: one tab per archetype */
+.atabs { display: flex; flex-wrap: wrap; gap: 6px; margin: 4px 0 12px; padding-bottom: 10px; border-bottom: 1px solid var(--border); }
+.atab { display: inline-flex; align-items: center; gap: 6px; border: 1px solid var(--border); background: var(--surface); color: var(--ink-2);
+  padding: 6px 12px; border-radius: 999px; font-size: 13.5px; font-weight: 550; cursor: pointer; }
+.atab:hover { border-color: var(--border-strong); color: var(--ink); }
+.atab.on { background: var(--ink); border-color: var(--ink); color: var(--surface); }
+.atab .n { font-size: 12px; font-weight: 600; opacity: .75; }
+.atab .s { display: inline-flex; align-items: center; gap: 2px; font-size: 12px; color: var(--ok); }
+.atab.on .s { color: inherit; }
+.atab .s svg { width: 12px; height: 12px; fill: none; stroke: currentColor; stroke-width: 3; }
+@media (max-width: 760px) { .atabs { flex-wrap: nowrap; overflow-x: auto; } .atab { flex: none; } }
+
+/* =================== broad search =================== */
+.nr-tabs { display: flex; justify-content: center; margin: 4px 0 14px; }
+.nr-tabs .seg-tabs button { display: inline-flex; align-items: center; gap: 6px; }
+.bs-understood { display: flex; flex-wrap: wrap; justify-content: center; gap: 8px; min-height: 34px; margin: 12px 0 2px; }
+.u-chip { display: inline-flex; align-items: center; gap: 7px; font-size: 13.5px; padding: 5px 12px; border-radius: 999px;
+  background: var(--surface); border: 1px solid var(--border); color: var(--ink); }
+.u-chip b { font-size: 10.5px; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); font-weight: 700; }
+.u-chip.place { border-color: color-mix(in srgb, var(--info) 45%, var(--border)); background: var(--info-bg); }
+.u-chip.topic { border-color: color-mix(in srgb, var(--brand) 40%, var(--border)); background: color-mix(in srgb, var(--brand) 6%, var(--surface)); }
+.bs-langs { text-align: center; margin-top: 14px; }
+.nr-box input#bsQ { flex: 1; min-width: 0; border: 0 !important; box-shadow: none !important; background: transparent; font-size: 17px; padding: 9px 2px; }
+
+/* segmented tabs (New request: Broad search / Company details; Labs & facilities directory) */
+.seg-tabs { display: inline-flex; background: var(--surface-2); padding: 3px; border-radius: 11px; gap: 2px; }
+.seg-tabs button { border: 0; background: transparent; padding: 7px 14px; border-radius: 8px; cursor: pointer; font-weight: 600; font-size: 14px; color: var(--muted); }
+.seg-tabs button:hover { color: var(--ink); }
+.seg-tabs button.on { background: var(--surface); color: var(--ink); box-shadow: var(--shadow-sm); }
