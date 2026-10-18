@@ -18,7 +18,8 @@ from fastapi.responses import FileResponse, JSONResponse, Response
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
 
-from . import archetypes, brief, cases, crawl, documents, index, llm, plain, search as search_mod, showcase, understand
+from . import (archetypes, brief, cases, crawl, documents, index, llm, plain, reply, search as search_mod, showcase, suggest,
+               understand)
 from .config import DATA_DIR, load_sources, settings
 from .schema import EntityDetail, RelatedRef, SearchResponse
 from .storage import StorageError
@@ -118,7 +119,7 @@ def stats():
         "model": settings.llm_model,
         "llm_available": llm.available(),
         "extractors": Counter(e.extractor for e in ents),
-        "eval": _json("eval_report.json"),
+        "eval": {k: v for k, v in ev.items() if k not in ("per_query", "twins")} if (ev := _json("eval_report.json")) else None,
     }
 
 
@@ -168,6 +169,18 @@ def get_understand(q: str = Query("", max_length=500)):
     return understand.understand(q)
 
 
+class SuggestReq(BaseModel):
+    text: str = Field(..., min_length=2, max_length=500)
+    lang: Literal["en", "de", "fr"] = "en"
+
+
+@app.post("/companies/suggest", response_model=suggest.Suggestions)
+def suggest_companies(body: SuggestReq):
+    """Broad search without a company: up to three companies suggested by Apertus, each checked on its own
+    homepage. A search that is a website link comes back as `link` (create the request from it directly)."""
+    return suggest.suggest(body.text, body.lang)
+
+
 @app.get("/medtech-areas")
 def get_medtech_areas():
     """Medtech areas and niches offered as filters on a new request (config/medtech_areas.yaml)."""
@@ -177,10 +190,12 @@ def get_medtech_areas():
 
 @app.get("/cases")
 def list_cases():
-    return [{"id": c.id, "company": c.company, "status": c.status, "country": c.country, "canton": c.canton,
+    return [{"id": c.id, "company": cases.guess_company(c), "status": c.status, "country": c.country, "canton": c.canton,
              "area": c.area, "niche": c.niche,
              "updated_at": c.updated_at, "created_at": c.created_at, "summary": c.analysis.summary[:220],
-             "selected": sum(m.selected for m in c.matches), "has_brief": bool((c.outreach or {}).get("brief"))}
+             "selected": sum(m.selected for m in c.matches), "has_brief": bool((c.outreach or {}).get("brief")),
+             "matched": bool(c.matches), "views": ((c.outreach or {}).get("brief") or {}).get("views", 0),
+             "replies": len((c.outreach or {}).get("replies", []))}
             for c in cases.list_cases()]
 
 
@@ -220,6 +235,9 @@ def get_case(cid: str):
     if c.offer is None and c.matches and c.status == "new":   # requests created before the paragraph existed
         c.offer = cases.summarize_offer(c)
         cases.save(c)
+    if not c.company and cases.guess_company(c):              # requests created before the name was read
+        c.company = cases.guess_company(c)
+        cases.save(c)
     return c
 
 
@@ -238,7 +256,7 @@ class Details(StaffAction):
 
 @app.post("/cases/{cid}/details", response_model=cases.Case)
 def set_details(cid: str, body: Details):
-    """Company and contact person — asked only when the officer is ready to pitch."""
+    """Company and contact person — optional corrections; the pitch does not wait for them."""
     c = _case_or_404(cid)
     c.company, c.contact_name, c.contact_email = body.company.strip(), body.contact_name.strip(), body.contact_email.strip()
     cases.log(c, body.actor, "details", f"Company details: {c.company}")
@@ -310,38 +328,89 @@ def draft(cid: str, body: DraftReq):
 
 
 class BriefReq(StaffAction):
-    lang: Literal["en", "de", "fr"] = "en"
+    lang: Literal["en", "de", "fr"] | None = None      # the CEO's pitch; None: from where the company is
+    ui_lang: Literal["en", "de", "fr"] | None = None   # the officer's preface; None: same as the pitch
     email: str = ""
     team: str = ""
 
 
 @app.post("/cases/{cid}/brief")
 def prepare_brief(cid: str, body: BriefReq):
-    """Output 1 (plain explanation for the officer) + Output 2 (executive brief, published under a private link)."""
+    """"Generate pitch": Output 1 (strategic pitch for the CEO, published under a private link) + Output 2
+    (simplified preface for the officer). Nothing has to be entered: name and language come from the request."""
     c = _case_or_404(cid)
     if not any(m.selected for m in c.matches):
         raise HTTPException(400, "Choose at least one partner first")
-    if not c.company:
-        raise HTTPException(400, "Add the company name before preparing the pitch")
-    out = brief.build(c, body.lang, {"name": body.actor, "email": body.email, "team": body.team})
-    token = (c.outreach.get("brief") or {}).get("token") or secrets.token_urlsafe(12)
-    c.outreach = {**c.outreach, "brief": {"token": token, "lang": body.lang, "at": cases._now(), "data": out["brief"],
-                                          "explainer": out["explainer"], "stats": out["stats"]}}
+    lang = body.lang or brief.pitch_lang(c)
+    c.company = cases.guess_company(c)
+    out = brief.build(c, lang, {"name": body.actor, "email": body.email, "team": body.team}, body.ui_lang)
+    old = c.outreach.get("brief") or {}
+    # the same link stays valid for another BRIEF_LINK_DAYS; a disabled link is never switched back on
+    token = old.get("token") if old.get("token") and not old.get("revoked_at") else secrets.token_urlsafe(12)
+    seen = {k: old[k] for k in ("views", "first_view", "last_view") if k in old and token == old.get("token")}
+    if old.get("token") and token != old["token"]:   # the disabled link keeps answering "no longer active", not 404
+        c.outreach = {**c.outreach, "retired_links": [*c.outreach.get("retired_links", []), old["token"]]}
+    c.outreach = {**c.outreach, "brief": {"token": token, "lang": lang, "at": cases._now(), "data": out["brief"],
+                                          "explainer": out["explainer"], "stats": out["stats"],
+                                          "expires_at": reply.new_expiry(), **seen}}
     cases.log(c, body.actor, "brief_prepared",
-              f"Executive brief prepared ({body.lang.upper()}): {out['stats']['claims']} sourced statements, "
+              f"Pitch generated ({lang.upper()}): {out['stats']['claims']} sourced statements, "
               f"{out['stats']['publications']} publications")
     cases.save(c)
     return {"token": token, **out}
 
 
-@app.get("/briefs/{token}")
-def get_brief(token: str):
-    """Public, read-only executive brief (the private link is the only key)."""
+def _brief_case(token: str) -> cases.Case:
+    """The request behind a private link; 410 (with whom to ask) once the link is disabled or expired."""
+    key = token.encode()
     for c in cases.list_cases():
         b = (c.outreach or {}).get("brief")
-        if b and secrets.compare_digest(b["token"], token):
-            return {**b["data"], "prepared_at": b["at"]}
+        if not b:
+            continue
+        current = secrets.compare_digest(b["token"].encode(), key)
+        retired = any(secrets.compare_digest(t.encode(), key) for t in c.outreach.get("retired_links", []))
+        if current or retired:
+            if (st := "revoked" if retired else reply.state(b)) != "ok":
+                contact = b["data"].get("contact") or {}
+                raise HTTPException(410, {"state": st, "labels": reply.labels(b["lang"]), "email": contact.get("email", "")})
+            return c
     raise HTTPException(404, "unknown brief")
+
+
+@app.get("/briefs/{token}")
+def get_brief(token: str, preview: bool = False):
+    """Public, read-only executive brief (the private link is the only key). Each opening by the company is
+    counted (time only, nothing about the reader); the officer's preview is not."""
+    c = _brief_case(token)
+    b = c.outreach["brief"]
+    if not preview:
+        reply.record_view(c)
+    return {**b["data"], "prepared_at": b["at"], "expires_at": reply.expires(b),
+            "reply": reply.labels(b["lang"], (b["data"].get("contact") or {}).get("name", ""))}
+
+
+@app.post("/briefs/{token}/reply", status_code=201)
+def reply_to_brief(token: str, body: reply.Reply):
+    """The company answers the pitch: visit, call or question. The request moves to "interested"."""
+    c = _brief_case(token)
+    if reply.too_many(c):
+        raise HTTPException(429, "This pitch has already received several replies; please write to us by email.")
+    reply.record_reply(c, body)
+    return {"ok": True}
+
+
+@app.post("/cases/{cid}/brief/revoke", response_model=cases.Case)
+def revoke_brief(cid: str, body: StaffAction):
+    """Disable the private link now. Preparing the pitch again creates a new link."""
+    c = _case_or_404(cid)
+    b = c.outreach.get("brief")
+    if not b:
+        raise HTTPException(404, "No pitch prepared yet")
+    if not b.get("revoked_at"):
+        b["revoked_at"] = cases._now()
+        cases.log(c, body.actor, "brief_revoked", "Disabled the pitch link")
+        cases.save(c)
+    return c
 
 
 class Outcome(StaffAction):
@@ -358,7 +427,8 @@ def outcome(cid: str, body: Outcome):
         raise HTTPException(409, "Choose at least one partner first")
     if body.kind == "email":
         c.status = "contacted"
-        c.outreach = {"subject": body.subject, "body": body.body, "sent_at": cases._now()}
+        # merged, not replaced: the brief (and its link in this very email) and the company's replies stay
+        c.outreach = {**c.outreach, "subject": body.subject, "body": body.body, "sent_at": cases._now()}
         cases.log(c, body.actor, "emailed", f"Invitation email to {c.contact_email or c.company}")
     elif body.kind == "call":
         c.status = "call_scheduled"

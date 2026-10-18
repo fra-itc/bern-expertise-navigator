@@ -167,6 +167,18 @@ def understand(text: str) -> Understood:
     return u
 
 
+def topic_keywords(area: str, niche: str = "") -> list[str]:
+    """The keywords of an area (and its niche) in every language, normalised: "glucose", "glukose", "glucosio"…"""
+    _, topics = _lists(_mtimes())
+    return list(dict.fromkeys(kw for a, n, kw in topics if a == area and (not n or n == niche)))
+
+
+def place_names(value: str) -> list[str]:
+    """Every name of a city, canton or country, normalised: "Milan" -> milan, milano, mailand…"""
+    entries, _ = _lists(_mtimes())
+    return list(dict.fromkeys(name for _, v, name, *_ in entries if v == value))
+
+
 def text_slice(original: str, normed: str, m: re.Match) -> str:
     """The matched words as the user typed them (best effort; falls back to the normalised form)."""
     words = normed[m.start():m.end()].split()

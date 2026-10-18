@@ -1,21 +1,26 @@
-"""The two outputs of a request, once the officer has chosen the partners.
+"""The two outputs of "Generate pitch", once the officer has chosen the partners.
 
-Output 1 — for the business-development officer: a plain-language explanation of what was
-prepared and why, so she understands what she is sending without knowing the field.
+Output 1 — the strategic pitch for the foreign company's CEO: short, personalised, focused on the
+opportunities in Bern: for each of the company's needs, how Bern answers it, with whom, and an
+estimated benefit (config/benefits.yaml, always labelled as an estimate with its basis). Every
+statement about Bern is a verbatim quote from a public institutional page or a publication (DOI)
+listed on such a page, numbered and linked. It never claims that anyone has agreed to meet.
 
-Output 2 — for the company's CEO: a short executive brief whose only goal is a visit to Bern.
-No overselling: every statement is either a verbatim quote from a public institutional page or
-a scientific publication (DOI) listed on such a page, and each is numbered and linked. The brief
-never claims that anyone has agreed to meet, and says nothing about money.
+Output 2 — a simplified preface for the officer, in everyday words without technical terms, and in
+five parts only: what the company does, what it needs and what we found in Bern, why these
+partners, how this helps the company, and the message of the pitch.
 """
 from __future__ import annotations
 
 import re
 from functools import lru_cache
 
-from . import crawl, index, plain, search, showcase
+from . import archetypes, cases, crawl, index, llm, plain, search, showcase
 from .cases import Case
-from .config import DATA_DIR
+import yaml
+from pydantic import BaseModel
+
+from .config import CONFIG_DIR, DATA_DIR
 from .extract import name_key
 from .schema import Entity
 
@@ -33,27 +38,43 @@ T = {
         "proof": "Bern in numbers", "visit": "Proposed: a half-day in Bern",
         "visit_meet": "Meet {who}", "visit_tour": "Visit the {what}", "visit_talk": "Discuss collaboration, pilots and next steps",
         "cta": "Plan your visit", "pdf": "Save as PDF", "sources": "Sources",
-        "honest": "Every statement above is quoted from the public website of the institution it describes, or is a "
-                  "publication listed there, and is linked to its source. This brief proposes a meeting; it does not "
-                  "state that any person has already agreed to one.",
+        "honest": "Every statement about Bern above is quoted from the public website of the institution it describes, "
+                  "or is a publication listed there, and is linked to its source. Benefit figures are estimates: "
+                  "indicative orders of magnitude, explained under each figure, to be confirmed together. This pitch "
+                  "proposes a meeting; it does not state that any person has already agreed to one.",
         "from": "Prepared by {who}",
-        # officer explainer
-        "x.what": "Summary of the pitch",
-        "x.what1": "A one-page invitation for the leadership of {company}, in English. It introduces {n} research "
-                   "partner(s) in Bern and proposes a half-day visit. Nothing is said about money or contracts.",
-        "x.why": "Rationale for the selected partners",
-        "x.why1": "{name} ({where}) works on {topic}.",
-        "x.mean": "Context: {plain}",
-        "x.why2": "{name} ({where}) was chosen for this request; see the quoted sources in the brief.",
-        "x.check": "What the CEO can check",
-        "x.check1": "{c} statement(s), each linked to the public page it comes from, and {p} scientific publication(s) "
-                    "with a DOI. Nothing in the brief is invented or estimated.",
-        "x.not": "What we deliberately do not say",
-        "x.not1": "No promises: we do not say that anyone has agreed to meet, we do not mention money, funding or "
-                  "conditions, and we do not compare Bern with other places.",
-        "x.next": "Recommended next step",
-        "x.next1": "Send the link (or the PDF) with the short email below. If they are interested, propose a call or "
-                   "a visit date.",
+        "needs": "Your priorities, and how Bern answers them",
+        "needs_lead": "Based on what you shared with us, this is what {company} would find in Bern for each priority.",
+        "n.need": "Your need", "n.answer": "How Bern answers it", "n.with": "With", "n.est": "Estimated benefit",
+        "n.calc": "How we calculated it", "m.with": ", for example with {names}",
+        "n.canton": "Canton of Bern, business development",
+        "n.intro": "The Canton of Bern's business development team introduces you to the specialists in Bern who handle this.",
+        "n.generic": "Developing your products further with partners in Bern",
+        "opp": "Strategic opportunities for {company}",
+        "o.people": "Expertise to strengthen your products", "o.org": "Teams for joint development",
+        "o.offering": "Facilities and services you can use", "o.activities": "Projects and studies to build on",
+        "o.company": "Local companies to partner with", "o.capital": "Programmes for joint innovation",
+        # simplified preface for the officer: everyday words only
+        "x.company": "the company",
+        "x.does": "What {company} does",
+        "x.found": "What they need, and what we found in Bern",
+        "x.need1": "They need {need}. In Bern we found: {names}.",
+        "x.need_us": "They need {need}. Our own team can help with that.",
+        "x.found0": "In Bern we found {groups} working in the same field.",
+        "g.people": ("one expert", "{n} experts"), "g.org": ("one research team", "{n} research teams"),
+        "g.offering": ("one lab or service", "{n} labs or services"),
+        "g.activities": ("one research project", "{n} research projects"),
+        "g.company": ("one local company", "{n} local companies"), "g.capital": ("one programme", "{n} programmes"),
+        "x.why": "Why we chose these partners",
+        "x.why1": ("{names} works on exactly this: {plain}", "{names} work on exactly this: {plain}"),
+        "x.why2": ("{names} works in the same field as the company.", "{names} work in the same field as the company."),
+        "r.people": "expert", "r.org": "research team", "r.offering": "lab or service", "r.activities": "research project",
+        "r.company": "local company", "r.capital": "support programme",
+        "x.how": "How this helps {company}",
+        "x.msg": "What the pitch tells them",
+        "x.msg1": "In short, we are telling {company}: “What you need is already in Bern. Here are the people and the "
+                  "places. Come and meet them for half a day.” The numbers in the pitch are our estimates, and the pitch "
+                  "says so. We do not promise money, and we do not say that anyone has agreed to meet.",
     },
     "de": {
         "kicker": "Eine Einladung, Berns Forschung kennenzulernen",
@@ -66,27 +87,43 @@ T = {
         "proof": "Bern in Zahlen", "visit": "Vorschlag: ein halber Tag in Bern",
         "visit_meet": "Treffen mit {who}", "visit_tour": "Besuch: {what}", "visit_talk": "Austausch zu Zusammenarbeit, Pilotprojekten und nächsten Schritten",
         "cta": "Besuch planen", "pdf": "Als PDF speichern", "sources": "Quellen",
-        "honest": "Jede Aussage oben ist wörtlich von der öffentlichen Website der beschriebenen Institution zitiert "
-                  "oder ist eine dort aufgeführte Publikation und mit ihrer Quelle verlinkt. Dieses Dokument schlägt "
-                  "ein Treffen vor; es behauptet nicht, dass jemand bereits zugesagt hat.",
+        "honest": "Jede Aussage über Bern oben ist wörtlich von der öffentlichen Website der beschriebenen Institution "
+                  "zitiert oder ist eine dort aufgeführte Publikation und mit ihrer Quelle verlinkt. Nutzenangaben sind "
+                  "Schätzungen: Grössenordnungen, unter jeder Zahl begründet und gemeinsam zu bestätigen. Dieses Dokument "
+                  "schlägt ein Treffen vor; es behauptet nicht, dass jemand bereits zugesagt hat.",
         "from": "Erstellt von {who}",
-        "x.what": "Zusammenfassung des Pitchs",
-        "x.what1": "Eine einseitige Einladung an die Geschäftsleitung von {company}, auf Deutsch. Sie stellt {n} "
-                   "Forschungspartner in Bern vor und schlägt einen halbtägigen Besuch vor. Über Geld oder Verträge "
-                   "wird nichts gesagt.",
-        "x.why": "Begründung der ausgewählten Partner",
-        "x.why1": "{name} ({where}) arbeitet an {topic}.",
-        "x.mean": "Einordnung: {plain}",
-        "x.why2": "{name} ({where}) wurde für diese Anfrage ausgewählt; die Belege stehen im Dokument.",
-        "x.check": "Was die Geschäftsleitung prüfen kann",
-        "x.check1": "{c} Aussage(n), jede mit der öffentlichen Seite verlinkt, von der sie stammt, und {p} "
-                    "wissenschaftliche Publikation(en) mit DOI. Nichts ist erfunden oder geschätzt.",
-        "x.not": "Was wir bewusst nicht sagen",
-        "x.not1": "Keine Versprechen: Wir sagen nicht, dass jemand einem Treffen zugestimmt hat, erwähnen weder Geld, "
-                  "Förderung noch Konditionen und vergleichen Bern nicht mit anderen Standorten.",
-        "x.next": "Empfohlener nächster Schritt",
-        "x.next1": "Senden Sie den Link (oder das PDF) mit der kurzen E-Mail unten. Bei Interesse schlagen Sie ein "
-                   "Gespräch oder einen Besuchstermin vor.",
+        "needs": "Ihre Prioritäten und Berns Antworten",
+        "needs_lead": "Auf Grundlage Ihrer Angaben: Das fände {company} in Bern für jede Priorität.",
+        "n.need": "Ihr Bedarf", "n.answer": "Berns Antwort", "n.with": "Mit", "n.est": "Geschätzter Nutzen",
+        "n.calc": "So haben wir gerechnet", "m.with": ", zum Beispiel mit {names}",
+        "n.canton": "Kanton Bern, Wirtschaftsförderung",
+        "n.intro": "Die Wirtschaftsförderung des Kantons Bern vermittelt Ihnen die Fachleute in Bern, die sich damit befassen.",
+        "n.generic": "Ihre Produkte mit Partnern in Bern weiterentwickeln",
+        "opp": "Strategische Chancen für {company}",
+        "o.people": "Fachwissen für Ihre Produkte", "o.org": "Teams für gemeinsame Entwicklung",
+        "o.offering": "Infrastruktur und Dienstleistungen zur Nutzung", "o.activities": "Projekte und Studien als Ausgangspunkt",
+        "o.company": "Lokale Firmen als Partner", "o.capital": "Programme für gemeinsame Innovation",
+        "x.company": "die Firma",
+        "x.does": "Was {company} macht",
+        "x.found": "Was sie brauchen und was wir in Bern gefunden haben",
+        "x.need1": "Sie brauchen {need}. In Bern haben wir gefunden: {names}.",
+        "x.need_us": "Sie brauchen {need}. Dabei hilft unser eigenes Team.",
+        "x.found0": "In Bern haben wir {groups} im selben Gebiet gefunden.",
+        "g.people": ("eine Fachperson", "{n} Fachpersonen"), "g.org": ("ein Forschungsteam", "{n} Forschungsteams"),
+        "g.offering": ("ein Labor oder eine Dienstleistung", "{n} Labore oder Dienstleistungen"),
+        "g.activities": ("ein Forschungsprojekt", "{n} Forschungsprojekte"),
+        "g.company": ("eine lokale Firma", "{n} lokale Firmen"), "g.capital": ("ein Programm", "{n} Programme"),
+        "x.why": "Warum wir diese Partner gewählt haben",
+        "x.why1": ("{names} arbeitet genau daran: {plain}", "{names} arbeiten genau daran: {plain}"),
+        "x.why2": ("{names} arbeitet im selben Gebiet wie die Firma.", "{names} arbeiten im selben Gebiet wie die Firma."),
+        "r.people": "Fachperson", "r.org": "Forschungsteam", "r.offering": "Labor oder Dienstleistung",
+        "r.activities": "Forschungsprojekt", "r.company": "lokale Firma", "r.capital": "Förderprogramm",
+        "x.how": "Wie das {company} hilft",
+        "x.msg": "Was der Pitch ihnen sagt",
+        "x.msg1": "Kurz gesagt sagen wir {company}: «Was Sie brauchen, gibt es schon in Bern. Hier sind die Menschen und "
+                  "die Orte. Kommen Sie für einen halben Tag und lernen Sie sie kennen.» Die Zahlen im Pitch sind unsere "
+                  "Schätzungen, und der Pitch sagt das. Wir versprechen kein Geld und behaupten nicht, dass jemand "
+                  "einem Treffen zugestimmt hat.",
     },
     "fr": {
         "kicker": "Une invitation à rencontrer la recherche bernoise",
@@ -99,27 +136,44 @@ T = {
         "proof": "Berne en chiffres", "visit": "Proposition : une demi-journée à Berne",
         "visit_meet": "Rencontrer {who}", "visit_tour": "Visiter : {what}", "visit_talk": "Échanger sur collaboration, projets pilotes et prochaines étapes",
         "cta": "Planifier votre visite", "pdf": "Enregistrer en PDF", "sources": "Sources",
-        "honest": "Chaque affirmation ci-dessus est citée du site public de l'institution concernée, ou est une "
-                  "publication qui y figure, avec un lien vers sa source. Ce document propose une rencontre ; il "
-                  "n'affirme pas que quiconque l'a déjà acceptée.",
+        "honest": "Chaque affirmation sur Berne ci-dessus est citée du site public de l'institution concernée, ou est "
+                  "une publication qui y figure, avec un lien vers sa source. Les bénéfices chiffrés sont des "
+                  "estimations : des ordres de grandeur, expliqués sous chaque chiffre, à confirmer ensemble. Ce "
+                  "document propose une rencontre ; il n'affirme pas que quiconque l'a déjà acceptée.",
         "from": "Préparé par {who}",
-        "x.what": "Résumé du pitch",
-        "x.what1": "Une invitation d'une page pour la direction de {company}, en français. Elle présente {n} "
-                   "partenaire(s) de recherche à Berne et propose une visite d'une demi-journée. Rien n'est dit sur "
-                   "l'argent ou les contrats.",
-        "x.why": "Justification des partenaires retenus",
-        "x.why1": "{name} ({where}) travaille sur {topic}.",
-        "x.mean": "Contexte : {plain}",
-        "x.why2": "{name} ({where}) a été choisi(e) pour cette demande ; les sources figurent dans la note.",
-        "x.check": "Ce que la direction peut vérifier",
-        "x.check1": "{c} affirmation(s), chacune liée à la page publique d'où elle provient, et {p} publication(s) "
-                    "scientifique(s) avec DOI. Rien n'est inventé ni estimé.",
-        "x.not": "Ce que nous ne disons volontairement pas",
-        "x.not1": "Aucune promesse : nous ne disons pas que quelqu'un a accepté de rencontrer l'entreprise, ne parlons "
-                  "ni d'argent, ni de financement, ni de conditions, et ne comparons pas Berne à d'autres lieux.",
-        "x.next": "Prochaine étape recommandée",
-        "x.next1": "Envoyez le lien (ou le PDF) avec le court e-mail ci-dessous. En cas d'intérêt, proposez un appel "
-                   "ou une date de visite.",
+        "needs": "Vos priorités, et les réponses de Berne",
+        "needs_lead": "D'après ce que vous nous avez transmis, voici ce que {company} trouverait à Berne pour chaque priorité.",
+        "n.need": "Votre besoin", "n.answer": "La réponse de Berne", "n.with": "Avec", "n.est": "Bénéfice estimé",
+        "n.calc": "Notre calcul", "m.with": ", par exemple avec {names}",
+        "n.canton": "Canton de Berne, promotion économique",
+        "n.intro": "La promotion économique du canton de Berne vous met en relation avec les spécialistes bernois du sujet.",
+        "n.generic": "Développer vos produits avec des partenaires à Berne",
+        "opp": "Opportunités stratégiques pour {company}",
+        "o.people": "Des compétences pour renforcer vos produits", "o.org": "Des équipes pour un développement commun",
+        "o.offering": "Des infrastructures et services à votre disposition", "o.activities": "Des projets et études sur lesquels bâtir",
+        "o.company": "Des entreprises locales partenaires", "o.capital": "Des programmes d'innovation commune",
+        "x.company": "l'entreprise",
+        "x.does": "Ce que fait {company}",
+        "x.found": "Ce dont ils ont besoin, et ce que nous avons trouvé à Berne",
+        "x.need1": "Ils ont besoin de {need}. À Berne, nous avons trouvé : {names}.",
+        "x.need_us": "Ils ont besoin de {need}. Notre propre équipe peut les aider.",
+        "x.found0": "À Berne, nous avons trouvé {groups} dans le même domaine.",
+        "g.people": ("un expert", "{n} experts"), "g.org": ("une équipe de recherche", "{n} équipes de recherche"),
+        "g.offering": ("un laboratoire ou service", "{n} laboratoires ou services"),
+        "g.activities": ("un projet de recherche", "{n} projets de recherche"),
+        "g.company": ("une entreprise locale", "{n} entreprises locales"), "g.capital": ("un programme", "{n} programmes"),
+        "x.why": "Pourquoi ces partenaires",
+        "x.why1": ("{names} travaille précisément sur ceci : {plain}", "{names} travaillent précisément sur ceci : {plain}"),
+        "x.why2": ("{names} travaille dans le même domaine que l'entreprise.",
+                   "{names} travaillent dans le même domaine que l'entreprise."),
+        "r.people": "expert", "r.org": "équipe de recherche", "r.offering": "laboratoire ou service",
+        "r.activities": "projet de recherche", "r.company": "entreprise locale", "r.capital": "programme de soutien",
+        "x.how": "Ce que cela apporte à {company}",
+        "x.msg": "Ce que le pitch leur dit",
+        "x.msg1": "En bref, nous disons à {company} : « Ce dont vous avez besoin existe déjà à Berne. Voici les personnes "
+                  "et les lieux. Venez les rencontrer pendant une demi-journée. » Les chiffres du pitch sont nos "
+                  "estimations, et le pitch le dit. Nous ne promettons pas d'argent et ne disons pas que quelqu'un a "
+                  "accepté une rencontre.",
     },
 }
 
@@ -209,9 +263,170 @@ def _best_quote(e: Entity, topics: list[dict], ents: dict[str, Entity], used: se
     return first
 
 
+# ---------------- what the officer does not have to enter ----------------------------------------
+def company_name(case: Case) -> str:
+    return cases.guess_company(case)
+
+
+_FR_CANTONS = {"geneva", "vaud", "neuchâtel", "neuchatel", "jura", "fribourg", "valais"}
+_LANG_OF = {"germany": "de", "austria": "de", "liechtenstein": "de", "france": "fr", "belgium": "fr",
+            "luxembourg": "fr", "monaco": "fr"}
+
+
+def pitch_lang(case: Case) -> str:
+    """Language of the CEO's pitch, from where the company is: German or French where spoken, else English."""
+    country = case.country.strip().lower()
+    if country in ("switzerland", "schweiz", "suisse", "svizzera", "ch"):
+        return "fr" if case.canton.strip().lower() in _FR_CANTONS else "de"
+    return _LANG_OF.get(country, "en")
+
+
+def _group(e: Entity) -> str:
+    """The entity-model group of a partner: people, org, offering, activities, company or capital."""
+    a = archetypes.classify(e.entity_type, e.name, e.role, e.email, " ".join(e.description[:1]))
+    kind = archetypes.TYPE_OF.get(a, "")
+    if kind in ("person", "organization", "company"):
+        return {"person": "people", "organization": "org"}.get(kind, kind)
+    return next((g["id"] for g in archetypes.GROUPS if any(x["id"] == kind for x in g["types"])), "activities")
+
+
+_GROUPS = ("people", "org", "offering", "activities", "company", "capital")
+
+
+def _join(xs: list[str], lang: str) -> str:
+    sep = {"en": " and ", "de": " und ", "fr": " et "}.get(lang, " and ")
+    return "" if not xs else xs[0] if len(xs) == 1 else ", ".join(xs[:-1]) + sep + xs[-1]
+
+
+def _short(text: str, limit: int = 240) -> str:
+    return text if len(text) <= limit else text[:limit].rsplit(" ", 1)[0].rstrip(",;:") + "…"
+
+
+# ---------------- needs -> how Bern answers them, with an estimated benefit -----------------------
+BENEFITS = CONFIG_DIR / "benefits.yaml"
+
+
+@lru_cache(maxsize=2)
+def _benefits(_mt: float) -> dict:
+    return yaml.safe_load(BENEFITS.read_text()) if BENEFITS.exists() else {"rules": [], "fallback": {}}
+
+
+def benefits() -> dict:
+    return _benefits(BENEFITS.stat().st_mtime if BENEFITS.exists() else 0.0)
+
+
+_STOP = set("""looking partner partners company companies which their there would could should about these those other
+together experts expert advice needs need search seeking wants with from also next year years small large first
+working research develop developing development product products switzerland swiss considering opening support
+within where while being based provide providing offer offers suche suchen unsere unser einen eines einer nächstes
+recherche notre notres leurs entreprise""".split())
+
+
+def _words(text: str) -> set[str]:
+    return {w for w in re.findall(r"[a-zäöüéèàç0-9-]{5,}", text.lower()) if w not in _STOP}
+
+
+def _rule_for(need: str, groups: list[str], used: set[str]) -> dict | None:
+    cfg = benefits()
+    rules = [r for r in cfg.get("rules", []) if r["id"] not in used]
+    hit = next((r for r in rules if re.search(r["match"], need, re.I)), None)
+    if hit or not groups:
+        return hit
+    fb = cfg.get("fallback", {}).get(max(set(groups), key=groups.count))
+    return next((r for r in rules if r["id"] == fb), None)
+
+
+def _partners_for(need: str, rule: dict, items: list[dict], ents: dict[str, Entity], lang: str) -> list[dict]:
+    """Chosen partners of the groups that can answer this kind of need whose own text names a topic of the need
+    or the kind of need itself (e.g. "regulatory"); shared words only rank them. None: nobody is claimed."""
+    terms = {x["term"] for x in plain.find_terms(need, lang)}
+    words = _words(need)
+    scored = []
+    for k, it in enumerate(items):
+        if it["group"] not in rule.get("groups", []):
+            continue
+        text = ents[it["id"]].search_text()
+        shared = len(terms & {x["term"] for x in plain.find_terms(text, lang)})
+        kind = bool(re.search(rule["match"], text, re.I))
+        if shared or kind:
+            scored.append((-(3 * shared + 2 * kind + len(words & _words(text))), k, it))
+    return [it for _, _, it in sorted(scored)[:3]]
+
+
+# "We need X and are considering Y" -> two needs; "a study partner and for experts in Z" -> two needs
+_CLAUSE = re.compile(r"(?<=[.;!?])\s+|\s+and\s+(?=(?:are|is|we|also|plan|plans|would|will|want|for|to)\b)|"
+                     r"\s+und\s+(?=(?:wir|sind|planen|möchten|für|suchen)\b)|\s+et\s+(?=(?:nous|sommes|pour|cherchons)\b)", re.I)
+
+
+def _clauses(needs: list[str]) -> list[str]:
+    out = []
+    for n in needs:
+        for c in _CLAUSE.split(n.strip()):
+            c = c.strip(" ,;")
+            if len(c) >= 12:
+                out.append(c if c[0].isupper() else f"…{c}")
+    return out
+
+
+class _Plain(BaseModel):
+    text: str
+
+
+def _plain_profile(case: Case, company: str, lang: str) -> str:
+    """What the company does, for a reader with no technical background (Apertus; rules fallback)."""
+    a = case.analysis
+    base = a.company_does or a.summary
+    if llm.available() and base:
+        language = {"de": "German", "fr": "French"}.get(lang, "English")
+        try:
+            r: _Plain = llm.chat_json([  # type: ignore[assignment]
+                {"role": "system", "content": (
+                    "You explain companies to a public-sector officer with no technical, medical or business-school "
+                    "background. Use everyday words only: no technical terms, no abbreviations, no product jargon, "
+                    "no marketing words. Use ONLY the facts given. JSON only.")},
+                {"role": "user", "content": (
+                    f"Company: {company or 'unknown'}\nProfile: {a.summary}\nActivity: {a.company_does}\n\n"
+                    f"In {language}, write at most two short sentences (max 45 words) saying what this company does "
+                    "and for whom, as you would explain it to a neighbour. Return {\"text\": \"...\"}.")},
+            ], _Plain, mode="none", max_tokens=200)
+            text = " ".join(r.text.split())
+            if 20 <= len(text) <= 400:
+                return text
+        except llm.LLMError:
+            pass
+    terms = plain.find_terms(base, lang)[:2]
+    return " ".join([base, *(f"({x['found_as'].upper() if len(x['found_as']) <= 4 else x['found_as']}: "
+                             f"{x['plain'][:1].lower() + x['plain'][1:].rstrip('.')}.)" for x in terms)])
+
+
+_TITLES = re.compile(r"^(?:(?:prof|pd|dr|med|habil|phil|nat|sc|phd|md|dipl|ing|msc|bsc|ma|pharm)\.?(?:\s+|$))+", re.I)
+
+
+def _plain_name(name: str) -> str:
+    """'PD Dr. med. Thomas Züger' -> 'Thomas Züger'; 'AID-JUNCT study: GIP/GLP-1RA as …' -> 'AID-JUNCT study'."""
+    return _TITLES.sub("", name.split(":")[0]).strip() or name
+
+
+def _mail_sentence(text: str, figure: str, who: list[dict], t: dict, lang: str) -> str:
+    """One sentence of the email to the CEO: the benefit, then (if any) the partners who would deliver it."""
+    if not text:
+        return ""
+    text = text.format(figure=figure)
+    names = _join([i["name"].split(":")[0].strip() for i in who[:2]], lang)
+    return text[:1].upper() + text[1:] + (t["m.with"].format(names=names) if names else "") + "."
+
+
+def _count(t: dict, g: str, n: int) -> str:
+    one, many = t["g." + g]
+    return one if n == 1 else many.format(n=n)
+
+
 # ---------------- build both outputs ---------------------------------------------------------------
-def build(case: Case, lang: str, officer: dict) -> dict:
-    t = T.get(lang, T["en"])
+def build(case: Case, lang: str, officer: dict, ui_lang: str | None = None) -> dict:
+    """lang: the CEO's pitch; ui_lang: the officer's preface (defaults to lang)."""
+    t, tx = T.get(lang, T["en"]), T.get(ui_lang or lang, T["en"])
+    xlang = ui_lang if ui_lang in T else lang
+    company = company_name(case)
     ents = index.load_entities()
     approved = [m for m in case.matches if m.selected and m.id in ents]
     sources: list[dict] = []
@@ -224,9 +439,11 @@ def build(case: Case, lang: str, officer: dict) -> dict:
         return len(sources)
 
     items, all_topics, used_quotes = [], [], set()
+    x_topics: dict[str, list[dict]] = {}       # the same topics in the officer's language, for the preface
     for m in approved:
         e = ents[m.id]
         topics = _topics(case, e, lang)
+        x_topics[e.id] = topics if xlang == lang else _topics(case, e, xlang)
         all_topics += [x for x in topics if x["term"] not in {y["term"] for y in all_topics}]
         quote = _best_quote(e, topics, ents, used_quotes)
         if quote:
@@ -243,7 +460,7 @@ def build(case: Case, lang: str, officer: dict) -> dict:
         pubs = [{**p, "ref": cite(f"https://doi.org/{p['doi']}", p["citation"][:120], "doi"),
                  "page_ref": cite(p["page"], f"{e.source_label} — publication list")} for p in pubs_for(e)]
         items.append({"id": e.id, "name": e.name, "type": e.entity_type, "role": e.role, "unit": e.unit,
-                      "institution": e.source_label, "email": e.email, "page": e.source_urls[0],
+                      "institution": e.source_label, "email": e.email, "page": e.source_urls[0], "group": _group(e),
                       "page_ref": cite(e.source_urls[0], f"{e.source_label} — {e.name}"),
                       "topics": [{"term": x["term"], "plain": x["plain"]} for x in topics],
                       "quote": q, "technical": tech, "publications": pubs})
@@ -254,36 +471,76 @@ def build(case: Case, lang: str, officer: dict) -> dict:
 
     topic_txt = ", ".join(x["term"] for x in all_topics[:3])
     n = len(items)
-    hook = t["hook"].format(company=case.company, topics=topic_txt, n=n) if topic_txt else t["hook_nt"].format(company=case.company, n=n)
+    hook = t["hook"].format(topics=topic_txt, n=n) if topic_txt else \
+        t["hook_nt"].format(company=company or t["x.company"], n=n)
     people = [i["name"] for i in items if i["type"] in ("person", "unit")][:3]
     facility = next((i["name"] for i in items if i["type"] == "infrastructure"), None)
     agenda = ([t["visit_meet"].format(who=", ".join(people))] if people else []) + \
         ([t["visit_tour"].format(what=facility)] if facility else []) + [t["visit_talk"]]
 
-    brief = {"lang": lang, "company": case.company, "kicker": t["kicker"], "hook": hook, "items": items,
+    # strategic opportunities: the chosen partners grouped by what they offer the company, each linked
+    opportunities = [{"title": t["o." + g], "items": [{"name": i["name"], "ref": i["page_ref"]} for i in items if i["group"] == g]}
+                     for g in _GROUPS if any(i["group"] == g for i in items)]
+
+    # each need: how Bern answers it, with whom, and the estimated benefit (always labelled as an estimate)
+    item_groups = [i["group"] for i in items]
+    needs, used, named = [], set(), set()      # named: partners the email has already mentioned
+    for need in _clauses([x for x in case.analysis.company_needs if x.strip()]) or [t["n.generic"]]:
+        rule = _rule_for(need, item_groups, used)
+        if not rule or len(needs) == 4:
+            continue
+        used.add(rule["id"])
+        who = _partners_for(need, rule, items, ents, lang)
+        pick = lambda f: (rule.get(f) or {}).get(lang) or (rule.get(f) or {}).get("en", "")  # noqa: E731
+        # no chosen partner shows this on its own pages: say only that the canton makes the introduction
+        solve = pick("solve") if who or not rule.get("groups") else t["n.intro"]
+        needs.append({"id": rule["id"], "need": _short(need, 220), "solve": solve,
+                      "partners": [{"name": i["name"], "ref": i["page_ref"], "id": i["id"]} for i in who],
+                      "figure": pick("figure"), "gain": pick("gain"), "basis": pick("basis"), "calc": pick("calc"),
+                      "mail": _mail_sentence(pick("mail"), pick("figure"), [i for i in who if i["id"] not in named], t, lang)})
+        named |= {i["id"] for i in who[:2]}
+
+    brief = {"lang": lang, "company": company, "kicker": t["kicker"], "hook": hook, "items": items,
+             "needs": needs, "needs_title": t["needs"],
+             "needs_lead": t["needs_lead"].format(company=company or t["x.company"]),
+             "opportunities": opportunities, "opp_title": t["opp"].format(company=company or t["x.company"]),
              "proof": proof, "agenda": agenda, "sources": sources, "honest": t["honest"],
              "labels": {k: t[k] for k in ("why", "topic", "tech", "pubs", "proof", "visit", "cta", "pdf", "sources",
-                                          "stmt", "teams", "pubs_n")},
+                                          "stmt", "teams", "pubs_n", "n.need", "n.answer", "n.with", "n.est",
+                                          "n.canton", "n.calc")},
              "from": t["from"].format(who=", ".join(x for x in [officer.get("name"), officer.get("team")] if x)),
              "contact": {"name": officer.get("name", ""), "email": officer.get("email", ""), "team": officer.get("team", "")}}
 
-    # ---- Output 1: what the officer is sending, in plain words
-    why = []
+    # ---- Output 2: the simplified preface for the officer, in five parts, in everyday words
+    who = company or tx["x.company"]
+    names = lambda xs: _join([_plain_name(i["name"]) for i in xs], xlang)  # noqa: E731
+    rules = {r["id"]: r for r in benefits().get("rules", [])}
+    xpick = lambda rid, f: (rules[rid].get(f) or {}).get(xlang) or (rules[rid].get(f) or {}).get("en", "")  # noqa: E731
+    found = []
+    for nd in needs:
+        need = xpick(nd["id"], "need_plain")
+        found.append({"text": tx["x.need1"].format(need=need, names=names(nd["partners"])) if nd["partners"]
+                      else tx["x.need_us"].format(need=need)})
+    if not found:
+        groups = [_count(tx, g, item_groups.count(g)) for g in _GROUPS if g in item_groups]
+        found.append({"text": tx["x.found0"].format(groups=_join(groups, xlang))})
+    by_topic: dict[str, list[dict]] = {}
     for it in items:
-        where = ", ".join(x for x in [it["unit"], it["institution"]] if x)
-        if it["topics"]:
-            tp = it["topics"][0]
-            why.append({"text": t["x.why1"].format(name=it["name"], where=where, topic=tp["term"]),
-                        "plain": t["x.mean"].format(plain=tp["plain"])})
-        else:
-            why.append({"text": t["x.why2"].format(name=it["name"], where=where), "plain": ""})
+        tp = (x_topics[it["id"]] or [None])[0]
+        by_topic.setdefault(tp["plain"] if tp else "", []).append(it)
+    why = []
+    for expl, group in sorted(by_topic.items(), key=lambda kv: kv[0] == ""):
+        who_ = _join([f"{_plain_name(i['name'])} ({tx['r.' + i['group']]})" for i in group], xlang)
+        one, many = tx["x.why1" if expl else "x.why2"]
+        why.append({"text": (one if len(group) == 1 else many).format(names=who_, plain=expl[:1].lower() + expl[1:])})
+    how = [{"text": xpick(nd["id"], "plain")} for nd in needs if xpick(nd["id"], "plain")]
+    explainer = [
+        {"title": tx["x.does"].format(company=who), "lines": [{"text": _plain_profile(case, company, xlang)}]},
+        {"title": tx["x.found"], "lines": found},
+        {"title": tx["x.why"], "lines": why},
+        {"title": tx["x.how"].format(company=who), "lines": how},
+        {"title": tx["x.msg"], "lines": [{"text": tx["x.msg1"].format(company=who)}]},
+    ]
     n_claims = sum(1 for i in items if i["quote"]) + sum(len(i["technical"]) for i in items) + len(proof)
     n_pubs = sum(len(i["publications"]) for i in items)
-    explainer = [
-        {"title": t["x.what"], "lines": [{"text": t["x.what1"].format(company=case.company, n=n)}]},
-        {"title": t["x.why"], "lines": why},
-        {"title": t["x.check"], "lines": [{"text": t["x.check1"].format(c=n_claims, p=n_pubs)}]},
-        {"title": t["x.not"], "lines": [{"text": t["x.not1"]}]},
-        {"title": t["x.next"], "lines": [{"text": t["x.next1"]}]},
-    ]
     return {"brief": brief, "explainer": explainer, "stats": {"claims": n_claims, "publications": n_pubs, "sources": len(sources)}}

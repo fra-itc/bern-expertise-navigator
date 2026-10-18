@@ -266,9 +266,10 @@ def _llm_why(q: str, name: str, etype: str, numbered: str, valid: tuple[int, ...
     return r.explanation  # type: ignore[attr-defined]
 
 
-def explain_via(q: str, person: Entity, parent: Entity, terms: list[str]) -> tuple[str, list[SourceRef]]:
+def explain_via(q: str, person: Entity, parent: Entity, terms: list[str],
+                use_llm: bool = True) -> tuple[str, list[SourceRef]]:
     """Person found through a matching unit/project: cite the link AND why the unit/project matches."""
-    why_parent, refs = explain(q, parent, terms)
+    why_parent, refs = explain(q, parent, terms, use_llm)
     link = [ev for ev in person.evidence if ev.field in ("unit", "institute", "projects", "role", "name")
             and (parent.name in ev.value or ev.field in ("role", "name"))][:2]
     link_refs = [SourceRef(url=ev.url, snippet=ev.snippet, field=ev.field, retrieved_at=person.retrieved_at) for ev in link]
@@ -298,12 +299,12 @@ def fallback_why(q: str, terms: list[str], hits) -> str:
     return f"Mentions {_join([f'“{p}”' for p in phrases[:3]])} in its {_join(fields[:3])}."
 
 
-def explain(q: str, e: Entity, terms: list[str]) -> tuple[str, list[SourceRef]]:
+def explain(q: str, e: Entity, terms: list[str], use_llm: bool = True) -> tuple[str, list[SourceRef]]:
     hits = matched_evidence(e, [q, *terms])[:4]
     refs = [SourceRef(url=ev.url, snippet=ev.snippet, field=ev.field, retrieved_at=e.retrieved_at)
             for _, _, ev in hits]
     fallback = fallback_why(q, terms, hits)
-    if not settings.use_llm_explain or not hits or not llm.available():
+    if not use_llm or not settings.use_llm_explain or not hits or not llm.available():
         return fallback, refs
     numbered = "\n".join(f"[{i}] ({ev.field}) {ev.snippet}" for _, i, ev in hits)
     why = _llm_why(q, e.name, e.entity_type, numbered, tuple(i for _, i, _ in hits))
@@ -318,7 +319,9 @@ def _abstain(q: str, terms: list[str], msg: str = NO_SOURCE_MSG) -> SearchRespon
     return SearchResponse(query=q, expanded_terms=terms, abstained=True, message=msg, results=[])
 
 
-def search(q: str, k: int = 10, sources: list[str] | None = None, types: list[str] | None = None) -> SearchResponse:
+def search(q: str, k: int = 10, sources: list[str] | None = None, types: list[str] | None = None,
+           llm_explain: bool = True) -> SearchResponse:
+    """llm_explain=False: rule-based "why" only (fast); callers can explain the few results they keep."""
     q = q.strip()
     ents = index.load_entities()
     if not ents:
@@ -366,8 +369,8 @@ def search(q: str, k: int = 10, sources: list[str] | None = None, types: list[st
 
     def _explain(eid: str):
         if eid in via and via[eid] in ents:
-            return explain_via(q, ents[eid], ents[via[eid]], terms)
-        return explain(q, ents[eid], terms)
+            return explain_via(q, ents[eid], ents[via[eid]], terms, llm_explain)
+        return explain(q, ents[eid], terms, llm_explain)
 
     explained = list(_pool.map(_explain, top))
     nb = neighbors(top)

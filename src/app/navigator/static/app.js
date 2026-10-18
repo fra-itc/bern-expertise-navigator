@@ -53,6 +53,7 @@
     moon: '<svg viewBox="0 0 24 24"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/></svg>',
     doc: '<svg class="i" viewBox="0 0 24 24"><path d="M14 3H6a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z"/><path d="M14 3v6h6M8 13h8M8 17h5"/></svg>',
     printer: '<svg class="i" viewBox="0 0 24 24"><path d="M6 9V3h12v6M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="7"/></svg>',
+    eye: '<svg class="i" viewBox="0 0 24 24"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/></svg>',
   };
 
   /* ======================= i18n ======================= */
@@ -81,6 +82,7 @@
       "prov.searchRules": "Keyword and meaning search, no AI. Quotes and sources are verbatim from public pages.",
       "foot.proto": "Prototype (Hack Apertus 2026). Not an official service of the Canton of Bern.",
       "col.todoD": "Choose partners", "col.readyD": "Send the invitation", "col.doneD": "Follow up",
+      "col.none": "No match", "col.noneD": "No Bern assets found yet",
       "bs.short": "Enter at least 3 characters.",
       "u.sources": "Sources analysed",
       "u.kw": "Key business keywords",
@@ -114,6 +116,12 @@
       "id.name": "Your name", "id.email": "Your email", "id.team": "Team / email signature", "id.enter": "Enter workspace", "id.recent": "Recently used",
       "st.new": "New", 
       "st.contacted": "Invited", "st.call_scheduled": "Call scheduled", "st.closed": "Closed",
+      "st.interested": "Company replied", "col.replied": "Replied", "col.repliedD": "The company answered: get back to them",
+      "bv.title": "Times the company opened the pitch", "bv.none": "Not opened yet", "bv.seen": "Opened {n}× · last {d}", "bv.until": "Link works until {d}",
+      "bv.revoke": "Disable link", "bv.revokeQ": "Disable this link now? The company will no longer be able to open the pitch.",
+      "bv.revoked": "Link disabled. Prepare the pitch again to get a new link.", "bv.expired": "Link expired on {d}. Prepare the pitch again to renew it.",
+      "rp.title": "The company replied", "rp.visit": "Would like to visit Bern", "rp.call": "Would like a call first",
+      "rp.question": "Has a question", "rp.answer": "Answer by email",
       "rq.title": "Company requests", "rq.lead": "Each request follows three steps: company profile → matching Bern assets → pitch and invitation.",
       "kpi.open": "to do", "kpi.ready": "pitch ready", "kpi.invited": "invited",
       "col.todo": "To do", "col.ready": "Pitch ready", "col.done": "Invited",
@@ -132,7 +140,7 @@
       "nw.company2": "Company (optional)", "nw.countryAny": "Company's country", "nw.canton": "Canton", "nw.cantonAny": "All cantons",
       "nw.area": "Medtech area", "nw.niche": "Niche", "nw.any": "Any", "nw.find": "Match with Bern", "nw.try": "Try",
       "rq.untitled": "New request",
-      "d.title": "Company details", "d.lead": "Needed for the pitch and the email to the company.", "d.save": "Save details", "d.edit": "Edit",
+      "d.save": "Save details", "d.edit": "Edit",
       "cs.back": "All requests", "cs.backQ": "Review queue", "cs.received": "Received", "cs.contact": "Company contact", "cs.activity": "Activity",
       "cs.delete": "Delete request", "cs.confirmDelete": "Delete this request permanently?",
       "step.1": "Company profile", "step.2": "Bern assets", "step.3": "Pitch & invitation", 
@@ -141,9 +149,8 @@
       "m.title": "What Bern offers", "m.none": "No matching assets were found in the indexed sources.",
       "m.src": "source", 
       "i.title": "Pitch & invite", "i.locked": "No Bern assets were found for this company, so no pitch can be prepared yet.",
-      "i.lead": "Two outputs: an internal briefing for you and a concise, fully sourced executive brief for the company's leadership. Objective: a visit to Bern.",
-      "i.lang": "Language of the pitch", "i.prep": "Prepare the pitch", "i.regen": "Update the pitch",
-      "i.forYou": "For you", "i.forYouT": "Internal briefing", "i.forCeo": "For the CEO", "i.forCeoT": "Executive brief",
+      "i.gen": "Generate pitch",
+      "i.forYou": "For you", "i.forYouT": "Simplified preface", "i.forCeo": "For the CEO", "i.forCeoT": "Strategic pitch",
       "i.open": "Open the brief", "i.pdf": "Save as PDF", "i.copyLink": "Copy link", "i.copied": "Link copied",
       "i.teams": "research teams", "i.stmt": "sourced statements", "i.pubs": "publications", "i.srcs": "sources",
       "i.mail": "Send", "i.slots": "Propose call times", "i.dur": "Call length (min)", "i.prepMail": "Prepare the email",
@@ -155,6 +162,10 @@
       "st.pitch": "Pitch ready",
       "bs.tab": "Broad search",
       "bs.tab2": "Company details",
+      "sg.working": "Looking for companies that match…", "sg.title": "Which company do you mean?",
+      "sg.lead": "Companies suggested by Apertus for “{q}”, each checked on its own website. The description is the company's own.",
+      "sg.choose": "Choose and analyse", "sg.none": "None of these: continue with the search only", "sg.back": "Change the search",
+      "sg.place": "names {p} on its website", "sg.topic": "talks about", "sg.ai": "Suggested by Apertus: the model may not know every company, check before contacting one.",
       "bs.title": "What are you looking for?",
       "bs.ph": "e.g. glucose company in Milan — in any language",
       "bs.place": "Place",
@@ -187,6 +198,7 @@
       "prov.searchRules": "Stichwort- und Bedeutungssuche, ohne KI. Zitate und Quellen stammen wörtlich von öffentlichen Seiten.",
       "foot.proto": "Prototyp (Hack Apertus 2026). Kein offizielles Angebot des Kantons Bern.",
       "col.todoD": "Partner auswählen", "col.readyD": "Einladung senden", "col.doneD": "Nachfassen",
+      "col.none": "Kein Treffer", "col.noneD": "Noch keine Berner Angebote gefunden",
       "bs.short": "Mindestens 3 Zeichen eingeben.",
       "u.sources": "Analysierte Quellen",
       "u.kw": "Zentrale Geschäftsbegriffe",
@@ -220,6 +232,12 @@
       "id.name": "Ihr Name", "id.email": "Ihre E-Mail", "id.team": "Team / E-Mail-Signatur", "id.enter": "Arbeitsbereich öffnen", "id.recent": "Zuletzt verwendet",
       "st.new": "Neu", 
       "st.contacted": "Eingeladen", "st.call_scheduled": "Gespräch geplant", "st.closed": "Abgeschlossen",
+      "st.interested": "Firma hat geantwortet", "col.replied": "Antwort erhalten", "col.repliedD": "Die Firma hat geantwortet: melden Sie sich",
+      "bv.title": "So oft hat die Firma den Pitch geöffnet", "bv.none": "Noch nicht geöffnet", "bv.seen": "{n}× geöffnet · zuletzt {d}", "bv.until": "Link gültig bis {d}",
+      "bv.revoke": "Link deaktivieren", "bv.revokeQ": "Link jetzt deaktivieren? Die Firma kann den Pitch dann nicht mehr öffnen.",
+      "bv.revoked": "Link deaktiviert. Erstellen Sie den Pitch neu, um einen neuen Link zu erhalten.", "bv.expired": "Link am {d} abgelaufen. Erstellen Sie den Pitch neu, um ihn zu verlängern.",
+      "rp.title": "Die Firma hat geantwortet", "rp.visit": "Möchte Bern besuchen", "rp.call": "Möchte zuerst ein Gespräch",
+      "rp.question": "Hat eine Frage", "rp.answer": "Per E-Mail antworten",
       "rq.title": "Firmenanfragen", "rq.lead": "Jede Anfrage durchläuft drei Schritte: Firmenprofil → passende Berner Angebote → Pitch und Einladung.",
       "kpi.open": "zu erledigen", "kpi.ready": "Pitch bereit", "kpi.invited": "eingeladen",
       "col.todo": "Zu erledigen", "col.ready": "Pitch bereit", "col.done": "Eingeladen",
@@ -238,7 +256,7 @@
       "nw.company2": "Firma (optional)", "nw.countryAny": "Land der Firma", "nw.canton": "Kanton", "nw.cantonAny": "Alle Kantone",
       "nw.area": "Medtech-Bereich", "nw.niche": "Nische", "nw.any": "Alle", "nw.find": "Mit Bern abgleichen", "nw.try": "Beispiele",
       "rq.untitled": "Neue Anfrage",
-      "d.title": "Angaben zur Firma", "d.lead": "Nötig für den Pitch und die E-Mail an die Firma.", "d.save": "Angaben speichern", "d.edit": "Bearbeiten",
+      "d.save": "Angaben speichern", "d.edit": "Bearbeiten",
       "cs.back": "Alle Anfragen", "cs.backQ": "Prüfungen", "cs.received": "Eingegangen", "cs.contact": "Kontakt der Firma", "cs.activity": "Verlauf",
       "cs.delete": "Anfrage löschen", "cs.confirmDelete": "Diese Anfrage endgültig löschen?",
       "step.1": "Firmenprofil", "step.2": "Berner Angebote", "step.3": "Pitch & Einladung", 
@@ -247,9 +265,8 @@
       "m.title": "Was Bern bietet", "m.none": "In den indexierten Quellen wurden keine passenden Angebote gefunden.",
       "m.src": "Quelle", 
       "i.title": "Pitch & Einladung", "i.locked": "Für diese Firma wurden keine Berner Angebote gefunden; ein Pitch kann noch nicht vorbereitet werden.",
-      "i.lead": "Zwei Ergebnisse: ein internes Briefing für Sie und ein kurzes, vollständig belegtes Executive Brief für die Geschäftsleitung der Firma. Ziel: ein Besuch in Bern.",
-      "i.lang": "Sprache des Pitch", "i.prep": "Pitch vorbereiten", "i.regen": "Pitch aktualisieren",
-      "i.forYou": "Für Sie", "i.forYouT": "Internes Briefing", "i.forCeo": "Für die Geschäftsleitung", "i.forCeoT": "Executive Brief",
+      "i.gen": "Pitch erstellen",
+      "i.forYou": "Für Sie", "i.forYouT": "Vereinfachtes Vorwort", "i.forCeo": "Für die Geschäftsleitung", "i.forCeoT": "Strategischer Pitch",
       "i.open": "Brief öffnen", "i.pdf": "Als PDF speichern", "i.copyLink": "Link kopieren", "i.copied": "Link kopiert",
       "i.teams": "Forschungsteams", "i.stmt": "belegte Aussagen", "i.pubs": "Publikationen", "i.srcs": "Quellen",
       "i.mail": "Versand", "i.slots": "Gesprächstermine vorschlagen", "i.dur": "Dauer (Min.)", "i.prepMail": "E-Mail vorbereiten",
@@ -261,6 +278,10 @@
       "st.pitch": "Pitch bereit",
       "bs.tab": "Freie Suche",
       "bs.tab2": "Angaben zur Firma",
+      "sg.working": "Passende Firmen werden gesucht…", "sg.title": "Welche Firma meinen Sie?",
+      "sg.lead": "Von Apertus vorgeschlagene Firmen für «{q}», jede auf ihrer eigenen Website geprüft. Die Beschreibung stammt von der Firma selbst.",
+      "sg.choose": "Auswählen und analysieren", "sg.none": "Keine davon: nur mit der Suche weiter", "sg.back": "Suche ändern",
+      "sg.place": "nennt {p} auf der Website", "sg.topic": "spricht über", "sg.ai": "Von Apertus vorgeschlagen: Das Modell kennt nicht jede Firma, bitte vor einer Kontaktaufnahme prüfen.",
       "bs.title": "Wonach suchen Sie?",
       "bs.ph": "z. B. Glukose-Firma aus Mailand — in jeder Sprache",
       "bs.place": "Ort",
@@ -293,6 +314,7 @@
       "prov.searchRules": "Recherche par mots-clés et par sens, sans IA. Citations et sources sont reprises mot pour mot des pages publiques.",
       "foot.proto": "Prototype (Hack Apertus 2026). Pas un service officiel du canton de Berne.",
       "col.todoD": "Choisir les partenaires", "col.readyD": "Envoyer l'invitation", "col.doneD": "Assurer le suivi",
+      "col.none": "Aucune correspondance", "col.noneD": "Aucun atout bernois trouvé pour l'instant",
       "bs.short": "Saisissez au moins 3 caractères.",
       "u.sources": "Sources analysées",
       "u.kw": "Mots-clés de l'activité",
@@ -326,6 +348,12 @@
       "id.name": "Votre nom", "id.email": "Votre e-mail", "id.team": "Équipe / signature", "id.enter": "Entrer dans l'espace", "id.recent": "Utilisés récemment",
       "st.new": "Nouvelle", 
       "st.contacted": "Invitée", "st.call_scheduled": "Appel planifié", "st.closed": "Close",
+      "st.interested": "L'entreprise a répondu", "col.replied": "Réponses", "col.repliedD": "L'entreprise a répondu : recontactez-la",
+      "bv.title": "Nombre d'ouvertures du pitch par l'entreprise", "bv.none": "Pas encore ouverte", "bv.seen": "Ouverte {n}× · dernière fois {d}", "bv.until": "Lien valable jusqu'au {d}",
+      "bv.revoke": "Désactiver le lien", "bv.revokeQ": "Désactiver ce lien maintenant ? L'entreprise ne pourra plus ouvrir le pitch.",
+      "bv.revoked": "Lien désactivé. Préparez à nouveau le pitch pour obtenir un nouveau lien.", "bv.expired": "Lien expiré le {d}. Préparez à nouveau le pitch pour le renouveler.",
+      "rp.title": "L'entreprise a répondu", "rp.visit": "Souhaite visiter Berne", "rp.call": "Souhaite d'abord un appel",
+      "rp.question": "A une question", "rp.answer": "Répondre par e-mail",
       "rq.title": "Demandes d'entreprises", "rq.lead": "Chaque demande suit trois étapes : profil de l'entreprise → atouts bernois correspondants → pitch et invitation.",
       "kpi.open": "à traiter", "kpi.ready": "pitch prêt", "kpi.invited": "invitées",
       "col.todo": "À traiter", "col.ready": "Pitch prêt", "col.done": "Invitées",
@@ -344,7 +372,7 @@
       "nw.company2": "Entreprise (facultatif)", "nw.countryAny": "Pays de l'entreprise", "nw.canton": "Canton", "nw.cantonAny": "Tous les cantons",
       "nw.area": "Domaine medtech", "nw.niche": "Niche", "nw.any": "Tous", "nw.find": "Rechercher à Berne", "nw.try": "Essayer",
       "rq.untitled": "Nouvelle demande",
-      "d.title": "Coordonnées de l'entreprise", "d.lead": "Nécessaires pour le pitch et l'e-mail à l'entreprise.", "d.save": "Enregistrer", "d.edit": "Modifier",
+      "d.save": "Enregistrer", "d.edit": "Modifier",
       "cs.back": "Toutes les demandes", "cs.backQ": "Validations", "cs.received": "Reçue", "cs.contact": "Contact de l'entreprise", "cs.activity": "Historique",
       "cs.delete": "Supprimer la demande", "cs.confirmDelete": "Supprimer définitivement cette demande ?",
       "step.1": "Profil de l'entreprise", "step.2": "Atouts bernois", "step.3": "Pitch & invitation", 
@@ -353,9 +381,8 @@
       "m.title": "Ce que Berne offre", "m.none": "Aucun atout correspondant n'a été trouvé dans les sources indexées.",
       "m.src": "source", 
       "i.title": "Pitch & invitation", "i.locked": "Aucun atout bernois n'a été trouvé pour cette entreprise ; le pitch ne peut pas encore être préparé.",
-      "i.lead": "Deux livrables : une note interne pour vous et une note de synthèse concise et entièrement sourcée pour la direction de l'entreprise. Objectif : une visite à Berne.",
-      "i.lang": "Langue du pitch", "i.prep": "Préparer le pitch", "i.regen": "Mettre à jour le pitch",
-      "i.forYou": "Pour vous", "i.forYouT": "Note interne", "i.forCeo": "Pour la direction", "i.forCeoT": "Note de direction",
+      "i.gen": "Générer le pitch",
+      "i.forYou": "Pour vous", "i.forYouT": "Préface simplifiée", "i.forCeo": "Pour la direction", "i.forCeoT": "Pitch stratégique",
       "i.open": "Ouvrir la note", "i.pdf": "Enregistrer en PDF", "i.copyLink": "Copier le lien", "i.copied": "Lien copié",
       "i.teams": "équipes de recherche", "i.stmt": "affirmations sourcées", "i.pubs": "publications", "i.srcs": "sources",
       "i.mail": "Envoi", "i.slots": "Proposer des créneaux d'appel", "i.dur": "Durée (min)", "i.prepMail": "Préparer l'e-mail",
@@ -367,6 +394,10 @@
       "st.pitch": "Pitch prêt",
       "bs.tab": "Recherche libre",
       "bs.tab2": "Détails de l'entreprise",
+      "sg.working": "Recherche d'entreprises correspondantes…", "sg.title": "De quelle entreprise s'agit-il ?",
+      "sg.lead": "Entreprises proposées par Apertus pour « {q} », chacune vérifiée sur son propre site. La description est celle de l'entreprise.",
+      "sg.choose": "Choisir et analyser", "sg.none": "Aucune : continuer avec la recherche seule", "sg.back": "Modifier la recherche",
+      "sg.place": "mentionne {p} sur son site", "sg.topic": "parle de", "sg.ai": "Proposées par Apertus : le modèle ne connaît pas toutes les entreprises, vérifiez avant tout contact.",
       "bs.title": "Que recherchez-vous ?",
       "bs.ph": "p. ex. entreprise de glucose à Milan — dans toute langue",
       "bs.place": "Lieu",
@@ -514,7 +545,8 @@
         <div class="topbar-right">${langSel()}${themeBtn()}<a class="staff-link" href="#/staff" title="${esc(t("nav.staff"))}">${ICON.lock}<span>${esc(t("nav.staff"))}</span></a></div></div>`;
       $("#foot").innerHTML = footer(t("foot.public"), true);
     } else {
-      const open = S.cases.filter((c) => c.status === "new" && !c.has_brief).length;   // still to do
+      // still to do: requests without a pitch, and companies that replied
+      const open = S.cases.filter((c) => (c.status === "new" && !c.has_brief && c.matched !== false) || c.status === "interested").length;
       const nav = !staff ? "" : tab("#/staff/requests", "requests", t("nav.requests"), open || "") + tab("#/staff/new", "new", t("nav.new")) + tab("#/staff/search", "ssearch", t("nav.search"));
       bar.innerHTML = `<div class="topbar-in">${brand(t("brand.staffSub"), staff ? roleHome() : "#/staff")}<span class="staff-tag">${esc(t("staff.tag"))}</span>
         ${nav ? `<nav class="tabs" aria-label="Workspace">${nav}</nav>` : ""}
@@ -791,17 +823,19 @@
   /* ======================= STAFF/officer: requests board ======================= */
   async function viewRequests() {
     await areas();
-    const stage = (c) => (c.status !== "new" ? "done" : c.has_brief ? "ready" : "todo");
+    // "matched === false": no Bern asset was found, so the request cannot move on (older lists lack the flag)
+    const stage = (c) => (c.status === "interested" ? "replied" : c.status !== "new" ? "done" : c.has_brief ? "ready" : c.matched === false ? "none" : "todo");
     const by = (st) => S.cases.filter((c) => stage(c) === st);
-    const cols = [["col.todo", "todo"], ["col.ready", "ready"], ["col.done", "done"]];
+    // "Replied" only appears when a company has answered: it is the most urgent column
+    const cols = [...(by("replied").length ? [["col.replied", "replied"]] : []), ["col.todo", "todo"], ["col.ready", "ready"], ["col.done", "done"], ["col.none", "none"]];
     // the column already says the stage, so a status pill is shown only where it adds information (invited / call / closed)
     const card = (c) => `<a class="case-card" href="#/staff/case/${esc(c.id)}"><h3>${esc(companyOf(c))}</h3>${c.summary ? `<p>${esc(c.summary)}</p>` : ""}
       <div class="case-meta">${stage(c) === "done" ? pill(c.status) : ""}${c.niche || c.area ? `<span class="tag">${esc(areaLabel(c.area, c.niche))}</span>` : ""}${placeOf(c) ? `<span>${esc(placeOf(c))}</span>` : ""}
-      ${c.selected ? `<span>${c.selected} ${esc(t("partners"))}</span>` : ""}
+      ${c.selected ? `<span>${c.selected} ${esc(t("partners"))}</span>` : ""}${c.has_brief ? `<span class="views" title="${esc(t("bv.title"))}">${ICON.eye}${c.views || 0}</span>` : ""}
       <span><time datetime="${esc(c.updated_at)}">${esc(fmtDate(c.updated_at, false))}</time></span></div></a>`;
     view().innerHTML = `<div class="page-h"><div><h1>${esc(t("rq.title"))}</h1><p>${esc(t("rq.lead"))}</p></div>
         <a class="btn-primary btn-brand" href="#/staff/new">${ICON.plus}${esc(t("nav.new"))}</a></div>
-      ${S.cases.length ? `<div class="board">${cols.map(([l, st]) => { const xs = by(st);
+      ${S.cases.length ? `<div class="board${cols.length > 4 ? " five" : ""}">${cols.map(([l, st]) => { const xs = by(st);
         return `<section class="col ${st}" aria-labelledby="col-${st}"><div class="col-h"><span id="col-${st}">${esc(t(l))}<small>${esc(t(l + "D"))}</small></span><i class="count" aria-label="${xs.length}">${xs.length || ""}</i></div>
           ${xs.map(card).join("") || `<div class="col-empty">${esc(t("col.empty"))}</div>`}</section>`; }).join("")}</div>`
       : `<div class="panel empty"><div class="empty-ico">${ICON.inbox}</div><h3>${esc(t("rq.empty"))}</h3><p>${esc(t("rq.emptyD"))}</p>
@@ -862,10 +896,44 @@
       ev.preventDefault();
       const v = q.value.trim();
       if (v.length < 3) { $("#bsErr").textContent = t("bs.short"); q.setAttribute("aria-invalid", "true"); q.setAttribute("aria-describedby", "bsErr"); q.focus(); return; }
-      $("#broadForm").innerHTML = spinner(t("nw.working"));
-      try { const c = await api("/cases", { method: "POST", body: asStaff({ request_text: v, broad: true, lang: LANG }) }); go(`#/staff/case/${c.id}`); }
-      catch (e) { toast(`${t("err")}: ${e.message}`, 9000); viewNewBroad({ q: v }); }
+      // a website link goes straight to the analysis; otherwise Apertus suggests companies to choose from
+      $("#broadForm").innerHTML = spinner(t("sg.working"));
+      let s;
+      try { s = await api("/companies/suggest", { method: "POST", body: { text: v, lang: LANG } }); }
+      catch (e) { s = { candidates: [], message: e.message }; }
+      if (s.link) return createBroad(v);
+      showSuggestions(v, s);
     });
+  }
+
+  /** Create the request from the broad search, with the chosen company's website when there is one. */
+  async function createBroad(v, extra = {}) {
+    view().querySelector("#broadForm, .sg").outerHTML = `<div class="nr">${spinner(t("nw.working"))}</div>`;
+    try { const c = await api("/cases", { method: "POST", body: asStaff({ request_text: v, broad: true, lang: LANG, ...extra }) }); go(`#/staff/case/${c.id}`); }
+    catch (e) { toast(`${t("err")}: ${e.message}`, 9000); viewNewBroad({ q: v }); }
+  }
+
+  /** Up to three companies, each verified on its own homepage; the officer picks one, or continues without. */
+  function showSuggestions(v, s) {
+    const cs = s.candidates || [];
+    $("#broadForm").outerHTML = `<section class="nr sg" aria-labelledby="sgT"><h1 id="sgT" tabindex="-1">${esc(t("sg.title"))}</h1>
+      ${cs.length ? `<p class="muted">${esc(t("sg.lead", { q: v }))}</p>
+        <div class="sg-list">${cs.map((c, i) => `<article class="sg-card">
+          <div class="sg-h"><h3>${esc(c.name)}</h3><a href="${esc(safeUrl(c.url))}" target="_blank" rel="noopener">${ICON.ext}${esc(hostPath(c.url).split("/")[0])}</a></div>
+          ${c.description ? `<p>${esc(c.description)}</p>` : ""}
+          <div class="sg-meta">${c.place_found ? `<span class="u-chip place">${esc(t("sg.place", { p: c.place_found }))}</span>` : ""}
+            ${c.topic_found?.length ? `<span class="u-chip topic"><b>${esc(t("sg.topic"))}</b>${esc(c.topic_found.slice(0, 3).join(", "))}</span>` : ""}</div>
+          <button class="btn-primary btn-brand" type="button" data-pick="${i}">${esc(t("sg.choose"))}</button></article>`).join("")}</div>
+        <p class="muted sg-ai">${ICON.info}${esc(t("sg.ai"))}</p>` : ""}
+      ${s.message ? `<div class="callout warn">${ICON.info}<span>${esc(s.message)}</span></div>` : ""}
+      <div class="actions"><button class="btn" type="button" id="sgNone">${esc(t("sg.none"))}</button>
+        <button class="btn" type="button" id="sgBack">${ICON.back}${esc(t("sg.back"))}</button></div></section>`;
+    $$("[data-pick]").forEach((b) => b.addEventListener("click", () => {
+      const c = cs[+b.dataset.pick]; createBroad(v, { company_url: c.url, company: c.name });
+    }));
+    $("#sgNone").addEventListener("click", () => createBroad(v));
+    $("#sgBack").addEventListener("click", () => viewNewBroad({ q: v }));
+    $(".sg h1").focus?.();
   }
 
   async function viewNewDetails(prev = {}) {
@@ -985,7 +1053,13 @@
         <dl><dt>${esc(t("nw.company"))}</dt><dd>${esc(c.company || "—")}</dd>
           ${c.contact_name ? `<dt>${esc(t("nw.contact"))}</dt><dd>${esc(c.contact_name)}</dd>` : ""}
           ${c.contact_email ? `<dt>Email</dt><dd><a href="mailto:${esc(c.contact_email)}">${esc(c.contact_email)}</a></dd>` : ""}
-          ${placeOf(c) ? `<dt>${esc(t("nw.country"))}</dt><dd>${esc(placeOf(c))}</dd>` : ""}</dl></div>
+          ${placeOf(c) ? `<dt>${esc(t("nw.country"))}</dt><dd>${esc(placeOf(c))}</dd>` : ""}</dl>
+        <button class="link-btn" type="button" id="editDetails">${esc(t("d.edit"))}</button>
+        <form class="details" id="detailsForm" hidden>
+          <label class="field">${esc(t("nw.company"))}<input name="company" required maxlength="200" value="${esc(c.company)}"></label>
+          <label class="field">${esc(t("nw.contact"))}<input name="contact_name" maxlength="200" value="${esc(c.contact_name)}"></label>
+          <label class="field">${esc(t("nw.email"))}<input name="contact_email" type="email" maxlength="200" value="${esc(c.contact_email)}"></label>
+          <div class="actions" style="margin-top:10px"><button class="btn-primary btn-sm" type="submit">${ICON.check}${esc(t("d.save"))}</button></div></form></div>
       <div class="panel"><div class="panel-h"><h2>${esc(t("cs.activity"))}</h2></div>
         <ol class="timeline">${[...c.events].reverse().map((e) => `<li><b>${esc(e.actor)}</b> · ${esc(e.text)}<time>${esc(fmtDate(e.at))}</time></li>`).join("")}</ol></div>
       <button class="link-btn" id="delCase" type="button">${ICON.trash}${esc(t("cs.delete"))}</button>
@@ -1027,6 +1101,7 @@
     view().innerHTML = `<a class="back" href="#/staff/requests">${ICON.back}${esc(t("cs.back"))}</a>
       <div class="case-h"><div><h1>${esc(companyOf(c))}</h1><div class="sub">${placeOf(c) ? `<span>${esc(placeOf(c))}</span>` : ""}${c.area ? `<span class="tag">${esc(areaLabel(c.area, c.niche))}</span>` : ""}<span>${esc(t("cs.received"))} ${esc(fmtDate(c.created_at))}</span></div></div>${pill(c.status)}</div>
       <ol class="stepper three">${[1, 2, 3].map((n) => `<li class="${cls(n)}"><span class="dotn">${n < step ? "✓" : n}</span>${esc(t("step." + n))}</li>`).join("")}</ol>
+      ${repliesBox(c)}
       <div class="case-grid"><div>${panelUnderstand(c.analysis)}${officerPartners(c, step)}${officerPitch(c, step)}</div>${sidePanels(c)}</div>`;
     bindOfficerCase();
   }
@@ -1067,42 +1142,50 @@
   }
 
   /** Step 4: Output 1 (plain, for her) + Output 2 (executive brief, for the CEO) + sending. */
+  /** The brief's private link still opens for the company (not disabled, not expired). */
+  const briefLive = (b) => !!b && !b.revoked_at && !(b.expires_at && new Date(b.expires_at) <= new Date());
+
+  /** What the company answered from the brief, newest first. */
+  const repliesBox = (c) => {
+    const rs = c.outreach?.replies || [];
+    if (!rs.length) return "";
+    return `<div class="replies"><h3>${ICON.inbox}${esc(t("rp.title"))}</h3>${[...rs].reverse().map((r) => `<div class="reply">
+      <div class="rp-h"><b>${esc(t("rp." + r.kind))}</b><time>${esc(fmtDate(r.at))}</time></div>
+      ${r.message ? `<p>${esc(r.message)}</p>` : ""}
+      <div class="rp-who">${[r.name, r.email].filter(Boolean).map(esc).join(" · ")}
+        ${r.email || c.contact_email ? `<a class="btn btn-sm" href="mailto:${esc(r.email || c.contact_email)}?subject=${encodeURIComponent(`${companyOf(c)} — Bern`)}">${ICON.mail}${esc(t("rp.answer"))}</a>` : ""}</div></div>`).join("")}</div>`;
+  };
+
   function pitchOutputs(c) {
     const b = c.outreach?.brief;
     if (!b) return "";
-    const s = b.stats || {};
+    const s = b.stats || {}, live = briefLive(b);
     return `<div class="pitch-grid">
       <div class="explain"><h3><span class="tag1">${esc(t("i.forYou"))}</span>${esc(t("i.forYouT"))}</h3>
         ${(b.explainer || []).map((sec) => `<section><h4>${esc(sec.title)}</h4>${sec.lines.map((l) => `<p>${jargon(l.text)}</p>${l.plain ? `<p class="mean">${esc(l.plain)}</p>` : ""}`).join("")}</section>`).join("")}</div>
-      <div class="preview"><div class="pv-top"><small>${esc(t("i.forCeo"))} · ${esc(t("i.forCeoT"))}</small><h3>${esc(c.company)} × Bern</h3><p>${esc(b.data.hook)}</p></div>
+      <div class="preview"><div class="pv-top"><small>${esc(t("i.forCeo"))} · ${esc(t("i.forCeoT"))}</small><h3>${b.data.company ? `${esc(b.data.company)} × ` : ""}Bern</h3><p>${esc(b.data.hook)}</p></div>
         <div class="pv-body"><div class="stat-chips"><span><b>${b.data.items.length}</b> ${esc(t("i.teams"))}</span><span><b>${s.claims ?? "–"}</b> ${esc(t("i.stmt"))}</span>
           <span><b>${s.publications ?? 0}</b> ${esc(t("i.pubs"))}</span><span><b>${s.sources ?? b.data.sources.length}</b> ${esc(t("i.srcs"))}</span></div>
-          <div class="actions"><a class="btn-primary btn-brand btn-sm" href="#/b/${esc(b.token)}" target="_blank" rel="noopener">${ICON.doc}${esc(t("i.open"))}</a>
-            <a class="btn btn-sm" href="#/b/${esc(b.token)}?print=1" target="_blank" rel="noopener">${ICON.printer}${esc(t("i.pdf"))}</a>
-            <button class="btn btn-sm" type="button" id="copyBrief">${ICON.link}${esc(t("i.copyLink"))}</button></div>
-          <p class="muted" style="margin:0">${esc(t("bf.prepared", { d: fmtDate(b.at) }))} · ${esc(b.lang.toUpperCase())}</p></div></div></div>`;
+          ${live ? `<div class="actions"><a class="btn-primary btn-brand btn-sm" href="#/b/${esc(b.token)}?preview=1" target="_blank" rel="noopener">${ICON.doc}${esc(t("i.open"))}</a>
+            <a class="btn btn-sm" href="#/b/${esc(b.token)}?preview=1&print=1" target="_blank" rel="noopener">${ICON.printer}${esc(t("i.pdf"))}</a>
+            <button class="btn btn-sm" type="button" id="copyBrief">${ICON.link}${esc(t("i.copyLink"))}</button></div>`
+            : `<div class="callout warn">${ICON.info}<span>${esc(b.revoked_at ? t("bv.revoked") : t("bv.expired", { d: fmtDate(b.expires_at, false) }))}</span></div>`}
+          <p class="muted" style="margin:0">${esc(t("bf.prepared", { d: fmtDate(b.at) }))} · ${esc(b.lang.toUpperCase())}</p>
+          ${live ? `<p class="link-state"><span>${ICON.eye}${esc(b.views ? t("bv.seen", { n: b.views, d: fmtDate(b.last_view) }) : t("bv.none"))}</span>
+            ${b.expires_at ? `<span>${esc(t("bv.until", { d: fmtDate(b.expires_at, false) }))}</span>` : ""}
+            <button class="linkish" type="button" id="revokeBrief">${esc(t("bv.revoke"))}</button></p>` : ""}</div></div></div>`;
   }
 
   function officerPitch(c, step) {
     if (step < 3) return `<section class="panel locked"><div class="panel-h"><h2><span class="num">3</span>${esc(t("i.title"))}</h2><span class="muted">${ICON.lock}</span></div>
       <p class="muted" style="margin:0">${esc(t("i.locked"))}</p></section>`;
-    const done = ["contacted", "call_scheduled", "closed"].includes(c.status), b = c.outreach?.brief;
-    const details = `<form class="details ${c.company ? "" : "need"}" id="detailsForm" ${c.company ? "hidden" : ""}>
-        <div class="sub-h" style="margin-top:0">${esc(t("d.title"))}<span class="muted" style="font-weight:400">${esc(t("d.lead"))}</span></div>
-        <div class="grid-form"><label class="field">${esc(t("nw.company"))}<input name="company" required maxlength="200" value="${esc(c.company)}"></label>
-          <label class="field">${esc(t("nw.contact"))}<input name="contact_name" maxlength="200" value="${esc(c.contact_name)}"></label>
-          <label class="field full">${esc(t("nw.email"))}<input name="contact_email" type="email" maxlength="200" value="${esc(c.contact_email)}"></label></div>
-        <div class="actions" style="margin-top:10px"><button class="btn-primary" type="submit">${ICON.check}${esc(t("d.save"))}</button></div></form>
-      ${c.company ? `<div class="details-line">${ICON.briefcase.replace("<svg", '<svg class="i"')}<b>${esc(c.company)}</b>${c.contact_name ? ` · ${esc(c.contact_name)}` : ""}${c.contact_email ? ` · ${esc(c.contact_email)}` : ""}
-        <button class="link-btn" type="button" id="editDetails">${esc(t("d.edit"))}</button></div>` : ""}`;
+    const done = ["contacted", "call_scheduled", "interested", "closed"].includes(c.status), b = c.outreach?.brief;
     return `<section class="panel ${done ? "done" : "active"}"><div class="panel-h"><h2><span class="num">${done ? "✓" : 3}</span>${esc(t("i.title"))}</h2></div>
-      <p class="muted" style="margin:-4px 0 12px">${esc(t("i.lead"))}</p>${details}
       ${c.outreach?.sent_at ? `<div class="callout ok" style="margin-bottom:12px">${ICON.check}<span>${esc(t("i.doneEmail", { d: fmtDate(c.outreach.sent_at) }))}</span></div>` : ""}
       ${c.outreach?.call ? `<div class="callout ok" style="margin-bottom:12px">${ICON.cal}<span>${esc(t("i.doneCall", { d: c.outreach.call }))}</span></div>` : ""}
-      <div class="actions"><label class="field" style="min-width:180px">${esc(t("i.lang"))}<select class="input" id="pitchLang">${["en", "de", "fr"].map((l) => `<option value="${l}" ${l === (b?.lang || LANG) ? "selected" : ""}>${l.toUpperCase()}</option>`).join("")}</select></label>
-        <button class="btn-primary btn-brand" id="prepBrief" type="button" style="align-self:flex-end" ${c.company ? "" : "disabled"}>${ICON.sparkle}${esc(t(b ? "i.regen" : "i.prep"))}</button></div>
+      <div class="actions"><button class="btn-primary btn-brand" id="prepBrief" type="button">${ICON.sparkle}${esc(t("i.gen"))}</button></div>
       <div id="pitchBox">${pitchOutputs(c)}</div>
-      ${b ? `<div class="sub-h">${ICON.mail}${esc(t("i.mail"))}</div>
+      ${briefLive(b) ? `<div class="sub-h">${ICON.mail}${esc(t("i.mail"))}</div>
         <div class="grid-form"><div class="field full">${esc(t("i.slots"))}<div class="slots">${nextSlots().map((s) => `<input type="datetime-local" class="slot" value="${s}" aria-label="${esc(t("i.slots"))}">`).join("")}</div></div>
           <label class="field">${esc(t("i.dur"))}<select class="input" id="callMin"><option>30</option><option>45</option><option>60</option></select></label></div>
         <div class="actions" style="margin-top:12px"><button class="btn-primary" id="prepMail" type="button">${ICON.mail}${esc(t("i.prepMail"))}</button>
@@ -1128,11 +1211,16 @@
       ev.currentTarget.disabled = true;
       $("#pitchBox").innerHTML = spinner();
       try {
-        await api(`/cases/${c.id}/brief`, { method: "POST", body: asStaff({ lang: $("#pitchLang").value, email: staff.email || "", team: staff.team || "" }) });
+        await api(`/cases/${c.id}/brief`, { method: "POST", body: asStaff({ ui_lang: LANG, email: staff.email || "", team: staff.team || "" }) });
         CASE = await api(`/cases/${c.id}`); rerender();
       } catch (e) { toast(e.message); rerender(); }
     });
     $("#copyBrief")?.addEventListener("click", () => { navigator.clipboard?.writeText(briefUrl(c.outreach.brief.token)); toast(t("i.copied")); });
+    $("#revokeBrief")?.addEventListener("click", async () => {
+      if (!confirm(t("bv.revokeQ"))) return;
+      try { CASE = await api(`/cases/${c.id}/brief/revoke`, { method: "POST", body: asStaff() }); rerender(); }
+      catch (e) { toast(e.message); }
+    });
     const slotLabels = () => $$(".slot").map((i) => i.value).filter(Boolean).map((v) => fmtDate(v, true, c.outreach?.brief?.lang || LANG));
     $("#prepMail")?.addEventListener("click", async () => {
       const lang = c.outreach.brief.lang;
@@ -1165,19 +1253,43 @@
   }
 
   /* ======================= BRIEF: the CEO's executive brief ======================= */
+  /** A source as a short clickable label: the page's subject ("Prof. X"), "doi:…", or the site's name. */
+  const srcLabel = (s) => (s.kind === "doi" ? `doi:${s.url.replace(/^https?:\/\/doi\.org\//, "")}`
+    : (s.label || "").includes(" — ") ? s.label.split(" — ").pop() : hostPath(s.url).split("/")[0]);
   async function viewBrief(token, params) {
     view().innerHTML = spinner();
+    // the officer's own preview is not counted as an opening, and cannot send replies
+    const preview = params.get("preview") === "1";
     let b;
-    try { b = await api(`/briefs/${encodeURIComponent(token)}`); }
-    catch { view().innerHTML = `<div class="panel empty"><h3>${esc(t("bf.missing"))}</h3></div>`; return; }
+    try { b = await api(`/briefs/${encodeURIComponent(token)}${preview ? "?preview=1" : ""}`); }
+    catch (e) {
+      let gone = null;   // 410: disabled or expired; the answer says, in the brief's language, whom to ask
+      if (e.status === 410) { try { gone = JSON.parse(e.message); } catch {} }
+      view().innerHTML = gone ? `<div class="panel empty"><h3>${esc(gone.labels[gone.state === "expired" ? "gone_expired" : "gone_revoked"])}</h3>
+        <p>${esc(gone.labels.gone_lead)}${gone.email ? ` <a href="mailto:${esc(gone.email)}">${esc(gone.email)}</a>` : ""}</p></div>`
+        : `<div class="panel empty"><h3>${esc(t("bf.missing"))}</h3></div>`;
+      return;
+    }
+    const rl = b.reply;
     const lb = b.labels, sup = (n) => `<sup class="ref"><a href="#src-${n}" data-ref="${n}">[${n}]</a></sup>`;
-    document.title = `${b.company} × Bern`;
+    document.title = b.company ? `${b.company} × Bern` : "Bern";
     const nClaims = b.items.reduce((n, i) => n + (i.quote ? 1 : 0) + i.technical.length, 0) + b.proof.length;
     const nPubs = b.items.reduce((n, i) => n + i.publications.length, 0);
     view().innerHTML = `<article class="brief" lang="${esc(b.lang)}">
       <header class="b-hero"><div class="kick">${esc(b.kicker)}</div>
-        <h1>${esc(b.company)} <span>×</span> Bern</h1><p>${esc(b.hook)}</p>
+        <h1>${b.company ? `${esc(b.company)} <span>×</span> ` : ""}Bern</h1><p>${esc(b.hook)}</p>
         <div class="stat-chips"><span><b>${b.items.length}</b> ${esc(lb.teams)}</span><span>${ICON.check}<b>${nClaims}</b> ${esc(lb.stmt)}</span>${nPubs ? `<span><b>${nPubs}</b> ${esc(lb.pubs_n)} (DOI)</span>` : ""}</div></header>
+
+      ${b.needs?.length ? `<section class="b-sec"><h2>${esc(b.needs_title)}</h2><p class="b-lead">${esc(b.needs_lead)}</p><div class="b-needs">${b.needs.map((n) => `<article class="b-need">
+        <div class="nd-q"><small>${esc(lb["n.need"])}</small><p>${esc(n.need)}</p></div>
+        <div class="nd-a"><small>${esc(lb["n.answer"])}</small><p>${esc(n.solve)}</p>
+          <p class="nd-with"><b>${esc(lb["n.with"])}:</b> ${n.partners.length ? n.partners.map((x) => `${esc(x.name)} ${sup(x.ref)}`).join(" · ") : esc(lb["n.canton"])}</p></div>
+        <div class="nd-est">${n.figure ? `<small>${esc(lb["n.est"])}</small><div class="fig">${esc(n.figure)}</div><div class="gain">${esc(n.gain)}</div>` : ""}<p class="basis">${esc(n.basis)}</p>
+          ${n.calc ? `<div class="calc"><small>${esc(lb["n.calc"])}</small><p>${esc(n.calc)}</p></div>` : ""}</div>
+      </article>`).join("")}</div></section>` : ""}
+
+      ${b.opportunities?.length ? `<section class="b-sec"><h2>${esc(b.opp_title)}</h2><div class="b-opp">${b.opportunities.map((o) => `<div>
+        <h3>${esc(o.title)}</h3><p>${o.items.map((i) => `${esc(i.name)} ${sup(i.ref)}`).join(" · ")}</p></div>`).join("")}</div></section>` : ""}
 
       <section class="b-sec"><h2>${esc(lb.why)}</h2><div class="b-cards">${b.items.map((it, k) => `<article class="b-card">
         <div class="hd">${avatar(it.name, it.type)}<div><h3>${esc(it.name)}</h3><div class="meta">${[it.role, it.unit, it.institution].filter(Boolean).map(esc).join(" · ")} ${sup(it.page_ref)}</div></div></div>
@@ -1194,13 +1306,25 @@
 
       <section class="b-sec"><h2>${esc(lb.visit)}</h2><div class="b-visit">
         <ol class="agenda">${b.agenda.map((a) => `<li>${esc(a)}</li>`).join("")}</ol>
-        <div class="cta-box">${b.contact.email ? `<a class="btn-primary" href="mailto:${esc(b.contact.email)}?subject=${encodeURIComponent(`${b.company} — Bern`)}">${ICON.cal}${esc(lb.cta)}</a>` : ""}
+        <div class="cta-box">${rl ? `<a class="btn-primary" href="#bReply" id="bCta">${ICON.cal}${esc(lb.cta)}</a>`
+          : b.contact.email ? `<a class="btn-primary" href="mailto:${esc(b.contact.email)}?subject=${encodeURIComponent(`${b.company} — Bern`)}">${ICON.cal}${esc(lb.cta)}</a>` : ""}
           <button class="btn" type="button" id="bPrint">${ICON.printer}${esc(lb.pdf)}</button>
-          <small>${esc(b.from)}${b.contact.email ? ` · ${esc(b.contact.email)}` : ""}</small></div></div></section>
+          <small>${esc(b.from)}${b.contact.email ? ` · <a href="mailto:${esc(b.contact.email)}">${esc(b.contact.email)}</a>` : ""}</small></div></div></section>
+
+      ${rl ? `<section class="b-sec b-reply no-print" id="bReply"><h2>${esc(rl.title)}</h2>
+        <form id="replyForm" class="reply-form"><p class="b-lead">${esc(rl.lead)}</p>
+          <div class="rp-kinds" role="radiogroup" aria-label="${esc(rl.title)}">${["visit", "call", "question"].map((k, i) =>
+            `<label class="rp-kind"><input type="radio" name="kind" value="${k}"${i ? "" : " checked"}><span>${esc(rl[k])}</span></label>`).join("")}</div>
+          <div class="grid-form"><label class="field">${esc(rl.name)}<input class="input" name="name" maxlength="120" autocomplete="name"></label>
+            <label class="field">${esc(rl.email)}<input class="input" name="email" type="email" maxlength="200" autocomplete="email"></label>
+            <label class="field full">${esc(rl.message)}<textarea class="input" name="message" maxlength="1500" rows="3" placeholder="${esc(rl.hint)}"></textarea></label></div>
+          ${preview ? `<div class="callout warn">${ICON.info}<span>${esc(rl.preview)}</span></div>` : ""}
+          <div class="actions"><button class="btn-primary" type="submit"${preview ? " disabled" : ""}>${ICON.send}${esc(rl.send)}</button><small>${esc(rl.privacy)}</small></div>
+        </form></section>` : ""}
 
       <div class="honest">${ICON.shield}<span>${esc(b.honest)}</span></div>
-      <section class="b-sources"><h2 style="font-size:15px;margin:0">${esc(lb.sources)}</h2><ol>${b.sources.map((s, i) =>
-        `<li id="src-${i + 1}"><a href="${esc(safeUrl(s.url))}" target="_blank" rel="noopener">${esc(s.kind === "doi" ? s.label : hostPath(s.url))}</a>${s.kind === "doi" ? ` <span class="muted">${esc(s.url)}</span>` : ""}</li>`).join("")}</ol></section>
+      <section class="b-sources"><h2>${esc(lb.sources)}</h2><div class="src-chips">${b.sources.map((s, i) =>
+        `<a class="src-chip" id="src-${i + 1}" href="${esc(safeUrl(s.url))}" target="_blank" rel="noopener" title="${esc(s.label)}"><b>${i + 1}</b><span>${esc(srcLabel(s))}</span></a>`).join("")}</div></section>
     </article>`;
     $$(".tech-btn").forEach((btn) => btn.addEventListener("click", () => {
       const box = $("#" + btn.getAttribute("aria-controls")), open = !box.classList.contains("open");
@@ -1208,6 +1332,18 @@
     }));
     $$("sup.ref a").forEach((a) => a.addEventListener("click", (ev) => { ev.preventDefault(); const el = $("#src-" + a.dataset.ref); el?.scrollIntoView({ behavior: "smooth", block: "center" }); el?.animate?.([{ background: "var(--mark)" }, { background: "transparent" }], { duration: 1600 }); }));
     $("#bPrint").addEventListener("click", () => window.print());
+    $("#bCta")?.addEventListener("click", (ev) => { ev.preventDefault(); $("#bReply").scrollIntoView({ behavior: "smooth" }); $("#replyForm input[name=kind]:checked")?.focus(); });
+    $("#replyForm")?.addEventListener("submit", async (ev) => {
+      ev.preventDefault();
+      const f = ev.target, btn = f.querySelector("button[type=submit]");
+      if (preview) return;
+      btn.disabled = true;
+      try {
+        await api(`/briefs/${encodeURIComponent(token)}/reply`, { method: "POST", body: { kind: f.kind.value,
+          name: f.name.value.trim(), email: f.email.value.trim(), message: f.message.value.trim() } });
+        f.outerHTML = `<div class="callout ok" role="status">${ICON.check}<span>${esc(rl.sent)}</span></div>`;
+      } catch { btn.disabled = false; toast(rl.error); }
+    });
     if (params.get("print") === "1") setTimeout(() => window.print(), 400);
   }
 

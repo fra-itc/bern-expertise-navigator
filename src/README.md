@@ -39,6 +39,8 @@ cp .env.example .env            # set LLM_BASE_URL / LLM_API_KEY, or use make up
 make up                         # API + UI on http://localhost:8080 (Apertus at $LLM_BASE_URL)
 make up-gpu                     # same, plus Apertus 8B served locally by vLLM (NVIDIA GPU, >= 16 GB)
 make demo                       # from the saved pages: extract -> index -> eval (never crawls)
+make bench                      # Apertus vs the no-LLM baseline on the golden set, as a Markdown table
+                                #   (saved runs in data/eval/; make eval TAG=x saves one, make compare shows them)
 make test                       # unit tests: no GPU, no network, no model download
 ```
 
@@ -68,6 +70,11 @@ allows the first 10,000 matching papers; set `OPENALEX_API_KEY` (free, openalex.
 2. In **Pitch & invite**, add the company name and contact (asked only now) → **Prepare the pitch** → read *For you*,
    open the **executive brief**, *Save as PDF*, then **Prepare the email** (it links the brief) or download a
    calendar invite → **Mark as sent**.
+3. The CEO answers from the brief itself: *I'd like to visit Bern*, *Let's talk first* or *I have a question*, with
+   an optional message. The request moves to **Company replied**, a column at the top of the board, and the reply
+   appears at the top of the request. The request page also shows how often the company opened the brief (time
+   only, nothing about the reader; the officer's own preview doesn't count). The link works for 90 days after the
+   pitch is prepared (`BRIEF_LINK_DAYS`) and can be disabled at any time; preparing the pitch again renews it.
 
 Names are self-declared and stored only in the browser (prototype, no passwords); every action is recorded in the
 request's activity log with that name.
@@ -140,7 +147,9 @@ against the saved page, and anything unverifiable is dropped automatically. The 
 | `GET /showcase` | Landing data: themes (live), verified proof points, labs, facilities |
 | `POST /cases` · `GET /cases` · `GET /cases/{id}` | Company requests (staff actions carry `actor` + `role`) |
 | `POST /cases/{id}/selection` · `/details` · `/brief` · `/draft` · `/outcome` | Workflow steps |
-| `GET /briefs/{token}` | The executive brief behind a private link (read-only) |
+| `GET /briefs/{token}` | The executive brief behind a private link (read-only); 410 once disabled or expired |
+| `POST /briefs/{token}/reply` | The company's reply from the brief (visit, call or question) |
+| `POST /cases/{cid}/brief/revoke` | Disable the brief's private link |
 | `GET /cases/{id}/invite.ics` | Calendar invite |
 | `GET /glossary?lang=` · `GET /health` · `GET /stats` | Support |
 
