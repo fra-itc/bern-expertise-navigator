@@ -397,10 +397,41 @@ class PgIndexStore:
     def write_papers(self, works: list[Work], matches: list[AuthorMatch], chunks: dict[str, list[tuple[str, int, str]]]
                      ) -> dict:
         """Upsert papers, their entity links, their text chunks (embedding kept when the text is unchanged)
-        and the author-match audit; then re-project the paper subgraph."""
+        and the author-match audit; then re-project the paper subgraph.
+
+        One paper per DOI (nav.paper.doi is UNIQUE):
+        - duplicates inside the batch are merged by papers.dedupe_by_doi (callers normally did it already);
+        - a DOI already stored under another work id (an earlier run kept the other OpenAlex record) keeps the
+          STORED id: the incoming work is written under it, with all its entity links, and its chunks and the
+          references to it in the batch are renamed. Reusing the stored id (instead of ON CONFLICT (doi) or
+          replacing the row) keeps the embeddings, paper_topic rows and graph identity of that paper, and every
+          authorship of the incoming record still lands in nav.paper_author;
+        - a stored row whose id is in the batch but now carries another DOI gives its DOI up first."""
+        from .papers import dedupe_by_doi, rename_works
         stats: dict = {}
+        deduped, alias = dedupe_by_doi(works)
+        if alias:  # keep the canonical record's chunks; a dropped record's only when the canonical has none
+            merged_chunks: dict[str, list] = {}
+            for pid, cs in sorted(chunks.items(), key=lambda kv: kv[0] in alias):
+                if not merged_chunks.get(alias.get(pid, pid)):
+                    merged_chunks[alias.get(pid, pid)] = cs
+            chunks = merged_chunks
+        works = list(deduped.values())
+        stats["duplicate_doi_in_batch"] = len(alias)
         with self.pg.op("write_papers") as cur:
             cur.execute("SELECT pg_advisory_xact_lock(%s)", (_REINDEX_LOCK,))
+            by_doi = {w.doi: w.id for w in works if w.doi}
+            cur.execute("SELECT doi, id FROM nav.paper WHERE doi = ANY(%s)", (sorted(by_doi),))
+            other = {d: i for d, i in cur.fetchall() if by_doi[d] != i}
+            in_batch = {w.id for w in works}
+            reuse = {by_doi[d]: i for d, i in other.items() if i not in in_batch}
+            give_up = sorted(i for i in other.values() if i in in_batch)
+            if give_up:
+                cur.execute("UPDATE nav.paper SET doi = NULL WHERE id = ANY(%s)", (give_up,))
+            if reuse:
+                works = rename_works(works, reuse)
+                chunks = {reuse.get(k, k): v for k, v in chunks.items()}
+            stats["doi_kept_stored_id"] = dict(sorted(reuse.items()))
             cur.executemany(
                 "INSERT INTO nav.paper(id, doi, title, year, venue, abstract, authorships, topics, concepts, "
                 "cited_by_count, referenced_works, is_oa, oa_status, pdf_url, landing_url, pmid, pmcid, pdf_sha1, "

@@ -31,7 +31,7 @@ from pydantic import BaseModel
 from . import llm
 from .config import DATA_DIR, settings
 from .extract import name_key
-from .openalex_client import OpenAlexClient, OpenAlexError, candidate_summary, parse_work, short_id
+from .openalex_client import OpenAlexClient, OpenAlexError, candidate_summary, parse_work, short_id, strip_doi
 from .schema import AuthorMatch, Entity, EntityLink, Page, Work
 
 PAPERS_DIR = DATA_DIR / "papers"
@@ -307,6 +307,96 @@ class CollectResult:
     stats: dict = field(default_factory=dict)
 
 
+# =============================================================================
+# Duplicate OpenAlex records of one DOI
+# =============================================================================
+# OpenAlex sometimes keeps two work records (two W ids) for the same DOI; nav.paper.doi is UNIQUE and the
+# graph wants one Paper per publication. Decision rule for the canonical record of a DOI, first criterion wins:
+#   1. more authorships            (the richer record carries the author links)
+#   2. has an abstract             (embeddable text)
+#   3. full text already extracted (fulltext_status == "ok": no second download)
+#   4. has an OA pdf_url
+#   5. lowest numeric OpenAlex id  (tie-break, deterministic: the older record)
+# cited_by_count is deliberately not a criterion: it moves between runs and would flip the choice.
+# Everything that refers to a dropped id is moved to the canonical one: entity links (authorships and
+# page links), entity ids on authorships, referenced_works of every work (CITES), and the full-text fields
+# (the chunks/text files are keyed by the work and its pdf_sha1). Topics stay those of the canonical record
+# (the dropped record's only when the canonical one has none).
+def doi_key(doi: str | None) -> str | None:
+    return strip_doi(doi)
+
+
+def _canonical_order(w: Work) -> tuple:
+    return (-len(w.authors), not w.abstract, w.fulltext_status != "ok", not w.pdf_urls,
+            int(w.id[1:]) if w.id[1:].isdigit() else float("inf"), w.id)
+
+
+def rename_works(works, alias: dict[str, str]) -> list[Work]:
+    """Copies of `works` with ids and referenced_works mapped through `alias` (old id -> new id);
+    a reference to the work itself or a repeated one is dropped."""
+    out = []
+    for w in works:
+        new_id = alias.get(w.id, w.id)
+        refs = [r for r in dict.fromkeys(alias.get(r, r) for r in w.referenced_works) if r != new_id]
+        out.append(w.model_copy(deep=True, update={"id": new_id, "referenced_works": refs}))
+    return out
+
+
+def _absorb(keep: Work, drop: Work) -> None:
+    for l in drop.links:
+        if any(x.entity_id == l.entity_id and x.relation == l.relation for x in keep.links):
+            continue
+        if l.relation == "author":  # position is an index into the canonical authorships
+            pos = next((a.position for a in keep.authors if l.author_id and a.author_id == l.author_id), None)
+            l = l.model_copy(update={"position": pos})
+        keep.links.append(l)
+    matched = {a.author_id: a.entity_id for a in drop.authors if a.author_id and a.entity_id}
+    for a in keep.authors:
+        if not a.entity_id and a.author_id in matched:
+            a.entity_id = matched[a.author_id]
+    keep.referenced_works = list(dict.fromkeys([*keep.referenced_works, *drop.referenced_works]))
+    for f in ("abstract", "venue", "year", "landing_url", "pmid", "pmcid"):
+        if not getattr(keep, f) and getattr(drop, f):
+            setattr(keep, f, getattr(drop, f))
+    if not keep.topics:
+        keep.topics = drop.topics
+    if not keep.is_oa and drop.is_oa:
+        keep.is_oa, keep.oa_status = True, drop.oa_status
+    if not keep.pdf_urls:
+        keep.pdf_urls = drop.pdf_urls
+    if keep.fulltext_status != "ok" and drop.fulltext_status == "ok":
+        keep.pdf_url, keep.pdf_sha1 = drop.pdf_url, drop.pdf_sha1
+        keep.fulltext_chars, keep.fulltext_status = drop.fulltext_chars, drop.fulltext_status
+    keep.cited_by_count = max(keep.cited_by_count, drop.cited_by_count)
+
+
+def dedupe_by_doi(works) -> tuple[dict[str, Work], dict[str, str]]:
+    """One work per normalised DOI (rule above). Returns (works by id, {dropped id: canonical id}).
+    Pure: the input works are not modified; works without a DOI pass through unchanged."""
+    groups: dict[str, list[Work]] = defaultdict(list)
+    for w in works:
+        if doi_key(w.doi):
+            groups[doi_key(w.doi)].append(w)
+    alias: dict[str, str] = {}
+    for ws in groups.values():
+        if len({w.id for w in ws}) > 1:
+            keep = min(ws, key=_canonical_order)
+            alias.update({w.id: keep.id for w in ws if w.id != keep.id})
+    if not alias:
+        return {w.id: w for w in works}, {}
+    copies = rename_works(works, {})  # deep copies
+    kept: dict[str, Work] = {w.id: w for w in copies if w.id not in alias}
+    for w in sorted((w for w in copies if w.id in alias), key=_canonical_order):
+        _absorb(kept[alias[w.id]], w)
+    return {w.id: w for w in rename_works(kept.values(), alias)}, alias
+
+
+def _log_duplicates(step: str, alias: dict[str, str]) -> None:
+    if alias:
+        print(f"[papers] {step}: merged {len(alias)} duplicate OpenAlex work(s) sharing a DOI: "
+              + ", ".join(f"{d}->{k}" for d, k in sorted(alias.items())))
+
+
 def resolve_bern(client: OpenAlexClient, rors: list[str]) -> list[dict]:
     """ROR ids -> OpenAlex institutions. A ROR that does not resolve is reported, never silently dropped."""
     found = client.institutions_by_ror(rors)
@@ -517,6 +607,10 @@ def collect(entities: list[Entity], pages: list[Page], client: OpenAlexClient, *
                 w.links.append(link)
     # co-authors matched to other people: one link each, from the authorship list
     link_coauthors(works.values(), author_entity)
+    # one work per DOI before any download, embedding or graph step (rule at dedupe_by_doi)
+    works, alias = dedupe_by_doi(works.values())
+    _log_duplicates("collect", alias)
+    stats["works_duplicate_doi_merged"] = len(alias)
     stats["works"] = len(works)
     stats["oa_works"] = sum(w.is_oa for w in works.values())
     stats["oa_with_pdf_url"] = sum(bool(w.pdf_urls) for w in works.values())
@@ -618,8 +712,12 @@ def merge_results(prev_works: list[Work], prev_matches: list[AuthorMatch], res: 
     by_entity = {m.entity_id: m for m in prev_matches}
     by_entity.update({m.entity_id: m for m in res.matches})
     matches = list(by_entity.values())
+    # a previous JSONL may hold the other record of a DOI (or both): one work per DOI again
+    works, alias = dedupe_by_doi(works.values())
+    _log_duplicates("merge", alias)
     link_coauthors(works.values(), {m.chosen_author_id: m.entity_id for m in matches if m.chosen_author_id})
-    return CollectResult(works=works, matches=matches, stats=res.stats)
+    return CollectResult(works=works, matches=matches,
+                         stats={**res.stats, "total_works_duplicate_doi_merged": len(alias)})
 
 
 def load_jsonl(works_path: Path = WORKS_PATH, matches_path: Path = MATCHES_PATH) -> tuple[list[Work], list[AuthorMatch]]:
@@ -794,7 +892,11 @@ def _require_papers(store) -> None:
 
 def write_to_store(store, works: list[Work], matches: list[AuthorMatch], text_dir: Path = TEXT_DIR) -> dict:
     _require_papers(store)
-    return store.write_papers(works, matches, {w.id: paper_chunks(w, text_dir) for w in works})
+    deduped, alias = dedupe_by_doi(works)
+    _log_duplicates("store", alias)
+    works = list(deduped.values())
+    return {"duplicate_doi_merged": len(alias),
+            **store.write_papers(works, matches, {w.id: paper_chunks(w, text_dir) for w in works})}
 
 
 def embed_pending(store, batch: int = 256) -> dict:

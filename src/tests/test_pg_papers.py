@@ -210,3 +210,66 @@ def test_topics_remap_on_populated_db(env, monkeypatch):
     assert (_sql(m), openalex_topics(), _graph_count("ABOUT")) == snap
     assert first["topics_decided"] == second["topics_decided"] == len(snap[0]) and first["mode"] == "remap"
     assert _sql("SELECT count(*) FROM nav.paper_chunk")[0][0] == chunks  # nothing collected or embedded
+
+
+def _dup_work(wid, doi, authors, links, refs=(), **kw):
+    from navigator.schema import EntityLink, PaperAuthor, Work
+    return Work(id=wid, doi=doi, title=f"title {wid}", fetched_at="2026-10-18T00:00:00+00:00", abstract=f"abs {wid}",
+                authors=[PaperAuthor(position=i, author_id=a, name=a) for i, a in enumerate(authors)],
+                links=[EntityLink(entity_id=e, relation="author", author_id=a, position=p) for e, a, p in links],
+                referenced_works=list(refs), **kw)
+
+
+def test_write_papers_merges_intra_batch_duplicate_doi(env):
+    """Mini-pilot bug: two OpenAlex records of one DOI in one batch -> UniqueViolation on paper_doi_key.
+    Now one paper, both people's authorships, citations pointing to the canonical id."""
+    tmp_path, ents = env
+    jane, maxm = ents[0].id, ents[2].id
+    doi = "10.1007/s10554-026-03741-6"
+    batch = [_dup_work("W7164684003", doi, ["A100", "A200"], [(jane, "A100", 0)]),
+             _dup_work("W7213651789", doi, ["A200"], [(maxm, "A200", 0)]),
+             _dup_work("W5", "10.1/citing", [], [], refs=["W7213651789"])]
+    out = papers.write_to_store(index_store(), batch, [], text_dir=tmp_path / "text")
+    assert out["duplicate_doi_merged"] == 1 and out["papers"] == 2
+    assert _sql("SELECT id FROM nav.paper WHERE doi = %s", doi) == [("W7164684003",)]
+    assert set(_sql("SELECT paper_id, entity_id, position FROM nav.paper_author")) == {
+        ("W7164684003", jane, 0), ("W7164684003", maxm, 1)}
+    assert _sql("SELECT referenced_works FROM nav.paper WHERE id = 'W5'") == [(["W7164684003"],)]
+    assert {r[0] for r in _sql("SELECT DISTINCT paper_id FROM nav.paper_chunk")} == {"W7164684003", "W5"}
+    assert _graph_count("CITES") == 1 and _graph_count("AUTHORED") == 2
+    # the store guards on its own too (a direct caller that did not dedupe)
+    st = index_store().write_papers(batch, [], {w.id: [("abstract", 0, w.abstract)] for w in batch})
+    assert st["duplicate_doi_in_batch"] == 1 and _sql("SELECT count(*) FROM nav.paper")[0][0] == 2
+    assert {r[0] for r in _sql("SELECT DISTINCT paper_id FROM nav.paper_chunk")} == {"W7164684003", "W5"}
+
+
+def test_write_papers_keeps_stored_id_for_known_doi(env):
+    """A DOI already stored under another work id (earlier run kept the other record): the stored id is reused,
+    its embedding survives, the incoming authorships land on it, references in the batch are renamed."""
+    tmp_path, ents = env
+    jane, maxm = ents[0].id, ents[2].id
+    doi = "10.1136/jnnp-2025-338291"
+    st = index_store()
+    st.write_papers([_dup_work("W7164323838", doi, ["A100"], [(jane, "A100", 0)])], [],
+                    {"W7164323838": [("abstract", 0, "abs W7164323838")]})
+    st.write_chunk_embeddings([(i, fake_embed([t])[0]) for i, t in st.chunks_to_embed("m")], "m")
+    incoming = [_dup_work("W4414173201", doi, ["A200", "A100"], [(maxm, "A200", 0), (jane, "A100", 1)]),
+                _dup_work("W6", "10.1/citing", [], [], refs=["W4414173201"])]
+    out = st.write_papers(incoming, [], {"W4414173201": [("abstract", 0, "abs W7164323838")], "W6": []})
+    assert out["doi_kept_stored_id"] == {"W4414173201": "W7164323838"}
+    assert _sql("SELECT id FROM nav.paper WHERE doi = %s", doi) == [("W7164323838",)]
+    assert _sql("SELECT count(*) FROM nav.paper WHERE id = 'W4414173201'")[0][0] == 0
+    assert set(_sql("SELECT paper_id, entity_id, position FROM nav.paper_author")) == {
+        ("W7164323838", maxm, 0), ("W7164323838", jane, 1)}
+    assert _sql("SELECT referenced_works FROM nav.paper WHERE id = 'W6'") == [(["W7164323838"],)]
+    # same text -> the embedding of the stored paper's chunk is kept
+    assert _sql("SELECT count(*) FROM nav.paper_chunk WHERE paper_id = 'W7164323838' "
+                "AND embedding IS NOT NULL")[0][0] == 1
+    assert _graph_count("CITES") == 1
+    # a stored id that is in the batch with a new DOI gives the old DOI up to the other record
+    swap = [_dup_work("W7164323838", "10.1/moved", ["A100"], [(jane, "A100", 0)]),
+            _dup_work("W4414173201", doi, ["A200"], [(maxm, "A200", 0)])]
+    out = st.write_papers(swap, [], {})
+    assert out["doi_kept_stored_id"] == {}
+    assert dict(_sql("SELECT id, doi FROM nav.paper WHERE id IN ('W7164323838', 'W4414173201')")) == {
+        "W7164323838": "10.1/moved", "W4414173201": doi}
