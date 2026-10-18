@@ -11,7 +11,7 @@ DEST=/opt/bern/app
 cd "$(dirname "$0")/.."
 
 rsync -az --delete \
-  --exclude .env --exclude .venv/ --exclude .pytest_cache/ --exclude __pycache__/ \
+  --exclude .env --exclude caddy.env --exclude .venv/ --exclude .pytest_cache/ --exclude __pycache__/ \
   --exclude db/ --exclude 'data/cases.db*' --exclude 'data/*.log' \
   ./ "$HOST:$DEST/"
 
