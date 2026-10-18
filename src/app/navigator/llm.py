@@ -69,9 +69,21 @@ def _post(body: dict, usage_in_stream: bool = True) -> httpx.Response:
         return httpx.Response(200, json=_from_sse(r.iter_lines()), request=r.request)
 
 
+def _keys(schema: type[BaseModel]) -> str:
+    """The expected keys in plain words: a raw JSON schema gets echoed back by some models."""
+    out = []
+    for name, f in schema.model_fields.items():
+        t = getattr(f.annotation, "__name__", None) or str(f.annotation).replace("typing.", "")
+        out.append(f'"{name}" ({t})')
+    return ", ".join(out)
+
+
 def chat(messages: list[dict], *, schema: type[BaseModel] | None = None,
-         max_tokens: int = 2048, temperature: float = 0.0) -> str:
+         max_tokens: int = 2048, temperature: float = 0.0, mode: str | None = None) -> str:
+    """mode: force one structured-output mode. "none" (format described in the prompt) is ~10x faster than
+    guided "json_schema" decoding on the shared Apertus gateway, so interactive calls use it."""
     global _mode_idx
+    forced = mode
     while True:
         body: dict = {
             "model": settings.llm_model,
@@ -79,7 +91,7 @@ def chat(messages: list[dict], *, schema: type[BaseModel] | None = None,
             "temperature": temperature,
             "max_tokens": max_tokens,
         }
-        mode = _MODES[_mode_idx] if schema is not None else "none"
+        mode = (forced or _MODES[_mode_idx]) if schema is not None else "none"
         if mode == "json_schema":
             # Guided decoding: the model can only emit JSON matching the schema
             body["response_format"] = {
@@ -90,13 +102,13 @@ def chat(messages: list[dict], *, schema: type[BaseModel] | None = None,
             body["response_format"] = {"type": "json_object"}
         if schema is not None and mode != "json_schema":
             body["messages"] = [*messages[:-1], {**messages[-1], "content": messages[-1]["content"] +
-                                "\n\nReply with JSON matching this schema:\n" +
-                                json.dumps(schema.model_json_schema())}]
+                                "\n\nReply with exactly ONE JSON object with these keys: " + _keys(schema) +
+                                ". No schema, no markdown, no text before or after the object."}]
         try:
             r = _post(body)
         except httpx.HTTPError as e:
             raise LLMError(str(e)) from e
-        if r.status_code in (400, 422) and mode != "none" and "response_format" in r.text:
+        if r.status_code in (400, 422) and mode != "none" and "response_format" in r.text and not forced:
             _mode_idx = min(_mode_idx + 1, len(_MODES) - 1)
             continue
         if r.status_code >= 400:
@@ -110,6 +122,22 @@ def chat(messages: list[dict], *, schema: type[BaseModel] | None = None,
         return data["choices"][0]["message"]["content"] or ""
 
 
+def _objects(raw: str):
+    """Every top-level JSON object in the text, in order (models sometimes echo the schema first)."""
+    dec = json.JSONDecoder()
+    raw = re.sub(r"^```(?:json)?|```$", "", raw.strip(), flags=re.M)
+    i = raw.find("{")
+    while i != -1:
+        try:
+            obj, end = dec.raw_decode(raw, i)
+        except json.JSONDecodeError:
+            i = raw.find("{", i + 1)
+            continue
+        if isinstance(obj, dict):
+            yield obj
+        i = raw.find("{", end)
+
+
 def chat_json(messages: list[dict], schema: type[BaseModel], retries: int = 2, **kw) -> BaseModel:
     last: Exception | None = None
     for _ in range(retries + 1):
@@ -118,6 +146,13 @@ def chat_json(messages: list[dict], schema: type[BaseModel], retries: int = 2, *
             return schema.model_validate_json(_strip(raw))
         except (ValidationError, json.JSONDecodeError) as e:
             last = e
+        for obj in _objects(raw):
+            if "properties" in obj and "type" in obj:   # an echoed JSON schema, not the answer
+                continue
+            try:
+                return schema.model_validate(obj)
+            except ValidationError as e:
+                last = e
     raise LLMError(f"Invalid JSON from model after retries: {last}")
 
 

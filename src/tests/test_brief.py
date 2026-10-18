@@ -85,6 +85,7 @@ def test_brief_only_chosen_partners_and_everything_sourced(client):
 
 def test_brief_needs_chosen_partners_and_email_links_it(client):
     cid = client.post("/cases", json=REQ).json()["id"]
+    client.post(f"/cases/{cid}/selection", json={"selected": [], **OFF})
     assert client.post(f"/cases/{cid}/brief", json={"lang": "en", **OFF}).status_code == 400
     cid = _chosen_case(client)
     tok = client.post(f"/cases/{cid}/brief", json={"lang": "en", **OFF}).json()["token"]

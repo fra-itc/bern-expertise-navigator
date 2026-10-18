@@ -7,6 +7,7 @@ and calls are offered as a calendar file (.ics).
 from __future__ import annotations
 
 import json
+import re
 import sqlite3
 import threading
 import uuid
@@ -17,7 +18,7 @@ from pydantic import BaseModel, Field, model_validator
 
 import yaml
 
-from . import archetypes, company as company_web, documents as docs, index, plain, search, showcase, understand
+from . import archetypes, company as company_web, documents as docs, index, llm, plain, search, showcase, understand
 from .config import CONFIG_DIR, DATA_DIR
 
 DB = DATA_DIR / "cases.db"
@@ -51,6 +52,35 @@ class Match(BaseModel):
         return self
 
 
+class OfferSource(BaseModel):
+    """One cited asset, as a structured and traceable result."""
+    n: int
+    id: str
+    name: str
+    kind: str                          # type in the entity model, e.g. "People", "Facilities"
+    entity_type: str = ""
+    role: str = ""                     # function
+    unit: str = ""                     # department / institute / research group
+    institute: str = ""
+    institution: str = ""
+    contact: str = ""
+    expertise: list[str] = []
+    projects: list[str] = []
+    infrastructure: list[str] = []
+    about: str = ""
+    why: str = ""                      # why it matches this company
+    url: str = ""
+    links: list[str] = []              # further source pages
+
+
+class Offer(BaseModel):
+    """What Bern offers the company, in one paragraph; every asset cited as [n] with its public source."""
+    text: str
+    sources: list[OfferSource] = []
+    lang: str = "en"
+    generated_by: str = "rules"
+
+
 class Event(BaseModel):
     at: str
     actor: str
@@ -80,6 +110,7 @@ class Case(BaseModel):
     analysis: plain.RequestAnalysis
     matches: list[Match] = []
     no_match_message: str | None = None
+    offer: Offer | None = None
     outreach: dict = Field(default_factory=dict)
     events: list[Event] = []
 
@@ -183,8 +214,8 @@ PER_ARCHETYPE = 8
 
 
 def find_matches(analysis: plain.RequestAnalysis, k: int = 40) -> tuple[list[Match], str | None]:
-    """Everything Bern can offer this company, grouped by archetype (people, units, facilities, studies…).
-    Up to PER_ARCHETYPE per archetype, in relevance order; among people the leads come first, so a
+    """Everything Bern can offer this company, classified into the entity model (agents, offering,
+    activities, capital, concepts). Up to MAX_PER_TYPE per type, in relevance order; among people the leads come first, so a
     company meets the professor or group head before an intern."""
     ents = index.load_entities()
     r = search.search(analysis.search_query, k=k)
@@ -208,9 +239,10 @@ def find_matches(analysis: plain.RequestAnalysis, k: int = 40) -> tuple[list[Mat
     out.sort(key=lambda m: (archetypes.ORDER.get(m.archetype, 99), band(m)))
     per: dict[str, int] = {}
     kept = []
-    for m in out:
-        per[m.archetype] = per.get(m.archetype, 0) + 1
-        if per[m.archetype] <= PER_ARCHETYPE:
+    for m in out:  # a limit per type of the entity model (people, organizations, facilities…)
+        kind = archetypes.TYPE_OF.get(m.archetype, m.archetype)
+        per[kind] = per.get(kind, 0) + 1
+        if per[kind] <= archetypes.MAX_PER_TYPE.get(kind, PER_ARCHETYPE):
             kept.append(m)
     return kept, None
 
@@ -255,9 +287,10 @@ def create(req: NewCase) -> Case:
         log(case, "Navigator", "document", f"Read {d.kind} document {d.name}")
     if site:
         log(case, "Navigator", "website", f"Read {len(site.pages)} page(s) of {site.url}")
+    case.offer = summarize_offer(case, req.lang)
     log(case, "Navigator", "analysed",
-        f"Plain-language summary by {'Apertus' if analysis.generated_by == 'apertus' else 'glossary rules'}; "
-        f"{len(matches)} possible partners found in Bern")
+        f"Company profile by {'Apertus' if analysis.generated_by == 'apertus' else 'rules'}; "
+        f"{len(case.offer.sources)} Bern assets cited")
     return save(case)
 
 
@@ -269,6 +302,223 @@ def rematch(case: Case, query: str, actor: str) -> Case:
     case.no_match_message = msg if not case.matches else None
     log(case, actor, "rematched", f"Searched again for: {query}")
     return save(case)
+
+
+# ---------------- what Bern offers (one sourced paragraph) ---------------------
+# How many assets of each type of the entity model go into the paragraph (and the pitch)
+OFFER_QUOTA = {"person": 4, "organization": 2, "company": 1, "facility": 2, "instrument": 1, "service": 1,
+               "digital": 1, "study": 1, "project": 2, "technology": 1, "programme": 1, "funding": 1, "proof": 1}
+
+
+def _kind(m: Match) -> str:
+    return archetypes.TYPE_OF.get(m.archetype, m.entity_type)
+
+
+def _label(kind: str, lang: str) -> str:
+    for g in archetypes.GROUPS:
+        for t in g["types"]:
+            if t["id"] == kind:
+                return t["label"].get(lang) or t["label"]["en"]
+    return kind
+
+
+def pick_assets(matches: list[Match]) -> list[Match]:
+    """The strongest assets per type, in relevance order (people: leads first, as find_matches sorts)."""
+    used: dict[str, int] = {}
+    out = []
+    for m in matches:
+        k = _kind(m)
+        if used.get(k, 0) < OFFER_QUOTA.get(k, 1):
+            used[k] = used.get(k, 0) + 1
+            out.append(m)
+    order = list(OFFER_QUOTA)
+    return sorted(out, key=lambda m: order.index(_kind(m)) if _kind(m) in order else 99)
+
+
+_NUM = {"en": ["one", "two", "three", "four", "five"], "de": ["eine", "zwei", "drei", "vier", "fünf"],
+        "fr": ["un", "deux", "trois", "quatre", "cinq"]}
+_OT = {
+    "en": {"intro": "For {company}, Bern offers", "people1": "one matching expert: {xs}.", "people": "{n} matching experts: {xs}.",
+           "orgs": "Matching research units are {xs}.", "orgs1": "The matching research unit is {xs}.",
+           "offer": "Relevant infrastructure and services include {xs}.", "act": "Related research activities include {xs}.",
+           "and": "and", "company": "this company", "units": "the following research units: {xs}."},
+    "de": {"intro": "Für {company} bietet Bern", "people1": "eine passende Fachperson: {xs}.", "people": "{n} passende Fachpersonen: {xs}.",
+           "orgs": "Passende Forschungseinheiten sind {xs}.", "orgs1": "Die passende Forschungseinheit ist {xs}.",
+           "offer": "Relevante Infrastruktur und Dienstleistungen umfassen {xs}.", "act": "Verwandte Forschungsaktivitäten sind {xs}.",
+           "and": "und", "company": "diese Firma", "units": "folgende Forschungseinheiten: {xs}."},
+    "fr": {"intro": "Pour {company}, Berne offre", "people1": "un expert correspondant : {xs}.", "people": "{n} experts correspondants : {xs}.",
+           "orgs": "Les unités de recherche correspondantes sont {xs}.", "orgs1": "L'unité de recherche correspondante est {xs}.",
+           "offer": "Les infrastructures et services pertinents comprennent {xs}.", "act": "Les activités de recherche liées comprennent {xs}.",
+           "and": "et", "company": "cette entreprise", "units": "les unités de recherche suivantes : {xs}."},
+}
+
+
+def _join(xs: list[str], word: str) -> str:
+    return xs[0] if len(xs) == 1 else ", ".join(xs[:-1]) + f" {word} " + xs[-1]
+
+
+def _who(m: Match) -> str:
+    """Role and unit, short: long page-copied roles keep their first two parts; no unit named twice."""
+    role = ", ".join(x.strip() for x in (m.role or "").split(",")[:2] if x.strip())
+    unit = m.unit if m.unit and m.unit.lower() not in role.lower() else ""
+    return ", ".join(x for x in [role, unit] if x)
+
+
+def _template(case: Case, picked: list[Match], lang: str) -> str:
+    """Only indexed facts (name, role, unit, institution), each followed by its source number."""
+    t = _OT.get(lang, _OT["en"])
+    n = {m.id: i for i, m in enumerate(picked, 1)}
+    people = [m for m in picked if _kind(m) == "person"]
+    orgs = [m for m in picked if _kind(m) in ("organization", "company")]
+    offer = [m for m in picked if _kind(m) in ("facility", "instrument", "service", "digital")]
+    act = [m for m in picked if m not in people + orgs + offer]
+    cite = lambda m, extra="": f"{m.name}{' (' + extra + ')' if extra else ''} [{n[m.id]}]"  # noqa: E731
+    out = [t["intro"].format(company=case.company or t["company"])]
+    org_xs = _join([cite(m, m.institution) for m in orgs], t["and"]) if orgs else ""
+    if people:
+        xs = _join([cite(m, _who(m)) for m in people], t["and"])
+        k = len(people)
+        out[0] += " " + (t["people1"].format(xs=xs) if k == 1 else
+                         t["people"].format(n=_NUM.get(lang, _NUM["en"])[k - 1] if k <= 5 else k, xs=xs))
+        if orgs:
+            out.append((t["orgs1"] if len(orgs) == 1 else t["orgs"]).format(xs=org_xs))
+    elif orgs:
+        out[0] += " " + t["units"].format(xs=org_xs)
+    if offer:
+        out.append(t["offer"].format(xs=_join([cite(m) for m in offer], t["and"])))
+    if act:
+        out.append(t["act"].format(xs=_join([cite(m) for m in act], t["and"])))
+    return " ".join(out)
+
+
+def _source(i: int, m: Match, ents: dict, lang: str) -> OfferSource:
+    e = ents.get(m.id)
+    urls = list(dict.fromkeys([m.url, *(e.source_urls if e else [])]))
+    clip = lambda xs, k: [x for x in dict.fromkeys(xs or []) if x and x != m.name][:k]  # noqa: E731
+    return OfferSource(
+        n=i, id=m.id, name=m.name, kind=_label(_kind(m), lang), entity_type=m.entity_type,
+        role=m.role or "", unit=m.unit or "", institute=(e.institute if e else "") or "", institution=m.institution,
+        contact=m.contact or (e.email if e else "") or "", expertise=clip(e.expertise if e else [], 5),
+        projects=clip(e.projects if e else [], 3), infrastructure=clip(e.infrastructure if e else [], 3),
+        about=(m.plain or (e.description[0] if e and e.description else ""))[:300], why=m.why,
+        url=urls[0] if urls else "", links=urls[1:4])
+
+
+# promotional adjectives: removed from the model's prose ("a unique ecosystem" -> "an ecosystem")
+_ADJ = re.compile(r"\b(unique|world[- ]class|renowned|excellent|outstanding|cutting[- ]edge|state[- ]of[- ]the[- ]art|"
+                  r"comprehensive|robust|innovative|einzigartig|weltklasse|renommiert|exzellent|innovativ|"
+                  r"unique|renommé|exceptionnel|innovant)e?[ns]?\s+", re.I)
+# what cannot be cleaned up: superlative claims about quality or rank
+_HYPE = re.compile(r"\b(best|leading (expert|experts|institution|centre|center|hub|research|university)|world[- ]leading|"
+                   r"führend|meilleur)", re.I)
+
+
+def _clean(text: str) -> str:
+    t = _ADJ.sub("", text)
+    t = re.sub(r"\b([Aa]) ([aeiouAEIOU])", r"\1n \2", t)       # "a ecosystem" -> "an ecosystem"
+    return " ".join(t.split())
+_TITLE = re.compile(r"^(prof|dr|med|phil|pd|em|sc|ing|msc|phd|the|and|for|of|der|die|das|und|des|du|de|la|le|et)$", re.I)
+
+
+def _name_keys(src: OfferSource) -> list[str]:
+    words = [w for w in re.findall(r"[\w-]{3,}", src.name) if not _TITLE.match(w.strip("."))]
+    if src.entity_type == "person":
+        return words[-1:]                                   # the surname
+    return words[:4]
+
+
+def _check(text: str, sources: list[OfferSource]) -> bool:
+    """Precise or nothing: every asset cited, each citation right after that asset's name, nothing extra."""
+    cites = [(int(m.group(1)), m.start()) for m in re.finditer(r"\[(\d+)\]", text)]
+    by_n = {s.n: s for s in sources}
+    if {n for n, _ in cites} != set(by_n) or _HYPE.search(text) or len(text.split()) > 190:
+        return False
+    for n, pos in cites:
+        window = text[max(0, pos - 160):pos].lower()
+        if not any(k.lower() in window for k in _name_keys(by_n[n])):
+            return False                                    # citation attached to the wrong asset
+    return all(sum(1 for x, _ in cites if x == n) <= 2 for n in by_n)
+
+
+def _cite(text: str, sources: list[OfferSource]) -> str | None:
+    """Insert [n] after the first mention of each asset's name. The model writes names only: given numbers,
+    it attached them to the wrong assets. None when an asset is not mentioned recognisably."""
+    text = re.sub(r"\s*\[\d+\]", "", text)
+    spots = []
+    for x in sources:
+        if x.entity_type == "person":
+            keys = _name_keys(x)                              # surname
+        else:
+            short = x.name.split(":")[0].strip()
+            keys = list(dict.fromkeys([x.name, short]))
+        hit = None
+        for k in keys:
+            m = re.search(rf"(?<![\w-]){re.escape(k)}(?![\w-])", text, re.I)
+            if m and not any(a <= m.start() < b for a, b, _ in spots):
+                hit = (m.start(), m.end(), x.n)
+                break
+        if not hit:
+            return None
+        spots.append(hit)
+    for a, b, n in sorted(spots, key=lambda z: -z[1]):
+        text = f"{text[:b]} [{n}]{text[b:]}"
+    return text
+
+
+class _Para(BaseModel):
+    paragraph: str
+
+
+def _discursive(case: Case, sources: list[OfferSource], lang: str) -> str | None:
+    """Apertus writes the paragraph from the listed facts only; it is accepted only if `_check` passes."""
+    language = {"de": "German", "fr": "French"}.get(lang, "English")
+    facts = "\n".join(
+        f"[{x.n}] {x.kind}: {x.name}"
+        + "".join(f"; {k}: {v}" for k, v in [("function", x.role), ("unit", x.unit), ("institution", x.institution),
+                                               ("expertise", ", ".join(x.expertise[:3])), ("about", x.about[:200])] if v)
+        for x in sources)
+    msgs = [
+        {"role": "system", "content": (
+            "You write for the business-development team of the Canton of Bern. Write natural, flowing prose that a "
+            "non-specialist reads easily, in a sober, factual tone. Use ONLY the facts listed for each numbered asset. "
+            "Do not add facts, do not promise results or benefits, do not say what anyone has agreed to. Never use "
+            "the words unique, world-class, leading expert, renowned, excellent, innovative, comprehensive, robust. "
+            "JSON only.")},
+        {"role": "user", "content": (
+            f"Company: {case.company or 'the company'}\nProfile: {case.analysis.summary}\n"
+            f"Business needs: {'; '.join(case.analysis.company_needs) or 'not stated'}\n\nBern assets:\n{facts}\n\n"
+            f"Write ONE paragraph of 100-150 words in {language} on what Bern offers this company, grouped by theme "
+            "(for example the company's needs), not as a list. Mention ALL assets, each once, by its exact name as "
+            "listed. Do NOT write any numbers or citations; they are added afterwards.\n"
+            "Style example (other assets): \"For its work on glucose sensors, the company would find in Bern Prof. Anna "
+            "Muster, group head of the Sensing Lab, whose expertise covers wearable sensors and diabetes management. "
+            "Prototypes and test parts can be produced by Mechanical Production, a workshop certified to ISO 13485, "
+            "and the Clinical Research Database supports study data management.\"\n"
+            'Return {"paragraph": "..."}.')},
+    ]
+    try:
+        r: _Para = llm.chat_json(msgs, _Para, mode="none", max_tokens=450)  # type: ignore[assignment]
+    except llm.LLMError:
+        return None
+    text = _cite(_clean(r.paragraph), sources)
+    return text if text and _check(text, sources) else None
+
+
+def summarize_offer(case: Case, lang: str = "en") -> Offer:
+    """Selects the cited assets as the pitch partners. The paragraph is readable prose by Apertus, accepted only
+    when every citation sits right after the asset it names (in tests the model otherwise mis-attributed claims);
+    else a template built from the indexed fields. The sources carry the structured, traceable details."""
+    picked = pick_assets(case.matches)
+    if not picked:
+        return Offer(text=case.no_match_message or "", lang=lang)
+    for m in case.matches:
+        m.selected = m in picked
+    ents = index.load_entities()
+    sources = [_source(i, m, ents, lang) for i, m in enumerate(picked, 1)]
+    text = _discursive(case, sources, lang) if llm.available() else None
+    if text:
+        return Offer(text=text, sources=sources, lang=lang, generated_by="apertus")
+    return Offer(text=_template(case, picked, lang), sources=sources, lang=lang, generated_by="rules")
 
 
 # ---------------- outreach ---------------------------------------------------

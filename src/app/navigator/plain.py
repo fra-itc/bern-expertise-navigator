@@ -194,7 +194,7 @@ def analyze_company(name: str, description: str, text: str, need: str = "", lang
                 "- sector: e.g. medtech / diabetes technology.\n"
                 "- search_query: 5-10 technical keywords to find matching university researchers, labs, "
                 "clinical partners and facilities.")},
-        ], _LLMAnalysis, max_tokens=900)
+        ], _LLMAnalysis, mode="none", max_tokens=900)
     except llm.LLMError:
         return base
     query = " ".join(x for x in [need.strip(), r.search_query] if x) or base.search_query

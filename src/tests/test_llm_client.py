@@ -75,3 +75,15 @@ def test_streamed_completion_is_reassembled():
              ': keep-alive', 'data: {"choices":[],"usage":{"prompt_tokens":5,"completion_tokens":2}}', "data: [DONE]"]
     out = llm._from_sse(lines)
     assert out["choices"][0]["message"]["content"] == '{"a": 1}' and out["usage"]["completion_tokens"] == 2
+
+
+def test_echoed_schema_is_skipped(monkeypatch):
+    """Some models print the JSON schema first, then the answer: the answer must still be found."""
+    from pydantic import BaseModel
+
+    class Out(BaseModel):
+        a: int
+        b: list[str]
+    raw = '{"properties": {"a": {"type": "integer"}}, "type": "object"}\n\n{"a": 3, "b": ["x"]}'
+    monkeypatch.setattr(llm, "chat", lambda *x, **k: raw)
+    assert llm.chat_json([{"role": "user", "content": "q"}], Out, mode="none") == Out(a=3, b=["x"])

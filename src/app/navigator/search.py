@@ -49,7 +49,7 @@ def llm_analyze(q: str) -> _QueryAnalysis:
                 "in English, German and French. No explanations.\n"
                 "- person_names: names of specific people mentioned in the query (empty if none).\n"
                 f"QUERY: {q}")},
-        ], _QueryAnalysis, max_tokens=250, temperature=0.0)
+        ], _QueryAnalysis, mode="none", max_tokens=250, temperature=0.0)
         terms = [t.strip().lower() for t in r.terms if 1 < len(t.strip()) < 60][:8]  # type: ignore[attr-defined]
         return _QueryAnalysis(terms=terms, person_names=[n for n in r.person_names if n.strip()])  # type: ignore[attr-defined]
     except llm.LLMError:
@@ -278,7 +278,7 @@ def _llm_why(q: str, name: str, etype: str, numbered: str, valid: tuple[int, ...
                 "In max 30 words, say why this candidate matches the query. Cite the evidence ids you used. "
                 "Do not add facts that are not in the evidence. "
                 "If the evidence does not support a match, say 'Weak match'.")},
-        ], _Why, max_tokens=150)
+        ], _Why, mode="none", max_tokens=150)
     except llm.LLMError:
         return None
     if not r.evidence_ids or not set(r.evidence_ids) <= set(valid):  # type: ignore[attr-defined]

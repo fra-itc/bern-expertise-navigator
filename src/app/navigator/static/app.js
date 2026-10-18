@@ -58,6 +58,30 @@
   /* ======================= i18n ======================= */
   const I18N = {
     en: {
+      "m.sourcesLead": "structured and traceable: who, where, what, why — with the original pages",
+      "src.function": "Function",
+      "src.aff": "Affiliation",
+      "src.contact": "Contact",
+      "src.expertise": "Expertise",
+      "src.projects": "Projects & activities",
+      "src.infra": "Infrastructure & services",
+      "src.about": "About",
+      "src.why": "Why it matches",
+      "src.link": "Source page",
+      "m.sources": "Sources",
+      "skip": "Skip to content", "lang.label": "Language", "theme": "Dark mode",
+      "ai.on": "Apertus AI active", "ai.off": "Rules mode · no AI",
+      "ai.onT": "Apertus, the Swiss open language model, helps interpret requests and write plain-language summaries. Every fact shown is quoted from a public source.",
+      "ai.offT": "The AI model is not reachable. Summaries and matches come from a reviewed glossary and fixed rules; nothing is generated.",
+      "prov.apertus": "Summary written by Apertus (AI). Check it against the sources analysed below.",
+      "prov.rules": "Summary from the reviewed glossary and fixed rules (no AI).",
+      "prov.ai": "AI-written", "prov.rule": "Rules",
+      "prov.offer": "Built only from the indexed fields of the cited sources (no AI). Every [n] links to its public page.",
+      "prov.searchAi": "Apertus helped interpret the query. Quotes and sources are verbatim from public pages.",
+      "prov.searchRules": "Keyword and meaning search, no AI. Quotes and sources are verbatim from public pages.",
+      "foot.proto": "Prototype (Hack Apertus 2026). Not an official service of the Canton of Bern.",
+      "col.todoD": "Choose partners", "col.readyD": "Send the invitation", "col.doneD": "Follow up",
+      "bs.short": "Enter at least 3 characters.",
       "u.sources": "Sources analysed",
       "u.kw": "Key business keywords",
       "u.offer": "Solutions & offerings",
@@ -114,10 +138,9 @@
       "step.1": "Company profile", "step.2": "Bern assets", "step.3": "Pitch & invitation", 
       "u.title": "Company profile",
       "u.does": "Business activity", "u.needs": "Business needs", "u.orig": "Original request",
-      "m.title": "Matching assets in Bern", "m.lead": "Select the assets to include in the pitch. Each entry is supported by a public source.",
-      "m.again": "Search again", "m.more": "Find more in search", "m.sel": "selected", "m.none": "No matching assets were found in the indexed sources.",
+      "m.title": "What Bern offers", "m.none": "No matching assets were found in the indexed sources.",
       "m.src": "source", 
-      "i.title": "Pitch & invite", "i.locked": "Select at least one asset above to prepare the pitch.",
+      "i.title": "Pitch & invite", "i.locked": "No Bern assets were found for this company, so no pitch can be prepared yet.",
       "i.lead": "Two outputs: an internal briefing for you and a concise, fully sourced executive brief for the company's leadership. Objective: a visit to Bern.",
       "i.lang": "Language of the pitch", "i.prep": "Prepare the pitch", "i.regen": "Update the pitch",
       "i.forYou": "For you", "i.forYouT": "Internal briefing", "i.forCeo": "For the CEO", "i.forCeoT": "Executive brief",
@@ -141,6 +164,30 @@
       "bs.langs": "Works in English, Deutsch, Français, Italiano and Rumantsch.",
     },
     de: {
+      "m.sourcesLead": "strukturiert und nachvollziehbar: wer, wo, was, warum — mit den Originalseiten",
+      "src.function": "Funktion",
+      "src.aff": "Zugehörigkeit",
+      "src.contact": "Kontakt",
+      "src.expertise": "Fachgebiete",
+      "src.projects": "Projekte & Aktivitäten",
+      "src.infra": "Infrastruktur & Dienstleistungen",
+      "src.about": "Beschreibung",
+      "src.why": "Warum es passt",
+      "src.link": "Quellseite",
+      "m.sources": "Quellen",
+      "skip": "Zum Inhalt springen", "lang.label": "Sprache", "theme": "Dunkelmodus",
+      "ai.on": "Apertus-KI aktiv", "ai.off": "Regelmodus · ohne KI",
+      "ai.onT": "Apertus, das offene Schweizer Sprachmodell, hilft beim Verstehen von Anfragen und schreibt verständliche Zusammenfassungen. Jede angezeigte Tatsache ist aus einer öffentlichen Quelle zitiert.",
+      "ai.offT": "Das KI-Modell ist nicht erreichbar. Zusammenfassungen und Treffer stammen aus einem geprüften Glossar und festen Regeln; nichts wird generiert.",
+      "prov.apertus": "Zusammenfassung von Apertus (KI) verfasst. Bitte mit den unten analysierten Quellen abgleichen.",
+      "prov.rules": "Zusammenfassung aus dem geprüften Glossar und festen Regeln (ohne KI).",
+      "prov.ai": "KI-verfasst", "prov.rule": "Regeln",
+      "prov.offer": "Nur aus den indexierten Angaben der zitierten Quellen erstellt (ohne KI). Jede [n] verweist auf ihre öffentliche Seite.",
+      "prov.searchAi": "Apertus hat geholfen, die Suche zu verstehen. Zitate und Quellen stammen wörtlich von öffentlichen Seiten.",
+      "prov.searchRules": "Stichwort- und Bedeutungssuche, ohne KI. Zitate und Quellen stammen wörtlich von öffentlichen Seiten.",
+      "foot.proto": "Prototyp (Hack Apertus 2026). Kein offizielles Angebot des Kantons Bern.",
+      "col.todoD": "Partner auswählen", "col.readyD": "Einladung senden", "col.doneD": "Nachfassen",
+      "bs.short": "Mindestens 3 Zeichen eingeben.",
       "u.sources": "Analysierte Quellen",
       "u.kw": "Zentrale Geschäftsbegriffe",
       "u.offer": "Lösungen & Angebote",
@@ -197,10 +244,9 @@
       "step.1": "Firmenprofil", "step.2": "Berner Angebote", "step.3": "Pitch & Einladung", 
       "u.title": "Firmenprofil",
       "u.does": "Geschäftstätigkeit", "u.needs": "Geschäftlicher Bedarf", "u.orig": "Ursprüngliche Anfrage",
-      "m.title": "Passende Angebote in Bern", "m.lead": "Wählen Sie die Angebote für den Pitch. Jeder Eintrag ist durch eine öffentliche Quelle belegt.",
-      "m.again": "Neu suchen", "m.more": "Mehr in der Suche finden", "m.sel": "ausgewählt", "m.none": "In den indexierten Quellen wurden keine passenden Angebote gefunden.",
+      "m.title": "Was Bern bietet", "m.none": "In den indexierten Quellen wurden keine passenden Angebote gefunden.",
       "m.src": "Quelle", 
-      "i.title": "Pitch & Einladung", "i.locked": "Wählen Sie oben mindestens ein Angebot, um den Pitch vorzubereiten.",
+      "i.title": "Pitch & Einladung", "i.locked": "Für diese Firma wurden keine Berner Angebote gefunden; ein Pitch kann noch nicht vorbereitet werden.",
       "i.lead": "Zwei Ergebnisse: ein internes Briefing für Sie und ein kurzes, vollständig belegtes Executive Brief für die Geschäftsleitung der Firma. Ziel: ein Besuch in Bern.",
       "i.lang": "Sprache des Pitch", "i.prep": "Pitch vorbereiten", "i.regen": "Pitch aktualisieren",
       "i.forYou": "Für Sie", "i.forYouT": "Internes Briefing", "i.forCeo": "Für die Geschäftsleitung", "i.forCeoT": "Executive Brief",
@@ -224,6 +270,30 @@
       "bs.langs": "Funktioniert auf English, Deutsch, Français, Italiano und Rumantsch.",
     },
     fr: {
+      "m.sourcesLead": "structurées et traçables : qui, où, quoi, pourquoi — avec les pages d'origine",
+      "src.function": "Fonction",
+      "src.aff": "Affiliation",
+      "src.contact": "Contact",
+      "src.expertise": "Expertise",
+      "src.projects": "Projets & activités",
+      "src.infra": "Infrastructures & services",
+      "src.about": "Description",
+      "src.why": "Pourquoi cela correspond",
+      "src.link": "Page source",
+      "m.sources": "Sources",
+      "skip": "Aller au contenu", "lang.label": "Langue", "theme": "Mode sombre",
+      "ai.on": "IA Apertus active", "ai.off": "Mode règles · sans IA",
+      "ai.onT": "Apertus, le modèle de langage ouvert suisse, aide à comprendre les demandes et rédige des résumés en langage clair. Chaque fait affiché est cité d'une source publique.",
+      "ai.offT": "Le modèle d'IA n'est pas joignable. Résumés et résultats proviennent d'un glossaire vérifié et de règles fixes ; rien n'est généré.",
+      "prov.apertus": "Résumé rédigé par Apertus (IA). À vérifier avec les sources analysées ci-dessous.",
+      "prov.rules": "Résumé issu du glossaire vérifié et de règles fixes (sans IA).",
+      "prov.ai": "Rédigé par l'IA", "prov.rule": "Règles",
+      "prov.offer": "Construit uniquement à partir des données indexées des sources citées (sans IA). Chaque [n] renvoie à sa page publique.",
+      "prov.searchAi": "Apertus a aidé à interpréter la recherche. Citations et sources sont reprises mot pour mot des pages publiques.",
+      "prov.searchRules": "Recherche par mots-clés et par sens, sans IA. Citations et sources sont reprises mot pour mot des pages publiques.",
+      "foot.proto": "Prototype (Hack Apertus 2026). Pas un service officiel du canton de Berne.",
+      "col.todoD": "Choisir les partenaires", "col.readyD": "Envoyer l'invitation", "col.doneD": "Assurer le suivi",
+      "bs.short": "Saisissez au moins 3 caractères.",
       "u.sources": "Sources analysées",
       "u.kw": "Mots-clés de l'activité",
       "u.offer": "Solutions & offres",
@@ -280,10 +350,9 @@
       "step.1": "Profil de l'entreprise", "step.2": "Atouts bernois", "step.3": "Pitch & invitation", 
       "u.title": "Profil de l'entreprise",
       "u.does": "Activité", "u.needs": "Besoins commerciaux", "u.orig": "Demande originale",
-      "m.title": "Atouts correspondants à Berne", "m.lead": "Sélectionnez les atouts à inclure dans le pitch. Chaque entrée s'appuie sur une source publique.",
-      "m.again": "Relancer", "m.more": "Chercher davantage", "m.sel": "sélectionné(s)", "m.none": "Aucun atout correspondant n'a été trouvé dans les sources indexées.",
+      "m.title": "Ce que Berne offre", "m.none": "Aucun atout correspondant n'a été trouvé dans les sources indexées.",
       "m.src": "source", 
-      "i.title": "Pitch & invitation", "i.locked": "Sélectionnez au moins un atout ci-dessus pour préparer le pitch.",
+      "i.title": "Pitch & invitation", "i.locked": "Aucun atout bernois n'a été trouvé pour cette entreprise ; le pitch ne peut pas encore être préparé.",
       "i.lead": "Deux livrables : une note interne pour vous et une note de synthèse concise et entièrement sourcée pour la direction de l'entreprise. Objectif : une visite à Berne.",
       "i.lang": "Langue du pitch", "i.prep": "Préparer le pitch", "i.regen": "Mettre à jour le pitch",
       "i.forYou": "Pour vous", "i.forYouT": "Note interne", "i.forCeo": "Pour la direction", "i.forCeoT": "Note de direction",
@@ -370,8 +439,11 @@
   /* ======================= shared rendering ======================= */
   const avatar = (name, type, sm = false) =>
     `<div class="avatar ${sm ? "sm " : ""}${esc(type)}" aria-hidden="true">${type === "person" ? esc(initialsOf(name)) : ICON[type] || ""}</div>`;
+  // who wrote a text the officer reads: Apertus (check it) or the deterministic rules
+  const provBadge = (by, why) => { const ai = by === "apertus";
+    return `<span class="ai-badge ${ai ? "" : "rules"}" title="${esc(why)}">${ai ? ICON.sparkle : ICON.check}${esc(t(ai ? "prov.ai" : "prov.rule"))}</span>`; };
   const pill = (status) => `<span class="pill st-${esc(status)}">${esc(t("st." + status))}</span>`;
-  const spinner = (msg = "") => `<div class="working"><span class="spinner"></span>${msg ? `<span>${esc(msg)}</span>` : ""}</div>`;
+  const spinner = (msg = "") => `<div class="working" role="status" aria-live="polite"><span class="spinner" aria-hidden="true"></span>${msg ? `<span>${esc(msg)}</span>` : `<span class="sr">…</span>`}</div>`;
   function highlight(text, terms) {
     const h = esc(text);
     if (!terms.length) return h;
@@ -393,7 +465,6 @@
   async function stats() { if (!S.stats) { try { S.stats = await api("/stats"); } catch { S.stats = { sources: [], entities_per_source: {}, pages_per_source: {} }; } } return S.stats; }
   async function showcase() { if (!S.showcase) { try { S.showcase = await api("/showcase"); } catch { S.showcase = { themes: [], highlights: [], labs: [], facilities: [], engage: [] }; } } return S.showcase; }
   async function refreshCases() { try { S.cases = await api("/cases"); } catch { S.cases = []; } }
-  async function archetypes() { if (!S.arch) { try { S.arch = await api("/archetypes"); } catch { S.arch = []; } } return S.arch; }
   async function areas() { if (!S.areas) { try { S.areas = await api("/medtech-areas"); } catch { S.areas = []; } } return S.areas; }
   const areaLabel = (a, n) => {
     const A = (S.areas || []).find((x) => x.id === a); if (!A) return "";
@@ -404,41 +475,65 @@
   const placeOf = (c) => [c.city, c.canton !== c.city ? c.canton : "", c.country].filter(Boolean).join(", ");
 
   /* ======================= chrome per area ======================= */
-  const langSel = () => `<select id="lang" class="lang" aria-label="Language">${["en", "de", "fr"].map((l) => `<option value="${l}" ${l === LANG ? "selected" : ""}>${l.toUpperCase()}</option>`).join("")}</select>`;
-  const themeBtn = () => `<button class="icon-btn" id="themeBtn" type="button" aria-label="Dark mode" title="Dark mode">${ICON.moon}</button>`;
+  // DE · FR · EN as visible buttons: the canton is bilingual, so the switch must not hide in a dropdown
+  const LANG_NAMES = { de: "Deutsch", fr: "Français", en: "English" };
+  const langSel = () => `<div class="langs" role="group" aria-label="${esc(t("lang.label"))}">${["de", "fr", "en"].map((l) =>
+    `<button type="button" data-lang="${l}" lang="${l}" aria-pressed="${l === LANG}" title="${LANG_NAMES[l]}"><span aria-hidden="true">${l.toUpperCase()}</span><span class="sr">${LANG_NAMES[l]}</span></button>`).join("")}</div>`;
+  const isDark = () => (document.documentElement.dataset.theme || (matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light")) === "dark";
+  const themeBtn = () => `<button class="icon-btn" id="themeBtn" type="button" aria-pressed="${isDark()}" aria-label="${esc(t("theme"))}" title="${esc(t("theme"))}">${ICON.moon}</button>`;
+
+  /** Whether Apertus is answering right now (from /health). Shown wherever AI output can appear. */
+  async function health() { if (!S.health) { try { S.health = await api("/health"); } catch { S.health = { llm_available: false }; } } return S.health; }
+  const aiStatus = () => `<span class="ai-status" id="aiStatus" tabindex="0" role="status"><span class="dot"></span><span class="lbl">…</span></span>`;
+  async function fillAiStatus() {
+    const h = await health();
+    $$(".ai-status").forEach((el) => {
+      el.classList.toggle("on", !!h.llm_available); el.classList.toggle("off", !h.llm_available);
+      el.title = t(h.llm_available ? "ai.onT" : "ai.offT");
+      el.setAttribute("aria-label", `${t(h.llm_available ? "ai.on" : "ai.off")}. ${el.title}`);
+      $(".lbl", el).textContent = t(h.llm_available ? "ai.on" : "ai.off");
+    });
+  }
+  const footer = (text, ai = false) => `<div class="foot-in"><p>${esc(text)}</p>${ai ? `<span class="foot-ai">${aiStatus()}</span>` : "<span></span>"}
+    <p class="proto">${esc(t("foot.proto"))}</p></div>`;
 
   function renderChrome(shell, active) {
     const bar = $("#topbar");
     bar.className = `topbar ${shell === "staff" ? "staff" : ""} ${shell === "brief" ? "brief" : ""}`;
     document.body.classList.toggle("brief-mode", shell === "brief");
-    const brand = (sub, href) => `<a class="brand" href="${href}"><svg class="brand-mark" viewBox="0 0 32 32" aria-hidden="true"><rect width="32" height="32" rx="8"/><path d="M9 23V9h7.5a4 4 0 0 1 0 8H9m7.5 0a3.5 3.5 0 0 1 0 6H9"/></svg>
+    $(".skip").textContent = t("skip");
+    const brand = (sub, href) => `<a class="brand" href="${href}"><svg class="brand-mark" viewBox="0 0 32 32" aria-hidden="true"><rect width="32" height="32" rx="3"/><path d="M9 23V9h7.5a4 4 0 0 1 0 8H9m7.5 0a3.5 3.5 0 0 1 0 6H9"/></svg>
       <span class="brand-text"><b>Bern Expertise Navigator</b><small>${esc(sub)}</small></span></a>`;
-    const tab = (href, key, label, count = "") => `<a href="${href}" class="${active === key ? "on" : ""}" ${active === key ? 'aria-current="page"' : ""}>${esc(label)}${count ? `<i class="count ${key === "queue" ? "warn" : ""}">${count}</i>` : ""}</a>`;
+    const tab = (href, key, label, count = "") => `<a href="${href}" class="${active === key ? "on" : ""}" ${active === key ? 'aria-current="page"' : ""}>${esc(label)}${count ? `<i class="count">${count}</i>` : ""}</a>`;
     if (shell === "brief") {
       bar.innerHTML = `<div class="topbar-in">${brand(t("brand.briefSub"), location.hash)}<div class="topbar-right">${themeBtn()}</div></div>`;
-      $("#foot").innerHTML = `<span>${esc(t("foot.brief"))}</span>`;
+      $("#foot").innerHTML = footer(t("foot.brief"));
     } else if (shell === "public") {
       bar.innerHTML = `<div class="topbar-in">${brand(t("brand.sub"), "#/")}
         <nav class="tabs" aria-label="Main">${tab("#/", "search", t("nav.search"))}${tab("#/directory", "dir", t("nav.dir"))}</nav>
-        <div class="topbar-right">${langSel()}${themeBtn()}<a class="staff-link" href="#/staff">${ICON.lock}<span>${esc(t("nav.staff"))}</span></a></div></div>`;
-      $("#foot").innerHTML = `<span>${esc(t("foot.public"))}</span>`;
+        <div class="topbar-right">${langSel()}${themeBtn()}<a class="staff-link" href="#/staff" title="${esc(t("nav.staff"))}">${ICON.lock}<span>${esc(t("nav.staff"))}</span></a></div></div>`;
+      $("#foot").innerHTML = footer(t("foot.public"), true);
     } else {
       const open = S.cases.filter((c) => c.status === "new" && !c.has_brief).length;   // still to do
       const nav = !staff ? "" : tab("#/staff/requests", "requests", t("nav.requests"), open || "") + tab("#/staff/new", "new", t("nav.new")) + tab("#/staff/search", "ssearch", t("nav.search"));
       bar.innerHTML = `<div class="topbar-in">${brand(t("brand.staffSub"), staff ? roleHome() : "#/staff")}<span class="staff-tag">${esc(t("staff.tag"))}</span>
         ${nav ? `<nav class="tabs" aria-label="Workspace">${nav}</nav>` : ""}
-        <div class="topbar-right">${langSel()}${themeBtn()}
-          ${staff ? `<div class="whoami"><span class="av officer">${esc(initialsOf(staff.name))}</span>
+        <div class="topbar-right">${aiStatus()}${langSel()}${themeBtn()}
+          ${staff ? `<div class="whoami"><span class="av officer" aria-hidden="true">${esc(initialsOf(staff.name))}</span>
             <span class="txt"><b>${esc(staff.name)}</b>${staff.team ? `<small>${esc(staff.team)}</small>` : ""}</span>
             <button type="button" id="switchUser">${esc(t("who.switch"))}</button></div>` : ""}
-          <a class="staff-link" href="#/">${ICON.ext}<span>${esc(t("nav.public"))}</span></a></div></div>`;
-      $("#foot").innerHTML = `<span>${esc(t("foot.staff"))}</span>`;
+          <a class="staff-link" href="#/" title="${esc(t("nav.public"))}">${ICON.ext}<span>${esc(t("nav.public"))}</span></a></div></div>`;
+      $("#foot").innerHTML = footer(t("foot.staff"));
       $("#switchUser")?.addEventListener("click", () => go("#/staff/who"));
     }
-    $("#lang")?.addEventListener("change", (ev) => { LANG = ev.target.value; store.set("nav-lang", LANG); route(); });
-    $("#themeBtn").addEventListener("click", () => {
-      const cur = document.documentElement.dataset.theme || (matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light");
-      const nx = cur === "dark" ? "light" : "dark"; document.documentElement.dataset.theme = nx; store.set("nav-theme", nx);
+    fillAiStatus();
+    $$("[data-lang]").forEach((b) => b.addEventListener("click", () => {
+      if (b.dataset.lang === LANG) return;
+      LANG = b.dataset.lang; store.set("nav-lang", LANG); route();
+    }));
+    $("#themeBtn").addEventListener("click", (ev) => {
+      const nx = isDark() ? "light" : "dark"; document.documentElement.dataset.theme = nx; store.set("nav-theme", nx);
+      ev.currentTarget.setAttribute("aria-pressed", nx === "dark");
     });
   }
 
@@ -523,7 +618,7 @@
         <span class="actions"><a class="btn btn-sm" href="#/staff/case/${esc(ctx.id)}">${esc(t("ctxBack"))}</a>
         <button class="link-btn" id="ctxClose" type="button" aria-label="Close">✕</button></span></div>` : ""}
       <div style="margin:4px 0 12px">${searchBox(q, shell === "staff" ? "#/staff/search" : "#/search")}</div>${await filtersHtml()}
-      <div class="results-view"><div class="results-col"><div class="results-head" id="rHead"><span class="cnt">…</span></div>
+      <div class="results-view"><div class="results-col"><div class="results-head" id="rHead" aria-live="polite"><span class="cnt">…</span></div>
         <div class="results" id="rList">${Array.from({ length: 3 }, () => `<div class="skel"><div class="sk" style="width:40%;height:16px"></div><div class="sk" style="width:70%"></div><div class="sk"></div></div>`).join("")}</div></div>
         <aside class="detail" id="detail" aria-label="Details"><div class="detail-empty"><p>${esc(t("res.select"))}</p></div></aside></div>`;
     bindSearchBox();
@@ -563,7 +658,7 @@
       r.infrastructure_services.length && [t("f.infra"), list(r.infrastructure_services, 3)],
       r.contact && [t("f.contact"), `<a href="mailto:${esc(r.contact)}">${esc(r.contact)}</a>`],
     ].filter(Boolean);
-    return `<article class="card" tabindex="0" data-i="${i}">
+    return `<article class="card" tabindex="0" data-i="${i}" aria-label="${esc(r.person_or_unit)}">
       <div class="card-top">${avatar(r.person_or_unit, r.entity_type)}
         <div><h3>${esc(r.person_or_unit)}</h3>${r.role ? `<div class="sub2">${esc(r.role)}</div>` : ""}<div class="inst">${esc(r.institution)}</div></div>
         <span class="type-badge ${esc(r.entity_type)}">${esc(t("type." + r.entity_type))}</span></div>
@@ -581,7 +676,8 @@
     const d = S.data, terms = termsFor(d.query, d.expanded_terms);
     $(".results-view").classList.toggle("solo", !!d.abstained);
     $("#rHead").innerHTML = d.abstained ? "" : `<span class="cnt">${d.results.length} ${esc(t("res.n"))}</span>
-      ${d.expanded_terms.length ? `<span>${esc(t("res.also"))}</span>${d.expanded_terms.slice(0, 7).map((x) => `<span class="term">${esc(x)}</span>`).join("")}` : ""}`;
+      ${d.expanded_terms.length ? `<span>${esc(t("res.also"))}</span>${d.expanded_terms.slice(0, 7).map((x) => `<span class="term">${esc(x)}</span>`).join("")}` : ""}
+      <span class="prov" style="flex-basis:100%;margin:0"><span class="ai-badge ${d.llm_used ? "" : "rules"}">${d.llm_used ? ICON.sparkle : ICON.check}${esc(t(d.llm_used ? "prov.ai" : "prov.rule"))}</span>${esc(t(d.llm_used ? "prov.searchAi" : "prov.searchRules"))}</span>`;
     if (d.abstained) {
       $("#rList").innerHTML = `<div class="abstain"><div class="empty-ico" style="color:var(--warn);background:var(--warn-bg)">${ICON.shield}</div>
         <h3>${esc(t("res.none"))}</h3><p>${esc(d.message)}</p><p class="muted" style="margin-top:10px">${esc(t("res.noneHint"))}</p></div>`;
@@ -590,7 +686,9 @@
     $("#rList").innerHTML = d.results.map((r, i) => resultCard(r, i, terms, ctx)).join("");
     $$(".card", $("#rList")).forEach((c) => {
       c.addEventListener("click", (ev) => { if (!ev.target.closest("a,button")) selectResult(+c.dataset.i, true, ctx); });
-      c.addEventListener("keydown", (ev) => { if (ev.key === "Enter") selectResult(+c.dataset.i, true, ctx); });
+      c.addEventListener("keydown", (ev) => {
+        if ((ev.key === "Enter" || ev.key === " ") && ev.target === c) { ev.preventDefault(); selectResult(+c.dataset.i, true, ctx); }
+      });
     });
     $$("[data-add]").forEach((b) => b.addEventListener("click", () => addToCase(b.dataset.add, b)));
     if (!isNarrow() && d.results.length) selectResult(0, false, ctx);
@@ -696,16 +794,15 @@
     const stage = (c) => (c.status !== "new" ? "done" : c.has_brief ? "ready" : "todo");
     const by = (st) => S.cases.filter((c) => stage(c) === st);
     const cols = [["col.todo", "todo"], ["col.ready", "ready"], ["col.done", "done"]];
-    const card = (c) => `<a class="case-card" href="#/staff/case/${esc(c.id)}"><h3>${esc(companyOf(c))}</h3><p>${esc(c.summary)}</p>
-      <div class="case-meta">${pill(c.status === "new" && c.has_brief ? "pitch" : c.status)}${c.niche || c.area ? `<span class="tag">${esc(areaLabel(c.area, c.niche))}</span>` : ""}${placeOf(c) ? `<span>${esc(placeOf(c))}</span>` : ""}
+    // the column already says the stage, so a status pill is shown only where it adds information (invited / call / closed)
+    const card = (c) => `<a class="case-card" href="#/staff/case/${esc(c.id)}"><h3>${esc(companyOf(c))}</h3>${c.summary ? `<p>${esc(c.summary)}</p>` : ""}
+      <div class="case-meta">${stage(c) === "done" ? pill(c.status) : ""}${c.niche || c.area ? `<span class="tag">${esc(areaLabel(c.area, c.niche))}</span>` : ""}${placeOf(c) ? `<span>${esc(placeOf(c))}</span>` : ""}
       ${c.selected ? `<span>${c.selected} ${esc(t("partners"))}</span>` : ""}
-      <span>${esc(fmtDate(c.updated_at, false))}</span></div></a>`;
-    const kpi = (v, l) => `<div class="kpi"><div class="v">${v}</div><div class="l">${esc(t(l))}</div></div>`;
+      <span><time datetime="${esc(c.updated_at)}">${esc(fmtDate(c.updated_at, false))}</time></span></div></a>`;
     view().innerHTML = `<div class="page-h"><div><h1>${esc(t("rq.title"))}</h1><p>${esc(t("rq.lead"))}</p></div>
         <a class="btn-primary btn-brand" href="#/staff/new">${ICON.plus}${esc(t("nav.new"))}</a></div>
-      <div class="kpis">${kpi(by("todo").length, "kpi.open")}${kpi(by("ready").length, "kpi.ready")}${kpi(by("done").length, "kpi.invited")}</div>
       ${S.cases.length ? `<div class="board">${cols.map(([l, st]) => { const xs = by(st);
-        return `<section class="col" aria-label="${esc(t(l))}"><div class="col-h"><span>${esc(t(l))}</span><i class="count">${xs.length || ""}</i></div>
+        return `<section class="col ${st}" aria-labelledby="col-${st}"><div class="col-h"><span id="col-${st}">${esc(t(l))}<small>${esc(t(l + "D"))}</small></span><i class="count" aria-label="${xs.length}">${xs.length || ""}</i></div>
           ${xs.map(card).join("") || `<div class="col-empty">${esc(t("col.empty"))}</div>`}</section>`; }).join("")}</div>`
       : `<div class="panel empty"><div class="empty-ico">${ICON.inbox}</div><h3>${esc(t("rq.empty"))}</h3><p>${esc(t("rq.emptyD"))}</p>
           <p style="margin-top:14px"><a class="btn-primary btn-brand" href="#/staff/new">${ICON.plus}${esc(t("nav.new"))}</a></p></div>`}`;
@@ -737,6 +834,7 @@
         <h1>${esc(t("bs.title"))}</h1>
         <div class="nr-box">${ICON.search}<input id="bsQ" maxlength="500" autocomplete="off" spellcheck="false" aria-label="${esc(t("bs.title"))}" value="${esc(prev.q || "")}">
           <button class="btn-primary btn-brand" type="submit">${esc(t("nw.find"))}</button></div>
+        <p class="form-err" id="bsErr" role="alert"></p>
         <div class="bs-understood" id="bsU" aria-live="polite"></div>
         <div class="chips nr-try"><span class="muted">${esc(t("nw.try"))}:</span>${examples.map((x) => `<button type="button" class="chip" data-q="${esc(x)}">${esc(x)}</button>`).join("")}</div>
         <p class="muted bs-langs">${esc(t("bs.langs"))}</p>
@@ -757,13 +855,13 @@
         u.rest && `<span class="u-chip rest"><b>${esc(t("bs.searching"))}</b>“${esc(u.rest)}”</span>`,
       ].filter(Boolean).join("") || `<span class="muted">${esc(t("bs.hint"))}</span>`;
     };
-    q.addEventListener("input", () => { clearTimeout(timer); timer = setTimeout(preview, 220); });
+    q.addEventListener("input", () => { clearTimeout(timer); timer = setTimeout(preview, 220); if ($("#bsErr").textContent) { $("#bsErr").textContent = ""; q.removeAttribute("aria-invalid"); } });
     $$("[data-q]").forEach((b) => b.addEventListener("click", () => { q.value = b.dataset.q; preview(); q.focus(); }));
     preview(); q.focus();
     $("#broadForm").addEventListener("submit", async (ev) => {
       ev.preventDefault();
       const v = q.value.trim();
-      if (v.length < 3) { q.focus(); return; }
+      if (v.length < 3) { $("#bsErr").textContent = t("bs.short"); q.setAttribute("aria-invalid", "true"); q.setAttribute("aria-describedby", "bsErr"); q.focus(); return; }
       $("#broadForm").innerHTML = spinner(t("nw.working"));
       try { const c = await api("/cases", { method: "POST", body: asStaff({ request_text: v, broad: true, lang: LANG }) }); go(`#/staff/case/${c.id}`); }
       catch (e) { toast(`${t("err")}: ${e.message}`, 9000); viewNewBroad({ q: v }); }
@@ -779,6 +877,7 @@
         <h1>${esc(t("nw.q"))}</h1>
         <div class="nr-box">${ICON.link}<input name="company_url" id="nrUrl" inputmode="url" autocomplete="off" spellcheck="false" maxlength="500" placeholder="${esc(t("nw.urlPh"))}">
           <button class="btn-primary btn-brand" type="submit" id="nrGo">${esc(t("nw.find"))}</button></div>
+        <p class="form-err" id="nrErr" role="alert"></p>
         <div class="nr-f nr-wide"><span>${esc(t("nw.docs"))}</span>
           <label class="drop" id="drop">${ICON.file}<span>${esc(t("nw.docsHint"))}</span>
             <input type="file" id="nrFiles" multiple accept="${esc(DOC_ACCEPT)}"></label>
@@ -801,6 +900,7 @@
           <div id="nicheBox" hidden><div class="nr-lbl">${esc(t("nw.niche"))}</div><div class="chips" id="nicheChips"></div></div></div>
       </form>`;
     const form = $("#newForm"), url = $("#nrUrl"), txt = $("#nrText");
+    form.addEventListener("input", () => { if ($("#nrErr").textContent) { $("#nrErr").textContent = ""; url.removeAttribute("aria-invalid"); } });
     for (const k of ["company_url", "request_text", "need", "company", "country"]) form[k].value = prev[k] || "";
     url.focus();
     const drawDocs = (errors = []) => {
@@ -858,7 +958,9 @@
       const body = asStaff({ company_url: url.value.trim(), documents: f.docs, request_text: txt.value.trim(), need: form.need.value.trim(),
         company: form.company.value.trim(), country: form.country.value.trim(), canton: form.canton.value,
         area: f.area, niche: f.niche, lang: LANG, contact_name: ex?.contact_name || "", contact_email: ex?.contact_email || "" });
-      if (!body.company_url && !body.documents.length && body.request_text.length < 3) { toast(t("nw.missing")); url.focus(); return; }
+      if (!body.company_url && !body.documents.length && body.request_text.length < 3) {
+        $("#nrErr").textContent = t("nw.missing"); url.setAttribute("aria-invalid", "true"); url.setAttribute("aria-describedby", "nrErr"); url.focus(); return;
+      }
       form.innerHTML = spinner(t(body.company_url ? "nw.reading" : body.documents.length ? "nw.readingDocs" : "nw.working"));
       try { const c = await api("/cases", { method: "POST", body }); go(`#/staff/case/${c.id}`); }
       catch (e) { toast(`${t("err")}: ${e.message}`, 9000); viewNew({ ...body, mode: "details" }); }
@@ -871,7 +973,7 @@
   const stepOf = (c) => (c.status !== "new" ? 4 : c.matches.some((m) => m.selected) ? 3 : 2);
   async function viewCase(id) {
     view().innerHTML = spinner();
-    await Promise.all([loadGlossary(), areas(), archetypes()]);
+    await Promise.all([loadGlossary(), areas()]);
     try { CASE = await api(`/cases/${encodeURIComponent(id)}`); }
     catch { view().innerHTML = `<div class="panel empty"><h3>${esc(t("err"))}</h3><p><a href="${roleHome()}">${esc(t("cs.back"))}</a></p></div>`; return; }
     renderOfficerCase();
@@ -900,7 +1002,10 @@
     const site = CASE.website, docs = CASE.documents || [];
     const list = (xs) => (xs.length ? `<ul>${xs.map((n) => `<li>${jargon(n)}</li>`).join("")}</ul>` : "<p>—</p>");
     const offer = a.offerings || [], kw = a.keywords || [];
-    return `<section class="panel done"><div class="panel-h"><h2><span class="num">✓</span>${esc(t("u.title"))}</h2></div>
+    const ai = a.generated_by === "apertus";
+    return `<section class="panel done"><div class="panel-h"><h2><span class="num">✓</span>${esc(t("u.title"))}</h2>
+        ${provBadge(a.generated_by, t(ai ? "prov.apertus" : "prov.rules"))}</div>
+      <p class="prov">${esc(t(ai ? "prov.apertus" : "prov.rules"))}</p>
       <p class="plain-summary">${jargon(a.summary)}</p>
       <div class="facts"><div class="fact"><h4>${esc(t("u.does"))}</h4><p>${jargon(a.company_does || "—")}</p></div>
         <div class="fact"><h4>${esc(t("u.needs"))}</h4>${list(a.company_needs)}</div></div>
@@ -926,40 +1031,32 @@
     bindOfficerCase();
   }
 
-  function matchRow(m, editable) {
-    const who = [m.role, m.unit].filter(Boolean).map(esc).join(" · ");
-    return `<div class="match ${m.selected ? "sel" : ""}">
-      <input type="checkbox" data-sel="${esc(m.id)}" ${m.selected ? "checked" : ""} ${editable ? "" : "disabled"} aria-label="${esc(m.name)}">
-      ${avatar(m.name, m.entity_type, true)}
-      <div><h3>${esc(m.name)}</h3><div class="who">${who ? who + " · " : ""}${esc(m.institution)}</div>
-        ${m.plain ? `<p class="plain">${jargon(m.plain.length > 240 ? m.plain.slice(0, 237) + "…" : m.plain)}</p>` : ""}
-        <p class="why">${esc(m.why)}</p></div>
-      <div class="right"><span class="type-badge ${esc(m.entity_type)}">${esc(m.archetype ? archLabel(m.archetype) : t("type." + m.entity_type))}</span>
-        <a class="link-btn" href="${esc(safeUrl(m.url))}" target="_blank" rel="noopener">${ICON.ext}${esc(t("m.src"))}</a></div></div>`;
+  /** One cited asset as a structured, traceable result. */
+  function sourceCard(x) {
+    const row = (k, v) => (v ? `<div class="sf"><dt>${esc(t(k))}</dt><dd>${v}</dd></div>` : "");
+    const list = (xs) => (xs?.length ? xs.map(esc).join(" · ") : "");
+    const aff = [x.unit, x.institute && x.institute !== x.institution ? x.institute : "", x.institution].filter(Boolean).map(esc).join(" · ");
+    return `<li class="src-card" id="src-${x.n}"><div class="src-h"><span class="src-n">${x.n}</span><h3>${esc(x.name)}</h3><span class="type-badge ${esc(x.entity_type)}">${esc(x.kind)}</span></div>
+      <dl class="src-f">${row("src.function", esc(x.role || ""))}${row("src.aff", aff)}
+        ${row("src.contact", x.contact ? `<a href="mailto:${esc(x.contact)}">${esc(x.contact)}</a>` : "")}
+        ${row("src.expertise", (x.expertise || []).map((e) => `<span class="tag">${esc(e)}</span>`).join(" "))}
+        ${row("src.projects", list(x.projects))}${row("src.infra", list(x.infrastructure))}
+        ${row("src.about", esc(x.about || ""))}${row("src.why", esc(x.why || ""))}</dl>
+      <div class="src-links"><a href="${esc(safeUrl(x.url))}" target="_blank" rel="noopener">${ICON.ext}${esc(t("src.link"))}: ${esc(hostPath(x.url))}</a>
+        ${(x.links || []).map((u) => `<a href="${esc(safeUrl(u))}" target="_blank" rel="noopener">${ICON.ext}${esc(hostPath(u))}</a>`).join("")}</div></li>`;
   }
 
-  const archLabel = (id) => L((S.arch || []).find((a) => a.id === id)?.label) || t("type.person");
+  /** Step 2: what Bern offers — readable prose; each [n] jumps to the structured source below. */
   function officerPartners(c, step) {
-    const editable = c.status === "new";
-    const nSel = c.matches.filter((m) => m.selected).length;
-    const shown = editable ? c.matches : c.matches.filter((m) => m.selected);
-    const order = (S.arch || []).map((a) => a.id);
-    const groups = [...new Set(shown.map((m) => m.archetype))].sort((x, y) => order.indexOf(x) - order.indexOf(y));
-    if (!groups.includes(S.atab?.[c.id])) S.atab = { ...(S.atab || {}), [c.id]: groups[0] };
-    const cur = S.atab[c.id];
-    const tabs = groups.map((g) => {
-      const xs = shown.filter((m) => m.archetype === g), sel = xs.filter((m) => m.selected).length;
-      return `<button type="button" role="tab" class="atab ${g === cur ? "on" : ""}" aria-selected="${g === cur}" data-atab="${esc(g)}">${esc(archLabel(g))}
-        <span class="n">${xs.length}</span>${sel ? `<span class="s">${ICON.check}${sel}</span>` : ""}</button>`;
-    }).join("");
+    const o = c.offer, srcs = o?.sources || [];
+    const ns = new Set(srcs.map((x) => String(x.n)));
+    const text = esc(o?.text || "").replace(/\[(\d+)\]/g, (all, n) => (ns.has(n) ? `<button type="button" class="cite" data-cite="${n}" aria-label="${esc(t("m.sources"))} ${n}">${n}</button>` : all));
     return `<section class="panel ${step === 2 ? "active" : step > 2 ? "done" : ""}">
-      <div class="panel-h"><h2><span class="num">${step > 2 ? "✓" : 2}</span>${esc(t("m.title"))}</h2><span class="muted">${nSel} ${esc(t("m.sel"))}</span></div>
-      ${editable ? `<p class="muted" style="margin:-4px 0 12px">${esc(t("m.lead"))}</p>
-        <form class="match-tools" id="rematch"><input name="q" value="${esc(c.analysis.search_query)}" aria-label="${esc(t("m.again"))}">
-          <button class="btn" type="submit">${esc(t("m.again"))}</button><button class="btn" type="button" id="moreSearch">${esc(t("m.more"))}</button></form>` : ""}
-      ${shown.length ? `<div class="atabs" role="tablist">${tabs}</div>
-        <div class="matches">${shown.filter((m) => m.archetype === cur).map((m) => matchRow(m, editable)).join("")}</div>`
-        : `<div class="callout warn">${ICON.info}<span>${esc(c.no_match_message || t("m.none"))}</span></div>`}</section>`;
+      <div class="panel-h"><h2><span class="num">${step > 2 ? "✓" : 2}</span>${esc(t("m.title"))}</h2></div>
+      ${srcs.length ? `<p class="offer-text">${text}</p>
+        <div class="sub-h">${esc(t("m.sources"))} <span class="muted" style="font-weight:400">${esc(t("m.sourcesLead"))}</span></div>
+        <ol class="offer-src">${srcs.map(sourceCard).join("")}</ol>`
+        : `<div class="callout warn">${ICON.info}<span>${esc(c.no_match_message || o?.text || t("m.none"))}</span></div>`}</section>`;
   }
 
   function nextSlots() {
@@ -1016,27 +1113,11 @@
   function bindOfficerCase() {
     const c = CASE;
     const rerender = (keep = true) => { const y = window.scrollY; renderOfficerCase(); if (keep) window.scrollTo(0, y); };
-    $$("[data-atab]").forEach((b) => b.addEventListener("click", () => { S.atab[c.id] = b.dataset.atab; rerender(); }));
-    $("#delCase")?.addEventListener("click", async () => { if (!confirm(t("cs.confirmDelete"))) return; await api(`/cases/${c.id}`, { method: "DELETE" }); go("#/staff/requests"); });
-    let timer;
-    $$("[data-sel]").forEach((cb) => cb.addEventListener("change", () => {
-      c.matches.find((x) => x.id === cb.dataset.sel).selected = cb.checked;
-      cb.closest(".match").classList.toggle("sel", cb.checked);
-      clearTimeout(timer);
-      timer = setTimeout(async () => {
-        try { CASE = await api(`/cases/${c.id}/selection`, { method: "POST", body: asStaff({ selected: c.matches.filter((x) => x.selected).map((x) => x.id) }) }); rerender(); }
-        catch (e) { toast(e.message); }
-      }, 250);
+    $$("[data-cite]").forEach((b) => b.addEventListener("click", () => {
+      const el = $(`#src-${b.dataset.cite}`); if (!el) return;
+      el.scrollIntoView({ behavior: "smooth", block: "center" }); el.classList.remove("flash"); void el.offsetWidth; el.classList.add("flash");
     }));
-    $("#rematch")?.addEventListener("submit", async (ev) => {
-      ev.preventDefault(); const q = ev.target.q.value.trim(); if (q.length < 2) return;
-      ev.target.querySelector("button").disabled = true;
-      CASE = await api(`/cases/${c.id}/rematch`, { method: "POST", body: asStaff({ query: q }) }); rerender();
-    });
-    $("#moreSearch")?.addEventListener("click", () => {
-      S.ctx = { id: c.id, company: c.company }; store.set("nav-ctx", S.ctx);
-      go(`#/staff/search?q=${encodeURIComponent(c.analysis.search_query)}`);
-    });
+    $("#delCase")?.addEventListener("click", async () => { if (!confirm(t("cs.confirmDelete"))) return; await api(`/cases/${c.id}`, { method: "DELETE" }); go("#/staff/requests"); });
     $("#editDetails")?.addEventListener("click", () => { $("#detailsForm").hidden = false; $("#detailsForm").company.focus(); });
     $("#detailsForm")?.addEventListener("submit", async (ev) => {
       ev.preventDefault(); const f = ev.target;

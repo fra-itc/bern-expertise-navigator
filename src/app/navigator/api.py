@@ -147,6 +147,12 @@ def get_archetypes():
     return archetypes.ARCHETYPES
 
 
+@app.get("/taxonomy")
+def get_taxonomy():
+    """The entity model: groups → types → archetypes, with labels."""
+    return archetypes.GROUPS
+
+
 @app.get("/understand")
 def get_understand(q: str = Query("", max_length=500)):
     """Live preview for the broad search: place (city / canton / country), medtech area / niche and the
@@ -202,7 +208,11 @@ def create_case(req: cases.NewCase):
 
 @app.get("/cases/{cid}", response_model=cases.Case)
 def get_case(cid: str):
-    return _case_or_404(cid)
+    c = _case_or_404(cid)
+    if c.offer is None and c.matches and c.status == "new":   # requests created before the paragraph existed
+        c.offer = cases.summarize_offer(c)
+        cases.save(c)
+    return c
 
 
 @app.delete("/cases/{cid}")
@@ -260,6 +270,9 @@ def add_match(cid: str, body: AddMatch):
                                         plain=e.description[0] if e.description else None, url=e.source_urls[0],
                                         contact=e.email, selected=True))
         cases.log(c, body.actor, "added", f"Added {e.name}")
+        if c.offer:   # a hand-picked asset is a pitch partner too, so it gets its numbered source
+            c.offer.sources.append(cases._source(len(c.offer.sources) + 1, c.matches[0], index.load_entities(),
+                                                 c.offer.lang))
     return cases.save(c)
 
 
