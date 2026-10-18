@@ -336,6 +336,9 @@ def decided_ids(matches: list[AuthorMatch]) -> set[str]:
     return {m.entity_id for m in matches if not m.reason.startswith("LLM unavailable")}
 
 
+OPENALEX_SEARCH_USD, OPENALEX_LIST_USD = 0.001, 0.0001
+
+
 def estimate(entities: list[Entity], pages: list[Page], *, types: tuple[str, ...] = ("person",), limit: int = 0,
              skip_ids: set[str] | frozenset[str] = frozenset(), previous_works: dict[str, Work] | None = None,
              use_llm: bool = True, pdf: bool = True, max_pdfs: int = 0) -> dict:
@@ -368,7 +371,10 @@ def estimate(entities: list[Entity], pages: list[Page], *, types: tuple[str, ...
                    "types": list(types), "limit": limit},
         "openalex_requests_max": {"total": oa_calls, "institutions": 1, "author_search": search,
                                   "works_by_author": len(people), "page_linked_batches": page_calls,
-                                  "seconds_at_rps_min": round(oa_calls / max(settings.openalex_rps, 0.01), 1)},
+                                  "seconds_at_rps_min": round(oa_calls / max(settings.openalex_rps, 0.01), 1),
+                                  # OpenAlex list prices (README): author search $0.001, list/filter call $0.0001
+                                  "cost_usd_max": round(search * OPENALEX_SEARCH_USD
+                                                        + (oa_calls - search) * OPENALEX_LIST_USD, 4)},
         "llm_calls_max": {"author_match": search if use_llm else 0,
                           "topic_labels": (3 * (works_max + len(prev))) if use_llm else 0,
                           "note": "author_match only for people with candidates; topics are decided once per "

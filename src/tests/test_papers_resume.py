@@ -147,6 +147,7 @@ def test_estimate_without_network(tmp_path, monkeypatch):
                              "types": ["person"], "limit": 0}
     # 1 institutions + 3 searches + 4 works_by_author + 1 DOI batch (BORIS refs have no OpenAlex lookup)
     assert est["openalex_requests_max"]["total"] == 9
+    assert est["openalex_requests_max"]["cost_usd_max"] == round(3 * 0.001 + 6 * 0.0001, 4)
     assert est["llm_calls_max"]["author_match"] == 3
     assert est["works_max"] == 4 * 30 + 1 and est["pdf_downloads_max"] == 5
     assert est["chunks_max"] == {"abstract": 121, "fulltext": 40, "total": 161}

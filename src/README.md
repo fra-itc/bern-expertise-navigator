@@ -117,7 +117,8 @@ cd app
 python -m navigator.cli papers collect   # OpenAlex + OA PDFs -> data/papers/ (+ nav.paper* with DATABASE_URL)
 python -m navigator.cli papers embed     # e5 vectors of abstracts + full-text chunks (Postgres only)
 python -m navigator.cli papers link      # SIMILAR_TO (kNN), ABOUT (topics), CITES -> AGE graph (Postgres only)
-python -m navigator.cli papers           # all three; options: --limit N --max-pdfs N --no-pdf --no-llm --workers N
+python -m navigator.cli papers           # all three; options: --limit-people N --max-pdfs N --no-pdf --no-llm --workers N
+python -m navigator.cli papers stats     # dry run (= --dry-run): max OpenAlex requests/cost, LLM calls, PDFs, chunks
 make papers [PAPERS_STEP=collect]        # same through make
 ```
 
@@ -153,6 +154,11 @@ The file backend can run `papers collect` (JSONL only); its search ignores paper
 
 Re-runs are cheap: OpenAlex responses are cached in `data/cache/openalex/` (`OPENALEX_CACHE_DAYS`, 30), PDFs and texts are
 kept, `papers embed` only embeds chunks without a vector. Set `OPENALEX_API_KEY` / `OPENALEX_MAILTO` in `.env`.
+`papers collect` resumes from `data/papers/*.jsonl`: people already decided are skipped (a rules decision taken
+because the LLM was down is retried), final PDF outcomes are kept, results merge by work id and entity id, so a
+re-run never duplicates; `--limit-people N` processes the next N people, `--redo` starts over. Entities that come
+from OpenAlex (`extractor: openalex` with exactly one OpenAlex author URL/id) are matched by that id
+(`decided_by: known_id`): no author search, no LLM call. Server runbook: [`docs/papers-runbook.md`](../docs/papers-runbook.md).
 
 ## How we meet the success criteria
 
@@ -195,7 +201,7 @@ against the saved page, and anything unverifiable is dropped automatically. The 
 ```
 config/        sources.yaml · unibe_subdomains.txt · glossary.yaml · plain_glossary.yaml · showcase.yaml · medtech_areas.yaml · example_requests.yaml
 app/navigator/ config · schema · llm · crawl · classify · extract · rules_extract · index · search · plain · cases · showcase · api · cli
-               storage · filestore · pgstore · graph · papers_links · papers · openalex
+               storage · filestore · pgstore · graph · papers_links · papers · openalex_client
 app/navigator/static/  index.html · app.css · app.js   (no build step, no CDN: works air-gapped)
 eval/          golden_set.yaml · run_eval.py
 tests/         verifier, robots.txt, rules extractor, offline search, LLM client, request workflow
