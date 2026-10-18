@@ -2,7 +2,12 @@
 # Sync src/ to the team server and (re)start the app. Run from src/: `make deploy`.
 #   DEPLOY_HOST  ssh target (default: bern, see docs/server-handoff.md for the ~/.ssh/config entry)
 # Never copied: .env (the server keeps its own), the venv, the DB stack (deployed separately in /opt/bern/db),
-# and the server's case database and logs, so a redeploy doesn't wipe cases created on the server.
+# and the server's case database and logs (data/cases.db*, data/*.log).
+# WARNING: rsync runs with --delete. Everything else under the server's app directory is overwritten or DELETED
+# to match your local tree, including data/ (entities.jsonl, extracted.jsonl, bm25.pkl, vectors.npy, pages/,
+# eval_report.json, ...), config/, eval/ and the code. data/ is git-ignored, so deploying from a clean clone
+# empties the server's corpus and index. Only cases.db*, data/*.log, .env and /opt/bern/db survive.
+# Also deleted: any extra files on the server such as .env.bak-* (only .env itself is excluded).
 set -euo pipefail
 
 HOST="${DEPLOY_HOST:-bern}"
