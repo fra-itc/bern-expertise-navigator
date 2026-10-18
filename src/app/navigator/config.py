@@ -65,6 +65,10 @@ class Settings:
     record_only_weight: float = float(os.getenv("RECORD_ONLY_WEIGHT", "0.9"))
     use_llm_expansion: bool = os.getenv("USE_LLM_EXPANSION", "1") == "1"
     use_llm_explain: bool = os.getenv("USE_LLM_EXPLAIN", "1") == "1"
+    # Cost on the dashboard: CHF per million tokens. Unset -> a placeholder, shown as such until the real price is known
+    llm_price_in: float = float(os.getenv("LLM_PRICE_IN_CHF_PER_M", "0.50"))
+    llm_price_out: float = float(os.getenv("LLM_PRICE_OUT_CHF_PER_M", "1.50"))
+    llm_price_set: bool = bool(os.getenv("LLM_PRICE_IN_CHF_PER_M") or os.getenv("LLM_PRICE_OUT_CHF_PER_M"))
 
 
 settings = Settings()

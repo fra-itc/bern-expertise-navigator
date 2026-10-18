@@ -789,3 +789,29 @@ sup.ref a { font-size: 11px; font-weight: 700; color: var(--ok); text-decoration
 .sg-card .btn-primary { align-self: flex-start; }
 .sg-ai { display: flex; align-items: center; gap: 6px; font-size: 13px; }
 .sg .actions { margin-top: 12px; }
+
+/* =================== staff dashboard: Apertus cost and search recall =================== */
+.db-sec { margin-top: 16px; }
+.db-tiles { display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: 12px; margin-bottom: 6px; }
+.db-tile { display: flex; flex-direction: column; gap: 2px; padding: 14px 16px; background: var(--surface-2); border-radius: var(--radius-sm); }
+.db-l { font-size: 13px; color: var(--ink-2); font-weight: 600; }
+.db-v { font-size: 26px; line-height: 1.2; font-variant-numeric: tabular-nums; color: var(--ink); }
+.db-s { font-size: 12.5px; color: var(--muted); }
+.db-h3 { font-size: 14.5px; margin: 18px 0 8px; }
+.db-scroll { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+.db-table { width: 100%; border-collapse: collapse; font-size: 13.5px; }
+.db-table th { text-align: left; font-weight: 600; color: var(--ink-2); font-size: 12.5px; padding: 6px 10px; border-bottom: 1px solid var(--border-strong); white-space: nowrap; }
+.db-table td { padding: 8px 10px; border-bottom: 1px solid var(--border); vertical-align: top; }
+.db-table .n { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.db-table tbody tr:hover td { background: var(--surface-2); }
+.db-bars { margin: 10px 0 18px; }
+.db-bar { display: grid; grid-template-columns: minmax(70px, 140px) 1fr minmax(64px, auto); align-items: center; gap: 12px; padding: 5px 0; }
+.db-bar-l { font-size: 13px; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.db-track { position: relative; height: 12px; background: var(--surface-3); border-radius: var(--radius-xs); }
+.db-fill { position: absolute; inset: 0 auto 0 0; background: var(--info); border-radius: 0 4px 4px 0; }
+.db-goal { position: absolute; top: -4px; bottom: -4px; width: 2px; margin-left: -1px; background: var(--ink); }
+.db-bar-v { font-size: 13px; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.db-below { display: inline-flex; align-items: center; gap: 3px; color: var(--warn); font-size: 12px; }
+.db-axis { display: grid; grid-template-columns: minmax(70px, 140px) 1fr minmax(64px, auto); gap: 12px; }
+.db-axis .db-goal-l { position: relative; grid-column: 2; font-size: 12px; color: var(--muted); transform: translateX(-50%); width: max-content; }
+@media (max-width: 600px) { .db-bar, .db-axis { grid-template-columns: 70px 1fr auto; gap: 8px; } .db-v { font-size: 22px; } }

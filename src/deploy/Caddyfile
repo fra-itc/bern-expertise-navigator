@@ -8,7 +8,7 @@ bern-expertise.ch {
 	# Staff workspace API and API docs are not public: case data includes contact details.
 	# Public: /, /search, /entity, /stats, /showcase, ... and /briefs/{token} (token-protected).
 	# STAFF_AUTH_HASH (bcrypt, from `caddy hash-password`) lives only in /opt/bern/app/caddy.env on the server.
-	@staff path /cases /cases/* /documents /documents/* /docs /docs/* /redoc /redoc/* /openapi.json
+	@staff path /cases /cases/* /documents /documents/* /dashboard /docs /docs/* /redoc /redoc/* /openapi.json
 	basic_auth @staff {
 		staff {$STAFF_AUTH_HASH}
 	}

@@ -366,7 +366,7 @@ def find_matches(analysis: plain.RequestAnalysis, k: int = 40) -> tuple[list[Mat
     picked = [m for m in pick_assets(kept) if not m.via and m.id in ents]
     if picked and llm.available():
         terms = r.expanded_terms
-        whys = list(search._pool.map(lambda m: search.explain(analysis.search_query, ents[m.id], terms)[0], picked))
+        whys = list(search._pool.map(llm.bound(lambda m: search.explain(analysis.search_query, ents[m.id], terms)[0]), picked))
         for m, why in zip(picked, whys):
             m.why = why or m.why
     return kept, None
@@ -429,6 +429,8 @@ def create(req: NewCase) -> Case:
                 city=u.city if u else "", understood=[d.model_dump() for d in u.detections] if u else [],
                 request_text=req.request_text.strip(), analysis=analysis, matches=matches, no_match_message=msg)
     case.company = guess_company(case)
+    if m := llm.current_meter():
+        m.case_id = case.id          # the Apertus calls of this request count towards its cost
     log(case, req.actor, "created", f"Request received{' from ' + case.company if case.company else ''}")
     for d in req.documents:
         log(case, "Navigator", "document", f"Read {d.kind} document {d.name}")

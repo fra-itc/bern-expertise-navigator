@@ -2,7 +2,7 @@
 # Sync src/ to the team server and (re)start the app. Run from src/: `make deploy`.
 #   DEPLOY_HOST  ssh target (default: bern, see docs/server-handoff.md for the ~/.ssh/config entry)
 # Never copied: .env (the server keeps its own), the venv, the DB stack (deployed separately in /opt/bern/db),
-# and the server's case database and logs, so a redeploy doesn't wipe cases created on the server.
+# and the server's case database, logs and Apertus usage log, so a redeploy doesn't wipe what the server recorded.
 set -euo pipefail
 
 HOST="${DEPLOY_HOST:-bern}"
@@ -12,7 +12,7 @@ cd "$(dirname "$0")/.."
 
 rsync -az --delete \
   --exclude .env --exclude caddy.env --exclude .venv/ --exclude .pytest_cache/ --exclude __pycache__/ \
-  --exclude db/ --exclude 'data/cases.db*' --exclude 'data/*.log' \
+  --exclude db/ --exclude 'data/cases.db*' --exclude 'data/*.log' --exclude data/usage.jsonl \
   ./ "$HOST:$DEST/"
 
 ssh "$HOST" "set -e

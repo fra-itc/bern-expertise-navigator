@@ -1,10 +1,13 @@
 """Thin client for Apertus behind an OpenAI-compatible API (vLLM locally, or a sovereign hosted endpoint)."""
 from __future__ import annotations
 
+import contextvars
 import json
 import re
 import threading
 import time
+from contextlib import contextmanager
+from dataclasses import dataclass, field
 
 import httpx
 from pydantic import BaseModel, ValidationError
@@ -30,6 +33,55 @@ def reset_usage() -> None:
     with _lock:
         for k in usage:
             usage[k] = 0
+
+
+@dataclass
+class Meter:
+    """The Apertus calls made on behalf of one web request (written to the usage log by api.py)."""
+    calls: int = 0
+    prompt_tokens: int = 0
+    completion_tokens: int = 0
+    seconds: float = 0.0           # time spent waiting for Apertus
+    case_id: str = ""              # the request (case) the calls were made for, when known
+    _lock: threading.Lock = field(default_factory=threading.Lock, repr=False)
+
+    def add(self, prompt: int, completion: int, seconds: float) -> None:
+        with self._lock:
+            self.calls += 1
+            self.prompt_tokens += prompt
+            self.completion_tokens += completion
+            self.seconds += seconds
+
+
+_meter: contextvars.ContextVar[Meter | None] = contextvars.ContextVar("llm_meter", default=None)
+
+
+@contextmanager
+def metered():
+    """Count the Apertus calls made inside the block (and in threads started with `bound`)."""
+    m = Meter()
+    tok = _meter.set(m)
+    try:
+        yield m
+    finally:
+        _meter.reset(tok)
+
+
+def current_meter() -> Meter | None:
+    return _meter.get()
+
+
+def bound(fn):
+    """fn, counting its Apertus calls on the caller's meter when it runs in a thread pool."""
+    m = _meter.get()
+
+    def run(*a, **kw):
+        tok = _meter.set(m)
+        try:
+            return fn(*a, **kw)
+        finally:
+            _meter.reset(tok)
+    return run
 
 
 def _from_sse(lines) -> dict:
@@ -104,6 +156,7 @@ def chat(messages: list[dict], *, schema: type[BaseModel] | None = None,
             body["messages"] = [*messages[:-1], {**messages[-1], "content": messages[-1]["content"] +
                                 "\n\nReply with exactly ONE JSON object with these keys: " + _keys(schema) +
                                 ". No schema, no markdown, no text before or after the object."}]
+        t0 = time.monotonic()
         try:
             r = _post(body)
         except httpx.HTTPError as e:
@@ -119,6 +172,8 @@ def chat(messages: list[dict], *, schema: type[BaseModel] | None = None,
             usage["calls"] += 1
             usage["prompt_tokens"] += u.get("prompt_tokens", 0)
             usage["completion_tokens"] += u.get("completion_tokens", 0)
+        if (m := _meter.get()) is not None:
+            m.add(u.get("prompt_tokens", 0), u.get("completion_tokens", 0), time.monotonic() - t0)
         return data["choices"][0]["message"]["content"] or ""
 
 

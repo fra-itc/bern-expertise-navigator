@@ -118,6 +118,8 @@ def main():
         "latency_s": {"median": round(statistics.median(latencies), 2), "max": round(max(latencies), 2)},
         "llm_calls_per_query": round(llm.usage["calls"] / max(1, len(gs)), 2),
         "llm_tokens_per_query": round((llm.usage["prompt_tokens"] + llm.usage["completion_tokens"]) / max(1, len(gs))),
+        "llm_prompt_tokens_per_query": round(llm.usage["prompt_tokens"] / max(1, len(gs))),
+        "llm_completion_tokens_per_query": round(llm.usage["completion_tokens"] / max(1, len(gs))),
         "config": {"model": settings.llm_model, "embed_model": settings.embed_model,
                    "min_vector_score": settings.min_vector_score, "min_coverage": settings.min_coverage,
                    # the switches only matter when the endpoint answers: report what was actually used

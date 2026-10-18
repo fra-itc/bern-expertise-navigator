@@ -172,6 +172,12 @@ data/          (generated, git-ignored) pages/, entities.jsonl, vectors.npy, bm2
 - **Cost:** LLM work at indexing time is one call per page, cached per page. A search costs at most one expansion
   call plus short explanation calls, and both can be switched off. Token usage is written to
   `data/extract_stats*.json` and `data/eval_report.json`.
+- **Dashboard** (staff workspace, *Dashboard* tab; `GET /dashboard`, staff login): every web request that calls
+  Apertus is logged to `data/usage.jsonl` (route, request id, tokens, latency; never the request text), priced with
+  `LLM_PRICE_IN_CHF_PER_M` / `LLM_PRICE_OUT_CHF_PER_M`. It shows cost per request and per action, response time
+  (median, 95th percentile), the cost of re-extracting every saved page (measured after an Apertus extraction,
+  estimated from page length before), and recall@10 with the other metrics of each saved eval run
+  (`make eval TAG=…`, `make bench`).
 
 ## Compliance
 

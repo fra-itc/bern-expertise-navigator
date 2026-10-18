@@ -18,8 +18,8 @@ from fastapi.responses import FileResponse, JSONResponse, Response
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
 
-from . import (archetypes, brief, cases, crawl, documents, index, llm, plain, reply, search as search_mod, showcase, suggest,
-               understand)
+from . import (archetypes, brief, cases, crawl, dashboard, documents, index, llm, plain, reply, search as search_mod, showcase,
+               suggest, understand)
 from .config import DATA_DIR, load_sources, settings
 from .schema import EntityDetail, RelatedRef, SearchResponse
 from .storage import StorageError
@@ -52,6 +52,19 @@ def _storage_error(_req: Request, e: StorageError):
     return JSONResponse(status_code=503, content={"error": e.code, "detail": e.detail, "backend": e.backend})
 
 app.mount("/static", StaticFiles(directory=STATIC), name="static")
+
+
+@app.middleware("http")
+async def _meter_apertus(request: Request, call_next):
+    """Tokens and latency of every request that calls Apertus go to the usage log (cost on the dashboard)."""
+    t0 = time.monotonic()
+    with llm.metered() as m:
+        response = await call_next(request)
+    if m.calls:
+        route = request.scope.get("route")
+        m.case_id = m.case_id or request.path_params.get("cid", "")
+        dashboard.record(f"{request.method} {getattr(route, 'path', request.url.path)}", m, time.monotonic() - t0)
+    return response
 
 
 @app.get("/", include_in_schema=False)
@@ -186,6 +199,16 @@ def get_medtech_areas():
     """Medtech areas and niches offered as filters on a new request (config/medtech_areas.yaml)."""
     return [{"id": a["id"], "label": a["label"], "niches": [{"id": n["id"], "label": n["label"]} for n in a.get("niches", [])]}
             for a in cases.medtech_areas()]
+
+
+@app.get("/dashboard")
+def get_dashboard():
+    """Staff only (Caddy): Apertus cost per request and per route, recall of the saved eval runs, re-extraction cost."""
+    try:
+        names = {c.id: cases.guess_company(c) for c in cases.list_cases()}
+    except StorageError:
+        names = None                       # the cost figures do not depend on the case store
+    return dashboard.build(names)
 
 
 @app.get("/cases")

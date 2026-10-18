@@ -372,7 +372,7 @@ def search(q: str, k: int = 10, sources: list[str] | None = None, types: list[st
             return explain_via(q, ents[eid], ents[via[eid]], terms, llm_explain)
         return explain(q, ents[eid], terms, llm_explain)
 
-    explained = list(_pool.map(_explain, top))
+    explained = list(_pool.map(llm.bound(_explain), top))
     nb = neighbors(top)
     results = []
     for eid, (why, refs) in zip(top, explained):

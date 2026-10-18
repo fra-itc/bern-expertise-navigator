@@ -166,6 +166,24 @@
       "sg.lead": "Companies suggested by Apertus for “{q}”, each checked on its own website. The description is the company's own.",
       "sg.choose": "Choose and analyse", "sg.none": "None of these: continue with the search only", "sg.back": "Change the search",
       "sg.place": "names {p} on its website", "sg.topic": "talks about", "sg.ai": "Suggested by Apertus: the model may not know every company, check before contacting one.",
+      "nav.dash": "Dashboard", "db.title": "Dashboard", "db.lead": "What Apertus costs per request, and how well the search finds the right experts.",
+      "db.priceSet": "Price: CHF {i} per million input tokens and CHF {o} per million output tokens ({m}).",
+      "db.priceTodo": "Placeholder price (CHF {i} / CHF {o} per million input / output tokens). Set LLM_PRICE_IN_CHF_PER_M and LLM_PRICE_OUT_CHF_PER_M in .env for real figures.",
+      "db.cost": "Cost of Apertus (live)", "db.since": "since {d}",
+      "db.noUsage": "No request has called Apertus yet. Figures appear after the first search, company suggestion or new request.",
+      "db.perReq": "Cost per request", "db.perReqD": "average over {n} requests", "db.total": "Total cost", "db.totalD": "{n} calls · {t} tokens",
+      "db.lat": "Response time", "db.latD": "median · 95th percentile {p}", "db.calls": "Actions using Apertus", "db.callsD": "searches, suggestions, requests",
+      "db.byRoute": "By action", "db.byCase": "By request", "db.deleted": "deleted request",
+      "db.col.action": "Action", "db.col.req": "Times", "db.col.calls": "Calls", "db.col.tokens": "Tokens", "db.col.cost": "Cost (CHF)",
+      "db.col.median": "Median", "db.col.p95": "95th pct.", "db.col.company": "Request", "db.col.last": "Last",
+      "db.rx": "Full re-extraction", "db.rxD": "{n} pages · {t} tokens", "db.rxMeasured": "Measured on the last Apertus extraction ({c} calls).",
+      "db.rxEstimated": "Estimate: no Apertus extraction has been measured yet, so tokens come from the page length (about 4 characters per token, 600 output tokens per page).",
+      "db.quality": "Search quality (golden set)", "db.qualityD": "{q} test queries; each run is saved with make eval TAG=…. Target: recall@10 of at least {t}%.",
+      "db.noRuns": "No saved evaluation run yet. Run make eval TAG=rules, and make bench for Apertus.", "db.target": "target {t}%", "db.below": "below target",
+      "db.col.run": "Run", "db.col.recall": "Recall@10", "db.col.twins": "Lay-term twins", "db.col.trace": "Traceability", "db.col.abst": "Abstention",
+      "db.col.lat": "Latency", "db.col.callsQ": "Calls / query", "db.col.cpq": "Cost / query", "db.noLlm": "no Apertus",
+      "db.r.search": "Search", "db.r.suggest": "Company suggestions", "db.r.create": "New request", "db.r.rematch": "Search partners again",
+      "db.r.draft": "Draft e-mail", "db.r.brief": "Executive brief", "db.r.matches": "Add partners", "db.r.details": "Request details", "db.r.reply": "Company reply",
       "bs.title": "What are you looking for?",
       "bs.ph": "e.g. glucose company in Milan — in any language",
       "bs.place": "Place",
@@ -282,6 +300,24 @@
       "sg.lead": "Von Apertus vorgeschlagene Firmen für «{q}», jede auf ihrer eigenen Website geprüft. Die Beschreibung stammt von der Firma selbst.",
       "sg.choose": "Auswählen und analysieren", "sg.none": "Keine davon: nur mit der Suche weiter", "sg.back": "Suche ändern",
       "sg.place": "nennt {p} auf der Website", "sg.topic": "spricht über", "sg.ai": "Von Apertus vorgeschlagen: Das Modell kennt nicht jede Firma, bitte vor einer Kontaktaufnahme prüfen.",
+      "nav.dash": "Dashboard", "db.title": "Dashboard", "db.lead": "Was Apertus pro Anfrage kostet und wie gut die Suche die richtigen Fachleute findet.",
+      "db.priceSet": "Preis: CHF {i} pro Million Eingabe-Tokens und CHF {o} pro Million Ausgabe-Tokens ({m}).",
+      "db.priceTodo": "Platzhalterpreis (CHF {i} / CHF {o} pro Million Eingabe- / Ausgabe-Tokens). Für echte Zahlen LLM_PRICE_IN_CHF_PER_M und LLM_PRICE_OUT_CHF_PER_M in .env setzen.",
+      "db.cost": "Kosten von Apertus (live)", "db.since": "seit {d}",
+      "db.noUsage": "Noch keine Anfrage hat Apertus aufgerufen. Die Zahlen erscheinen nach der ersten Suche, dem ersten Firmenvorschlag oder der ersten neuen Anfrage.",
+      "db.perReq": "Kosten pro Anfrage", "db.perReqD": "Durchschnitt über {n} Anfragen", "db.total": "Gesamtkosten", "db.totalD": "{n} Aufrufe · {t} Tokens",
+      "db.lat": "Antwortzeit", "db.latD": "Median · 95. Perzentil {p}", "db.calls": "Aktionen mit Apertus", "db.callsD": "Suchen, Vorschläge, Anfragen",
+      "db.byRoute": "Nach Aktion", "db.byCase": "Nach Anfrage", "db.deleted": "gelöschte Anfrage",
+      "db.col.action": "Aktion", "db.col.req": "Anzahl", "db.col.calls": "Aufrufe", "db.col.tokens": "Tokens", "db.col.cost": "Kosten (CHF)",
+      "db.col.median": "Median", "db.col.p95": "95. Perz.", "db.col.company": "Anfrage", "db.col.last": "Zuletzt",
+      "db.rx": "Vollständige Neuextraktion", "db.rxD": "{n} Seiten · {t} Tokens", "db.rxMeasured": "Gemessen bei der letzten Extraktion mit Apertus ({c} Aufrufe).",
+      "db.rxEstimated": "Schätzung: Noch keine Extraktion mit Apertus gemessen, daher Tokens aus der Seitenlänge (etwa 4 Zeichen pro Token, 600 Ausgabe-Tokens pro Seite).",
+      "db.quality": "Suchqualität (Referenzset)", "db.qualityD": "{q} Testanfragen; jeder Lauf wird mit make eval TAG=… gespeichert. Ziel: Recall@10 von mindestens {t} %.",
+      "db.noRuns": "Noch kein gespeicherter Evaluationslauf. make eval TAG=rules ausführen, für Apertus make bench.", "db.target": "Ziel {t} %", "db.below": "unter dem Ziel",
+      "db.col.run": "Lauf", "db.col.recall": "Recall@10", "db.col.twins": "Laienbegriffe", "db.col.trace": "Nachvollziehbarkeit", "db.col.abst": "Enthaltung",
+      "db.col.lat": "Latenz", "db.col.callsQ": "Aufrufe / Suche", "db.col.cpq": "Kosten / Suche", "db.noLlm": "ohne Apertus",
+      "db.r.search": "Suche", "db.r.suggest": "Firmenvorschläge", "db.r.create": "Neue Anfrage", "db.r.rematch": "Partner neu suchen",
+      "db.r.draft": "E-Mail-Entwurf", "db.r.brief": "Executive Brief", "db.r.matches": "Partner hinzufügen", "db.r.details": "Anfragedetails", "db.r.reply": "Antwort der Firma",
       "bs.title": "Wonach suchen Sie?",
       "bs.ph": "z. B. Glukose-Firma aus Mailand — in jeder Sprache",
       "bs.place": "Ort",
@@ -398,6 +434,24 @@
       "sg.lead": "Entreprises proposées par Apertus pour « {q} », chacune vérifiée sur son propre site. La description est celle de l'entreprise.",
       "sg.choose": "Choisir et analyser", "sg.none": "Aucune : continuer avec la recherche seule", "sg.back": "Modifier la recherche",
       "sg.place": "mentionne {p} sur son site", "sg.topic": "parle de", "sg.ai": "Proposées par Apertus : le modèle ne connaît pas toutes les entreprises, vérifiez avant tout contact.",
+      "nav.dash": "Tableau de bord", "db.title": "Tableau de bord", "db.lead": "Ce que coûte Apertus par demande, et dans quelle mesure la recherche trouve les bons experts.",
+      "db.priceSet": "Prix : CHF {i} par million de tokens d'entrée et CHF {o} par million de tokens de sortie ({m}).",
+      "db.priceTodo": "Prix provisoire (CHF {i} / CHF {o} par million de tokens d'entrée / de sortie). Définissez LLM_PRICE_IN_CHF_PER_M et LLM_PRICE_OUT_CHF_PER_M dans .env pour des chiffres réels.",
+      "db.cost": "Coût d'Apertus (en direct)", "db.since": "depuis le {d}",
+      "db.noUsage": "Aucune demande n'a encore appelé Apertus. Les chiffres apparaissent après la première recherche, suggestion d'entreprise ou nouvelle demande.",
+      "db.perReq": "Coût par demande", "db.perReqD": "moyenne sur {n} demandes", "db.total": "Coût total", "db.totalD": "{n} appels · {t} tokens",
+      "db.lat": "Temps de réponse", "db.latD": "médiane · 95e centile {p}", "db.calls": "Actions utilisant Apertus", "db.callsD": "recherches, suggestions, demandes",
+      "db.byRoute": "Par action", "db.byCase": "Par demande", "db.deleted": "demande supprimée",
+      "db.col.action": "Action", "db.col.req": "Fois", "db.col.calls": "Appels", "db.col.tokens": "Tokens", "db.col.cost": "Coût (CHF)",
+      "db.col.median": "Médiane", "db.col.p95": "95e cent.", "db.col.company": "Demande", "db.col.last": "Dernière",
+      "db.rx": "Ré-extraction complète", "db.rxD": "{n} pages · {t} tokens", "db.rxMeasured": "Mesuré lors de la dernière extraction avec Apertus ({c} appels).",
+      "db.rxEstimated": "Estimation : aucune extraction avec Apertus n'a encore été mesurée, les tokens sont donc déduits de la longueur des pages (environ 4 caractères par token, 600 tokens de sortie par page).",
+      "db.quality": "Qualité de la recherche (jeu de référence)", "db.qualityD": "{q} requêtes de test ; chaque essai est enregistré avec make eval TAG=…. Objectif : un rappel@10 d'au moins {t} %.",
+      "db.noRuns": "Aucun essai d'évaluation enregistré. Lancez make eval TAG=rules, et make bench pour Apertus.", "db.target": "objectif {t} %", "db.below": "sous l'objectif",
+      "db.col.run": "Essai", "db.col.recall": "Rappel@10", "db.col.twins": "Termes courants", "db.col.trace": "Traçabilité", "db.col.abst": "Abstention",
+      "db.col.lat": "Latence", "db.col.callsQ": "Appels / requête", "db.col.cpq": "Coût / requête", "db.noLlm": "sans Apertus",
+      "db.r.search": "Recherche", "db.r.suggest": "Suggestions d'entreprises", "db.r.create": "Nouvelle demande", "db.r.rematch": "Rechercher à nouveau des partenaires",
+      "db.r.draft": "Brouillon d'e-mail", "db.r.brief": "Note de synthèse", "db.r.matches": "Ajouter des partenaires", "db.r.details": "Détails de la demande", "db.r.reply": "Réponse de l'entreprise",
       "bs.title": "Que recherchez-vous ?",
       "bs.ph": "p. ex. entreprise de glucose à Milan — dans toute langue",
       "bs.place": "Lieu",
@@ -547,7 +601,7 @@
     } else {
       // still to do: requests without a pitch, and companies that replied
       const open = S.cases.filter((c) => (c.status === "new" && !c.has_brief && c.matched !== false) || c.status === "interested").length;
-      const nav = !staff ? "" : tab("#/staff/requests", "requests", t("nav.requests"), open || "") + tab("#/staff/new", "new", t("nav.new")) + tab("#/staff/search", "ssearch", t("nav.search"));
+      const nav = !staff ? "" : tab("#/staff/requests", "requests", t("nav.requests"), open || "") + tab("#/staff/new", "new", t("nav.new")) + tab("#/staff/search", "ssearch", t("nav.search")) + tab("#/staff/dashboard", "dash", t("nav.dash"));
       bar.innerHTML = `<div class="topbar-in">${brand(t("brand.staffSub"), staff ? roleHome() : "#/staff")}<span class="staff-tag">${esc(t("staff.tag"))}</span>
         ${nav ? `<nav class="tabs" aria-label="Workspace">${nav}</nav>` : ""}
         <div class="topbar-right">${aiStatus()}${langSel()}${themeBtn()}
@@ -589,8 +643,9 @@
     if (p[1] === "who" || !staff) { renderChrome("staff", ""); return viewIdentity(); }
     await refreshCases();
     const sub = p[1] || "";
-    if (!["requests", "new", "search", "case"].includes(sub)) return go(roleHome());
-    renderChrome("staff", { requests: "requests", new: "new", search: "ssearch", case: "requests" }[sub] || "");
+    if (!["requests", "new", "search", "case", "dashboard"].includes(sub)) return go(roleHome());
+    renderChrome("staff", { requests: "requests", new: "new", search: "ssearch", case: "requests", dashboard: "dash" }[sub] || "");
+    if (sub === "dashboard") return viewDashboard();
     if (sub === "requests") return viewRequests();
     if (sub === "new") return viewNew();
     if (sub === "search") return params.get("q") ? viewSearch(params, "staff") : viewStaffSearchHome();
@@ -840,6 +895,76 @@
           ${xs.map(card).join("") || `<div class="col-empty">${esc(t("col.empty"))}</div>`}</section>`; }).join("")}</div>`
       : `<div class="panel empty"><div class="empty-ico">${ICON.inbox}</div><h3>${esc(t("rq.empty"))}</h3><p>${esc(t("rq.emptyD"))}</p>
           <p style="margin-top:14px"><a class="btn-primary btn-brand" href="#/staff/new">${ICON.plus}${esc(t("nav.new"))}</a></p></div>`}`;
+  }
+
+  /* ======================= STAFF: dashboard (Apertus cost, search recall) ======================= */
+  const ROUTE_KEY = { "GET /search": "search", "POST /companies/suggest": "suggest", "POST /cases": "create",
+    "POST /cases/{cid}/rematch": "rematch", "POST /cases/{cid}/draft": "draft", "POST /cases/{cid}/brief": "brief",
+    "POST /cases/{cid}/matches": "matches", "POST /cases/{cid}/details": "details", "POST /briefs/{token}/reply": "reply" };
+  const routeLabel = (r) => (ROUTE_KEY[r] ? t("db.r." + ROUTE_KEY[r]) : r);
+  const nf = (v, d = 0) => (v == null ? "–" : Number(v).toLocaleString(LANG, { minimumFractionDigits: d, maximumFractionDigits: d }));
+  // small amounts keep four decimals: a search costs fractions of a centime
+  const chfN = (v) => (v == null ? "–" : nf(v, v !== 0 && Math.abs(v) < 0.1 ? 4 : 2));
+  const chf = (v) => (v == null ? "–" : `CHF ${chfN(v)}`);
+  const secs = (v) => (v == null ? "–" : `${nf(v, v < 1 ? 2 : 1)} s`);
+  const pctTxt = (v) => (v == null ? "–" : LANG === "en" ? `${nf(v)}%` : `${nf(v)} %`);
+
+  async function viewDashboard() {
+    view().innerHTML = spinner();
+    let d;
+    try { d = await api("/dashboard"); }
+    catch (e) { view().innerHTML = `<div class="callout warn">${ICON.info}<span>${esc(t("err"))}: ${esc(e.message)}</span></div>`; return; }
+    const lv = d.live, pr = d.price, rx = d.reextraction, runs = d.quality, target = d.recall_target;
+    const tile = (label, value, sub) => `<div class="db-tile"><span class="db-l">${esc(label)}</span><b class="db-v">${esc(value)}</b>${sub ? `<span class="db-s">${esc(sub)}</span>` : ""}</div>`;
+    const table = (head, rows, num) => `<div class="db-scroll"><table class="db-table"><thead><tr>${head.map((h, i) => `<th scope="col"${num.includes(i) ? ' class="n"' : ""}>${esc(h)}</th>`).join("")}</tr></thead>
+      <tbody>${rows.map((r) => `<tr>${r.map((c, i) => `<td${num.includes(i) ? ' class="n"' : ""}>${c}</td>`).join("")}</tr>`).join("")}</tbody></table></div>`;
+    const priceNote = pr.configured
+      ? `<p class="muted">${esc(t("db.priceSet", { i: nf(pr.in_chf_per_m, 2), o: nf(pr.out_chf_per_m, 2), m: pr.model }))}</p>`
+      : `<div class="callout warn">${ICON.info}<span>${esc(t("db.priceTodo", { i: nf(pr.in_chf_per_m, 2), o: nf(pr.out_chf_per_m, 2) }))}</span></div>`;
+
+    const cost = !lv.requests ? `<p class="muted">${esc(t("db.noUsage"))}</p>` : `
+      <div class="db-tiles">
+        ${tile(t("db.perReq"), chf(lv.cost_per_request_chf), lv.cases.length ? t("db.perReqD", { n: lv.cases.length }) : "")}
+        ${tile(t("db.total"), chf(lv.cost_chf), t("db.totalD", { n: nf(lv.calls), t: nf(lv.prompt_tokens + lv.completion_tokens) }))}
+        ${tile(t("db.lat"), secs(lv.median_s), t("db.latD", { p: secs(lv.p95_s) }))}
+        ${tile(t("db.calls"), nf(lv.requests), t("db.callsD"))}
+      </div>
+      <h3 class="db-h3">${esc(t("db.byRoute"))}</h3>
+      ${table([t("db.col.action"), t("db.col.req"), t("db.col.calls"), t("db.col.tokens"), t("db.col.cost"), t("db.col.median"), t("db.col.p95")],
+        lv.by_route.map((r) => [esc(routeLabel(r.route)), nf(r.requests), nf(r.calls), nf(r.prompt_tokens + r.completion_tokens), esc(chfN(r.cost_chf)), esc(secs(r.median_s)), esc(secs(r.p95_s))]),
+        [1, 2, 3, 4, 5, 6])}
+      ${lv.cases.length ? `<h3 class="db-h3">${esc(t("db.byCase"))}</h3>
+      ${table([t("db.col.company"), t("db.col.last"), t("db.col.calls"), t("db.col.tokens"), t("db.col.cost")],
+        lv.cases.map((c) => [c.deleted ? `<span class="muted">${esc(t("db.deleted"))}</span>` : `<a href="#/staff/case/${esc(c.id)}">${esc(c.company || c.id)}</a>`,
+          `<time datetime="${esc(c.last)}">${esc(fmtDate(c.last))}</time>`, nf(c.calls), nf(c.prompt_tokens + c.completion_tokens), esc(chfN(c.cost_chf))]),
+        [2, 3, 4])}` : ""}`;
+
+    // recall per run: one series, one hue; the target is a marked line, and a run below it says so in words
+    const bars = runs.filter((r) => r.recall != null).map((r) => {
+      const below = r.recall < target;
+      return `<div class="db-bar" title="${esc(`${r.tag}: ${pctTxt(r.recall)} (${t("db.target", { t: target })})`)}">
+        <span class="db-bar-l">${esc(r.tag)}</span>
+        <span class="db-track"><span class="db-fill" style="width:${Math.max(0, Math.min(100, r.recall))}%"></span><span class="db-goal" style="left:${target}%"></span></span>
+        <span class="db-bar-v">${esc(pctTxt(r.recall))}${below ? ` <span class="db-below">${ICON.info}${esc(t("db.below"))}</span>` : ""}</span></div>`;
+    }).join("");
+    const quality = !runs.length ? `<p class="muted">${esc(t("db.noRuns"))}</p>` : `
+      <p class="muted">${esc(t("db.qualityD", { q: runs[runs.length - 1].queries ?? "–", t: target }))}</p>
+      <div class="db-bars" role="img" aria-label="${esc(runs.map((r) => `${r.tag} ${pctTxt(r.recall)}`).join(", "))}">${bars}
+        <div class="db-axis"><span></span><span class="db-goal-l" style="left:${target}%">${esc(t("db.target", { t: target }))}</span></div></div>
+      ${table([t("db.col.run"), t("db.col.recall"), t("db.col.twins"), t("db.col.trace"), t("db.col.abst"), t("db.col.lat"), t("db.col.callsQ"), t("db.col.cpq")],
+        runs.map((r) => [`<b>${esc(r.tag)}</b><br><span class="muted">${esc(r.mode)}${r.llm ? ` · ${esc(r.model)}` : ` · ${esc(t("db.noLlm"))}`}</span>`,
+          esc(pctTxt(r.recall)), esc(pctTxt(r.twins)), esc(pctTxt(r.traceability)), esc(pctTxt(r.abstention)), esc(secs(r.median_s)),
+          nf(r.calls_per_query, 1), esc(r.llm ? chf(r.cost_per_query_chf) : "–")]),
+        [1, 2, 3, 4, 5, 6, 7])}`;
+
+    view().innerHTML = `<div class="page-h"><div><h1>${esc(t("db.title"))}</h1><p>${esc(t("db.lead"))}</p></div></div>
+      ${priceNote}
+      <section class="panel db-sec" aria-labelledby="dbCost"><div class="panel-h"><h2 id="dbCost">${esc(t("db.cost"))}</h2>
+        ${lv.since ? `<span class="muted">${esc(t("db.since", { d: fmtDate(lv.since, false) }))}</span>` : ""}</div>${cost}</section>
+      <section class="panel db-sec" aria-labelledby="dbRx"><div class="panel-h"><h2 id="dbRx">${esc(t("db.rx"))}</h2></div>
+        <div class="db-tiles">${tile(t("db.rx"), chf(rx.cost_chf), t("db.rxD", { n: nf(rx.pages), t: nf(rx.tokens) }))}</div>
+        <p class="muted">${esc(rx.basis === "measured" ? t("db.rxMeasured", { c: nf(rx.measured_calls) }) : t("db.rxEstimated"))}</p></section>
+      <section class="panel db-sec" aria-labelledby="dbQ"><div class="panel-h"><h2 id="dbQ">${esc(t("db.quality"))}</h2></div>${quality}</section>`;
   }
 
   /* ======================= STAFF/officer: new request (company link or info first) ======================= */
