@@ -47,6 +47,12 @@ make test                       # unit tests: no GPU, no network, no model downl
 
 **Crawling is always explicit.** `make crawl SOURCE=<name>` fetches one source. Sources already saved in
 `data/pages/` are skipped unless you add `RECRAWL=1`. No other target touches the network.
+A re-crawl writes to `pages/<name>.jsonl.partial` and replaces the saved file only when it finishes, so an
+interrupted run keeps the previous pages. Each page also stores its outgoing `links` (`internal` / `external` /
+`paper`); paper links (DOI, PubMed, PMC, arXiv, BORIS, `.pdf`) carry a normalised `paper_ref` and are recorded,
+never fetched. To crawl into another data directory, set it as a real environment variable (it is read at import,
+before `.env`): `cd app && NAV_DATA_DIR=/path/to/data python -m navigator.cli crawl --source <name> [--recrawl]`
+(`NAV_CONFIG_DIR` likewise selects another `sources.yaml`).
 
 ## Using it
 
@@ -112,7 +118,8 @@ Postgres tests: `TEST_DATABASE_URL=postgresql://bern_app:<pw>@127.0.0.1:<port>/b
 
 ## Adding a new institution
 
-1. Add a block to `config/sources.yaml` (name, label, domains, seeds; optional `page_types` URL patterns).
+1. Add a block to `config/sources.yaml` (name, label, domains, seeds; optional `page_types` URL patterns;
+   optional `extra_skip_keywords`, URL substrings never fetched, added to `defaults.skip_keywords`).
 2. `make crawl SOURCE=<name>`, then `make pipeline`. No code changes.
 
 Proof points, research themes and engagement routes are in `config/showcase.yaml`. Each quote is checked verbatim

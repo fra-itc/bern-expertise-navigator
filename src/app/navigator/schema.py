@@ -9,6 +9,24 @@ EntityType = Literal["person", "unit", "project", "infrastructure"]
 PageType = Literal["person", "unit", "project", "infrastructure", "other"]
 
 
+LinkKind = Literal["internal", "external", "paper"]
+PaperScheme = Literal["doi", "pubmed", "pmc", "arxiv", "boris", "pdf"]
+
+
+class PaperRef(BaseModel):
+    """A scholarly work a page links to; `id` is normalised per scheme (DOI lowercase, 'PMC123', ...)."""
+    scheme: PaperScheme
+    id: str
+    url: str = Field(description="Canonical URL for the work (doi.org, pubmed, arxiv.org/abs, ...)")
+
+
+class Link(BaseModel):
+    url: str = Field(description="Absolute, normalised (no fragment, lowercase scheme/host)")
+    text: str = ""
+    kind: LinkKind
+    paper_ref: PaperRef | None = None
+
+
 class Page(BaseModel):
     url: str
     source: str
@@ -17,6 +35,8 @@ class Page(BaseModel):
     fetched_at: str
     lang: str | None = None
     page_type: PageType | None = None
+    # Outgoing links (added later: pages saved before this field load with links=[])
+    links: list[Link] = []
 
 
 # ---- What Apertus must return (constrained JSON) ---------------------------

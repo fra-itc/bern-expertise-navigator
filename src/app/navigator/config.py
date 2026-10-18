@@ -85,6 +85,15 @@ class Source:
         return any(host == d or host.endswith("." + d) for d in self.domains)
 
 
+def _resolve(rel: str) -> Path:
+    """Paths in sources.yaml are relative to ROOT ("config/x.txt"); with NAV_CONFIG_DIR pointing
+    elsewhere, fall back to the same file name inside that config dir."""
+    p = Path(rel)
+    if p.is_absolute() or (ROOT / p).exists():
+        return p if p.is_absolute() else ROOT / p
+    return CONFIG_DIR / p.name
+
+
 def _read_seeds_file(path: Path) -> list[str]:
     hosts = [l.strip() for l in path.read_text().splitlines() if l.strip() and not l.startswith("#")]
     return [h if h.startswith("http") else f"https://{h}/" for h in hosts]
@@ -99,7 +108,7 @@ def load_sources(only: str | None = None) -> list[Source]:
             continue
         seeds = list(s.get("seeds", []))
         if s.get("seeds_file"):
-            seeds += _read_seeds_file(ROOT / s["seeds_file"])
+            seeds += _read_seeds_file(_resolve(s["seeds_file"]))
         domains = list(s.get("domains", []))
         if s.get("domains_from_seeds"):
             domains += [urlparse(u).hostname for u in seeds if urlparse(u).hostname]

@@ -129,7 +129,8 @@ def main():
         sp.add_argument("--source", default=None, help="only this source from sources.yaml")
         sp.add_argument("--limit", type=int, default=0, help="extract: max pages (for quick tests)")
         sp.add_argument("--no-llm-classify", action="store_true")
-        sp.add_argument("--recrawl", action="store_true", help="crawl: fetch again even if pages are saved")
+        sp.add_argument("--recrawl", action="store_true",
+                        help="crawl: fetch again even if pages are saved (the saved file is replaced only on completion)")
         sp.add_argument("--extractor", choices=["auto", "apertus", "rules"], default="auto",
                         help="extract: auto = Apertus if the endpoint answers, else rules")
         sp.set_defaults(fn=fn)
