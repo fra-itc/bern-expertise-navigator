@@ -87,6 +87,7 @@ public websites ─► 1 crawl ─► 2 classify ─► 3 extract ────�
 | 2 Classify | `classify.py` | only for pages the URL rules can't classify |
 | 3 Extract | `extract.py`, `rules_extract.py` | **Main use.** Page → entities as constrained JSON; each value must quote the page verbatim or it is dropped. `rules_extract.py` is the no-LLM baseline that passes through the same verifier |
 | 4 Index | `index.py` | none (local multilingual embeddings + BM25) |
+| 6 Papers | `papers.py`, `openalex.py` | Chooses the OpenAlex author profile of each person among the given candidates (or none), and maps paper topics onto existing Topics; validated against the whitelist, rules when the LLM is down |
 | 5 Search | `search.py` | Query analysis (synonyms, lay terms, DE/EN/FR, person names) and match explanations written only from the cited evidence |
 | Requests | `plain.py`, `cases.py` | Plain-language summary of a company request plus explanations of terms the glossary lacks (labelled *AI explanation – check*). Emails are a deterministic template: no generated claims |
 | Pitch | `brief.py` | none in the claims: the brief and the officer's explanation are assembled only from the chosen partners, verbatim snippets, verified proof points and DOIs found on the institutions' pages |
@@ -100,8 +101,55 @@ public websites ─► 1 crawl ─► 2 classify ─► 3 extract ────�
 - set: Postgres from `db/` (`nav` tables, pgvector, FTS, AGE graph `expertise_graph`). `index --source X`
   then replaces only source X, in one transaction. Requires the migrations in `db/migrations/`.
 
-Postgres tests: `TEST_DATABASE_URL=postgresql://bern_app:<pw>@127.0.0.1:<port>/bern pytest -q tests/test_pg_backend.py`
+Postgres tests: `TEST_DATABASE_URL=postgresql://bern_app:<pw>@127.0.0.1:<port>/bern pytest -q tests/test_pg_backend.py tests/test_pg_papers.py`
 (wipes that database; use a throwaway container).
+
+## Papers (OpenAlex): richer graph, better matching
+
+The academic papers of the indexed people become citable evidence and new graph edges. Network access happens
+only on this explicit command (like `crawl`):
+
+```bash
+cd app
+python -m navigator.cli papers collect   # OpenAlex + OA PDFs -> data/papers/ (+ nav.paper* with DATABASE_URL)
+python -m navigator.cli papers embed     # e5 vectors of abstracts + full-text chunks (Postgres only)
+python -m navigator.cli papers link      # SIMILAR_TO (kNN), ABOUT (topics), CITES -> AGE graph (Postgres only)
+python -m navigator.cli papers           # all three; options: --limit N --max-pdfs N --no-pdf --no-llm --workers N
+make papers [PAPERS_STEP=collect]        # same through make
+```
+
+| Step | What happens | Decision rule |
+|---|---|---|
+| Institutions | `PAPERS_RORS` (default University of Bern `https://ror.org/02k7v4d05`, Inselspital `https://ror.org/01q9sj412`, both checked on ror.org) resolved to OpenAlex ids at run time | a ROR that does not resolve is printed as a warning, never dropped silently |
+| Candidates | one OpenAlex author search per person, filtered to Bern affiliations (child institutes through `lineage`), at most `PAPERS_MAX_CANDIDATES` | no candidates → no match, no LLM call |
+| Author match | **Apertus chooses one id among the candidates it was given, or `none`** (person card: name, role, unit, institute, expertise; candidate cards: names, affiliations with years, topics, works count) | an id outside the list is discarded. **LLM down → rules**: identical normalised name **and** Bern affiliation **and** exactly one such candidate, otherwise no match. Every decision (candidates, choice, reason, llm/rules, model) is audited in `nav.author_match` / `data/papers/author_matches.jsonl` |
+| Works | the newest `PAPERS_MAX_WORKS` (30) works of the last `PAPERS_YEARS` (10) years, no paratext; plus works linked on the entity's **own** page (`paper_ref` DOI/PubMed: page type = entity type and the page belongs to exactly one entity of that type) | co-authors matched to other people get their own link; BORIS/arXiv/PMC/PDF links are counted as `unsupported_scheme` |
+| Full text | **only open-access works** (`open_access.is_oa`) and only the `pdf_url` of OA locations; robots.txt per host, 1 s per host, max `PAPERS_PDF_MAX_MB` (20 MB, header and stream), `PAPERS_PDF_TIMEOUT` (30 s), content type + `%PDF-` magic checked, first `PAPERS_PDF_MAX_PAGES` (40) pages | kept in `data/papers/pdf/<sha1(pdf_url)>.pdf`, text in `data/papers/text/<sha1>.txt`; status per work in `fulltext_status` |
+| Chunks | `title. abstract` + windows of `PAPERS_CHUNK_WORDS` (200 words: median 357 e5 tokens on a real paper, p90 567, e5 truncates at 512) with `PAPERS_CHUNK_OVERLAP` (30), at most `PAPERS_MAX_CHUNKS` (8) per paper (the beginning of the paper; references at the end are left out) | e5 `passage: ` prefix; embeddings kept when the text is unchanged |
+| Vectors | paper = normalise(mean(abstract) + mean(full text)); a person's **research profile** = normalised mean of its papers | `nav.paper.embedding`, `nav.research_profile` |
+| SIMILAR_TO | kNN through HNSW, `SIMILAR_K` (5) neighbours per node, threshold `auto` = quantile `SIMILAR_QUANTILE` (0.9) of the kNN cosines but never below `SIMILAR_MIN` (0.80), or a fixed cosine | the distribution (min, p10…p99, max) and the threshold are printed and stored with each edge |
+| ABOUT | each OpenAlex topic is decided once: the 12 existing Topics nearest by embedding are the whitelist, **Apertus picks one key or `new`** | LLM down → identical normalised label, else new Topic (`origin: 'openalex'`) |
+
+**Search** (Postgres backend, `USE_PAPERS=1`): the nearest paper chunks give each author its best paper for the
+query. That ranking enters RRF with weight `PAPER_WEIGHT` (0.8); the chunk's cosine counts as semantic evidence
+under the **same** abstention and result-floor thresholds; the fairness cap is unchanged. A matched person also
+surfaces people linked by `SIMILAR_TO` (score × `SIMILAR_DAMPING` 0.6 × similarity, `via` = that person). The
+result format is unchanged: a paper is one more `sources[]` entry with `field: "publication"`, the DOI (or OpenAlex)
+URL and a verbatim sentence of the chunk, and `why_match` quotes it (“Author of “<title>” (2024), which says: …”).
+The file backend can run `papers collect` (JSONL only); its search ignores papers (capability matrix in `storage.py`).
+
+**Costs and time** (measured on 3 people, extrapolated to ~700):
+
+| | per person | ~700 people |
+|---|---|---|
+| OpenAlex calls | 1 author search ($0.001) + 1 works list ($0.0001), page-linked DOIs 50 per call | ~1,400 calls + a few dozen, **≈ $0.78**: needs `OPENALEX_API_KEY` (free key: $1/day); without a key the IP's $0.10/day stops after ~90 people (429, then the circuit breaker) |
+| LLM (Apertus) | 1 match call ≈ 790 prompt + 80 completion tokens (only with ≥ 1 candidate) | ~700 calls ≈ 0.6 M tokens; topics: 1 call per distinct OpenAlex topic (~1–2k, ≈ 0.6 M tokens) |
+| Works / PDFs | ≤ 30 works; ~80% OA, ~40% with an OA `pdf_url` | ≤ 21k works, ≤ ~8k PDF downloads (live: 2.6 MB, 109k chars of text): **≈ 10–20 GB on disk** for `data/papers/pdf/`; `--max-pdfs N` bounds a run |
+| Chunks | ≤ 30 abstracts + ≤ 8 per OA PDF (live: 30 + 8 for 90 works) | ≤ ~21k abstracts + ~70k full-text chunks ≈ 90k (co-authored works are stored once, so fewer) |
+| Embedding (e5-base, CPU) | measured in the app image with `--cpus=8`: **3.7 chunks/s** | ≈ 90k / 3.7 ≈ **7 h**; `PAPERS_MAX_CHUNKS=4` ≈ 4 h; abstracts only (`--no-pdf`) ≈ 1.5 h. Incremental afterwards |
+
+Re-runs are cheap: OpenAlex responses are cached in `data/cache/openalex/` (`OPENALEX_CACHE_DAYS`, 30), PDFs and texts are
+kept, `papers embed` only embeds chunks without a vector. Set `OPENALEX_API_KEY` / `OPENALEX_MAILTO` in `.env`.
 
 ## How we meet the success criteria
 
@@ -144,16 +192,19 @@ against the saved page, and anything unverifiable is dropped automatically. The 
 ```
 config/        sources.yaml · unibe_subdomains.txt · glossary.yaml · plain_glossary.yaml · showcase.yaml · medtech_areas.yaml · example_requests.yaml
 app/navigator/ config · schema · llm · crawl · classify · extract · rules_extract · index · search · plain · cases · showcase · api · cli
+               storage · filestore · pgstore · graph · papers_links · papers · openalex
 app/navigator/static/  index.html · app.css · app.js   (no build step, no CDN: works air-gapped)
 eval/          golden_set.yaml · run_eval.py
 tests/         verifier, robots.txt, rules extractor, offline search, LLM client, request workflow
-data/          (generated, git-ignored) pages/, entities.jsonl, vectors.npy, bm25.pkl, cases.db, eval_report.json
+data/          (generated, git-ignored) pages/, entities.jsonl, vectors.npy, bm25.pkl, cases.db, eval_report.json,
+               papers/ (works.jsonl, author_matches.jsonl, pdf/, text/), cache/openalex/
 ```
 
 ## Sovereignty, cost and scale
 
 - **Model:** Apertus v1.5 8B (Apache 2.0) on one ~16 GB GPU in FP8. 70B is optional for better extraction.
-- **No external services:** local embeddings (`multilingual-e5-base`, baked into the image), local vectors, local
+- **No external services at run time:** only the explicit `crawl` and `papers` commands go to the network
+  (`papers`: the public OpenAlex API and open-access PDFs). Local embeddings (`multilingual-e5-base`, baked into the image), local vectors, local
   SQLite for requests. The UI loads nothing from the internet.
 - **Cost:** LLM work at indexing time is one call per page, cached per page. A search costs at most one expansion
   call plus short explanation calls, and both can be switched off. Token usage is written to

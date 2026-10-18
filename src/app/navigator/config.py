@@ -80,8 +80,8 @@ class Settings:
     papers_pdf_timeout: float = float(os.getenv("PAPERS_PDF_TIMEOUT", "30"))
     papers_pdf_max_pages: int = int(os.getenv("PAPERS_PDF_MAX_PAGES", "40"))
     papers_pdf_delay: float = float(os.getenv("PAPERS_PDF_DELAY", "1.0"))  # per host
-    papers_chunk_words: int = int(os.getenv("PAPERS_CHUNK_WORDS", "300"))  # ~400 e5 tokens
-    papers_chunk_overlap: int = int(os.getenv("PAPERS_CHUNK_OVERLAP", "50"))
+    papers_chunk_words: int = int(os.getenv("PAPERS_CHUNK_WORDS", "200"))  # median ~360 e5 tokens on a real paper
+    papers_chunk_overlap: int = int(os.getenv("PAPERS_CHUNK_OVERLAP", "30"))
     papers_max_chunks: int = int(os.getenv("PAPERS_MAX_CHUNKS", "8"))      # full-text chunks per paper
     # embedding-derived graph edges (cli papers link)
     similar_k: int = int(os.getenv("SIMILAR_K", "5"))

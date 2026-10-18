@@ -235,7 +235,8 @@ def pdf_text(path: Path, max_pages: int | None = None) -> str:
 # =============================================================================
 def chunk_words(text: str, size: int | None = None, overlap: int | None = None,
                 max_chunks: int | None = None) -> list[str]:
-    """Word windows of `size` words (~1.3 e5 tokens per word: 300 words ~ 400 tokens) with `overlap` words.
+    """Word windows of `size` words with `overlap` words. Measured on a real OA paper with the e5 tokenizer:
+    200 words -> median 357 tokens (p90 567: tables and numbers tokenise densely; e5 truncates at 512).
     Only the first `max_chunks` windows are kept: introduction/methods, and the references at the end of long
     papers are left out."""
     size = size or settings.papers_chunk_words

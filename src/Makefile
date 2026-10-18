@@ -10,7 +10,7 @@ PY := docker compose run --rm api python
 PY_ROOT := docker compose run --rm api python
 endif
 
-.PHONY: up up-gpu down setup-local serve crawl extract index pipeline stats eval test logs demo
+.PHONY: up up-gpu down setup-local serve crawl extract index pipeline stats papers eval test logs demo
 
 up:            ## API/UI on :8080 + Qdrant; Apertus at $$LLM_BASE_URL
 	cp -n .env.example .env || true
@@ -56,6 +56,10 @@ demo:          ## from the SAVED pages (no network): extract (Apertus if reachab
 
 stats:
 	$(PY) -m navigator.cli stats
+
+PAPERS_STEP ?= all
+papers:        ## explicit only (network: OpenAlex + OA PDFs): make papers [PAPERS_STEP=collect|embed|link] (embed/link: Postgres)
+	$(PY) -m navigator.cli papers $(PAPERS_STEP)
 
 eval:          ## recall@10, synonym twins, traceability, abstention
 	$(PY_ROOT) eval/run_eval.py

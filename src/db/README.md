@@ -48,6 +48,23 @@ Graph:
   - `FROM_SOURCE`: entity->source;
   - `HAS_EXPERTISE`: ->topic.
 
+Papers (migration `0004_papers`, filled by `navigator.cli papers`):
+- Tables (source of truth): `nav.paper` (OpenAlex work: doi, title, year, venue, abstract, authorships, topics,
+  cited_by_count, referenced_works, OA status, `pdf_url`/`pdf_sha1`, `embedding`), `nav.paper_author` (paper↔entity,
+  `relation` `author` with position + OpenAlex author id, or `page_link`), `nav.paper_chunk` (abstract + full-text
+  chunks, `vector(768)`, HNSW), `nav.research_profile` (person = normalised mean of its papers, HNSW),
+  `nav.author_match` (audit of every person↔author decision: candidates, choice, reason, `llm`/`rules`, model),
+  `nav.topic_map` (OpenAlex topic → Topic key, decided once), `nav.paper_topic`, `nav.similarity` (kNN edges, `a < b`,
+  score, method, threshold).
+- Graph projection, rebuilt from those tables by `papers link` and after **every** reindex:
+  - vertex `Paper` (`paper_id`, `doi`, `title`, `year`);
+  - `AUTHORED`: person->paper (`position`, `author_id`);
+  - `ABOUT`: paper->topic (`score`); topics created for papers carry `origin: 'openalex'`;
+  - `CITES`: paper->paper, only between known papers;
+  - `SIMILAR_TO`: person-person and paper-paper (`score`, `method`), from embeddings.
+- Why `nav.paper_chunk` and not `nav.passage`: a chunk belongs to a paper with n authors; in `nav.passage` it would need
+  a NULL `entity_id` or one copy per author, and every existing passage query would have to learn to skip it.
+
 Why `Topic` is a vertex: today expertise values are free-form strings repeated in every entity. As vertices they become a meeting point: the query "who shares expertise with X" is a 2-hop. Synonyms can also be merged later, by letting the LLM choose from a list of existing Topics, with no alias dictionaries. `key` is the normalized form (lowercase, accent-free), `label` is the original text.
 
 ## Getting started
@@ -114,6 +131,34 @@ FROM members m JOIN nav.passage ps ON ps.entity_id = m.id JOIN nav.entity e ON e
 GROUP BY e.id, e.name, e.role ORDER BY best_sim DESC;
 ```
 
+Papers. Authors whose research is closest to a person (`SIMILAR_TO`), and the shared topics through papers:
+
+```sql
+SELECT * FROM cypher('expertise_graph', $$
+  MATCH (p:Person {entity_id: 'a1b2c3d4e5f60001'})-[s:SIMILAR_TO]-(o:Person)
+  RETURN o.name, s.score ORDER BY s.score DESC $$) AS (name agtype, score agtype);
+
+SELECT * FROM cypher('expertise_graph', $$
+  MATCH (p:Person {entity_id: 'a1b2c3d4e5f60001'})-[:AUTHORED]->(w:Paper)-[:ABOUT]->(t:Topic)<-[:HAS_EXPERTISE]-(o)
+  RETURN DISTINCT t.label, o.name $$) AS (topic agtype, name agtype);
+```
+
+Best paper chunk per author for a query (what search uses as `publication` evidence):
+
+```sql
+WITH h AS (SELECT id, paper_id, embedding <=> $1 AS dist FROM nav.paper_chunk ORDER BY embedding <=> $1 LIMIT 200)
+SELECT DISTINCT ON (pa.entity_id) pa.entity_id, 1 - h.dist AS cos, p.title, 'https://doi.org/' || p.doi AS url, c.text
+FROM h JOIN nav.paper_author pa USING (paper_id) JOIN nav.paper p ON p.id = h.paper_id JOIN nav.paper_chunk c ON c.id = h.id
+ORDER BY pa.entity_id, h.dist;
+```
+
+Audit of the author matching:
+
+```sql
+SELECT DISTINCT ON (entity_id) entity_name, decided_by, chosen_author_id, reason, jsonb_array_length(candidates)
+FROM nav.author_match ORDER BY entity_id, decided_at DESC;
+```
+
 Planner note: with few rows and a weakly selective filter, Postgres may prefer a bitmap scan on the `source` index followed by an exact sort. This is correct, because at that scale it is faster. The HNSW index comes into play when the table grows or when the query has no filter. After a bulk load run `ANALYZE nav.passage;`: `bern_app` has the MAINTAIN privilege.
 
 ## Migrations
@@ -127,6 +172,7 @@ Planner note: with few rows and a weakly selective filter, Postgres may prefer a
   ```bash
   docker compose exec -T db psql -U postgres -d bern -v ON_ERROR_STOP=1 < migrations/0002_index_order_and_match_ref.sql
   docker compose exec -T db psql -U postgres -d bern -v ON_ERROR_STOP=1 < migrations/0003_case_search_filters.sql
+  docker compose exec -T db psql -U postgres -d bern -v ON_ERROR_STOP=1 < migrations/0004_papers.sql
   ```
 
 The app (`navigator/pgstore.py`) checks `nav.schema_migrations` at connect time and refuses to start
@@ -137,8 +183,10 @@ with a `schema_outdated` error if a migration it needs is missing.
 | `0002_index_order_and_match_ref` | `nav.entity.load_order` (input order, for identical tie-breaks with the file backend); `nav.case_match.entity_ref` (match id survives a reindex that drops the entity) |
 | `0002_remove_technical_review` | (team, main) end of the technical-review step: open review statuses become `new`, status CHECK narrowed to `new/contacted/call_scheduled/closed`, review columns **dropped**. Already part of the fresh `initdb/` schema (registered by `05-migrations.sql`); not required by the app |
 | `0003_case_search_filters` | `nav."case".canton/area/niche` (search-first request filters, `config/medtech_areas.yaml` ids) + index `(area, niche)`; on databases that still have the review columns they become nullable and unused (nothing dropped) |
+| `0004_papers` | papers: `nav.paper`, `paper_author`, `paper_chunk` (HNSW), `research_profile` (HNSW), `author_match`, `topic_map`, `paper_topic`, `similarity`; graph labels `Paper`, `AUTHORED`, `ABOUT`, `CITES`, `SIMILAR_TO` (+ indexes, grants to `bern_app`). Additive and idempotent |
 
-Order on an existing database: `0002_index_order_and_match_ref`, then `0003_case_search_filters` (required by the app).
+Order on an existing database: `0002_index_order_and_match_ref`, `0003_case_search_filters`, then `0004_papers` (all
+three required by the app).
 `0002_remove_technical_review` is independent and destructive (drops the review columns): take a backup first
 (see below) if that data matters.
 
