@@ -40,7 +40,7 @@ def client(tmp_path, monkeypatch):
     monkeypatch.setattr(cases, "DB", tmp_path / "cases.db")
     monkeypatch.setattr(llm, "available", lambda *a, **k: False)
     monkeypatch.setattr(brief.index, "load_entities", lambda: ENTS)
-    monkeypatch.setattr(search, "graph", lambda: {})
+    monkeypatch.setattr(search, "neighbors", lambda ids: {})
     monkeypatch.setattr(brief.crawl, "load_pages", lambda source=None: PAGES)
     brief._publications.cache_clear()
     hl = [{"figure": "100+", "label": {"en": "start-ups"}, "quote": "we work with more than 100 start-ups.", "url": "https://x.ch/i"}]

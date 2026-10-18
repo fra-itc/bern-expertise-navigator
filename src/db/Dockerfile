@@ -11,6 +11,8 @@ RUN set -eux; \
 
 # First-start scripts (empty volume only). Later changes = migrations, not initdb.
 COPY --chmod=0755 initdb/ /docker-entrypoint-initdb.d/
+# Versioned migrations (0002+), applied on first start by initdb/06-migrations.sh.
+COPY --chmod=0755 migrations/ /migrations/
 
 LABEL org.opencontainers.image.title="bern-pg" \
       org.opencontainers.image.description="PostgreSQL 18.6 + Apache AGE 1.8.0 + pgvector 0.8.6"

@@ -4,18 +4,16 @@ Vectors: one point per entity "profile" plus one per evidence snippet, so a shor
 sentence is matched on its own instead of being diluted in a long profile. Search keeps the
 best-scoring point per entity.
 
-Vector store: Qdrant when QDRANT_URL is set (docker compose), otherwise an in-process NumPy
-matrix in data/ (zero services, fine for tens of thousands of points).
+Storage is chosen in storage.py: files (Qdrant when QDRANT_URL is set, otherwise an in-process
+NumPy matrix in data/) when DATABASE_URL is empty, Postgres (pgvector + FTS + AGE) when it is set.
 """
 from __future__ import annotations
 
 import json
-import pickle
 import re
 from functools import lru_cache
 
 import numpy as np
-from rank_bm25 import BM25Okapi
 
 from .config import DATA_DIR, settings
 from .schema import Entity
@@ -54,97 +52,52 @@ def entity_passages(e: Entity) -> list[str]:
     return [profile, *(f"{e.name}: {s}" for s in snippets)]
 
 
-@lru_cache(maxsize=1)
-def qdrant():
-    from qdrant_client import QdrantClient
-    return QdrantClient(url=settings.qdrant_url)
-
-
-def build(entities: list[Entity]) -> None:
-    ENTITIES_PATH.parent.mkdir(parents=True, exist_ok=True)
-    with ENTITIES_PATH.open("w") as fh:
-        for e in entities:
-            fh.write(e.model_dump_json() + "\n")
-
-    docs = [e.search_text() for e in entities]
-    with BM25_PATH.open("wb") as fh:
-        pickle.dump({"ids": [e.id for e in entities], "bm25": BM25Okapi([tokenize(d) for d in docs])}, fh)
-
-    meta: list[dict] = []
-    texts: list[str] = []
+def _passages(entities: list[Entity]) -> list[dict]:
+    out: list[dict] = []
     for e in entities:
-        for t in entity_passages(e):
-            meta.append({"entity_id": e.id, "source": e.source, "type": e.entity_type})
-            texts.append(t)
-    vecs = embed(texts).astype(np.float32)
-
-    if settings.qdrant_url:
-        from qdrant_client.models import Distance, PointStruct, VectorParams
-        q = qdrant()
-        if q.collection_exists(settings.collection):
-            q.delete_collection(settings.collection)
-        q.create_collection(settings.collection, vectors_config=VectorParams(size=vecs.shape[1], distance=Distance.COSINE))
-        for i in range(0, len(meta), 512):
-            q.upsert(settings.collection, points=[
-                PointStruct(id=j, vector=vecs[j].tolist(), payload=meta[j]) for j in range(i, min(i + 512, len(meta)))])
-    np.save(VEC_PATH, vecs)
-    VEC_META_PATH.write_text(json.dumps(meta))
-    store = "Qdrant" if settings.qdrant_url else "local NumPy store"
-    print(f"[index] {len(entities)} entities, {len(meta)} vectors ({store}, {settings.embed_model}) + BM25")
+        snippets = list(dict.fromkeys(ev.snippet for ev in e.evidence if ev.field not in ("name", "email")))
+        for j, t in enumerate(entity_passages(e)):
+            out.append({"entity_id": e.id, "source": e.source, "type": e.entity_type,
+                        "kind": "profile" if j == 0 else "evidence", "snippet": None if j == 0 else snippets[j - 1],
+                        "text": t})
+    return out
 
 
-def _mtime(p) -> float:
-    return p.stat().st_mtime if p.exists() else 0.0
-
-
-# The API process picks up a re-index done by the CLI without restarting (cache keyed on mtime)
-@lru_cache(maxsize=1)
-def _vectors_at(_mt: float):
-    if not VEC_PATH.exists():
-        return None, []
-    return np.load(VEC_PATH), json.loads(VEC_META_PATH.read_text())
-
-
-def _load_vectors():
-    return _vectors_at(_mtime(VEC_META_PATH))
-
-
-def vector_search(qvec: np.ndarray, limit: int, sources: list[str] | None = None) -> list[tuple[str, float]]:
-    """Return (entity_id, cosine) for the best `limit` points (several points may share an entity)."""
-    if settings.qdrant_url:
-        from qdrant_client.models import FieldCondition, Filter, MatchAny
-        flt = Filter(must=[FieldCondition(key="source", match=MatchAny(any=sources))]) if sources else None
-        hits = qdrant().query_points(settings.collection, query=qvec.tolist(), limit=limit, query_filter=flt).points
-        return [(h.payload["entity_id"], float(h.score)) for h in hits]
-    vecs, meta = _load_vectors()
-    if vecs is None or not len(meta):
+def _rejected(sources: list[str] | None) -> list[dict]:
+    p = DATA_DIR / "rejected.jsonl"
+    if not p.exists():
         return []
-    scores = vecs @ qvec.astype(np.float32)
-    if sources:
-        mask = np.array([m["source"] in sources for m in meta])
-        scores = np.where(mask, scores, -1.0)
-    top = np.argsort(-scores)[:limit]
-    return [(meta[i]["entity_id"], float(scores[i])) for i in top if scores[i] > -1]
+    rows = [json.loads(l) for l in p.open(encoding="utf-8") if l.strip()]
+    return [r for r in rows if not sources or r.get("source") in sources]
 
 
-@lru_cache(maxsize=1)
-def _entities_at(_mt: float) -> dict[str, Entity]:
-    if not ENTITIES_PATH.exists():
-        return {}
-    return {e.id: e for e in (Entity.model_validate_json(l) for l in ENTITIES_PATH.open() if l.strip())}
+def build(entities: list[Entity], sources: list[str] | None = None) -> dict:
+    """Embed and hand everything to the configured store (storage.index_store()).
+
+    `sources`: only these sources are replaced (Postgres backend); None = full rebuild.
+    The file backend always rebuilds everything from `entities`, as before.
+    """
+    from . import crawl
+    from .storage import IndexBundle, index_store
+
+    st = index_store()
+    if sources and st.persists_corpus:
+        entities = [e for e in entities if e.source in sources]
+    passages = _passages(entities)
+    vecs = embed([p["text"] for p in passages]).astype(np.float32) if passages         else np.zeros((0, 0), dtype=np.float32)
+    bundle = IndexBundle(entities=entities, passages=passages, vectors=vecs, embed_model=settings.embed_model,
+                         scope=sources if st.persists_corpus else None)
+    if st.persists_corpus:
+        bundle.pages = [p for p in crawl.load_pages() if not sources or p.source in sources]
+        bundle.rejected = _rejected(sources)
+    stats = st.write_index(bundle)
+    print(f"[index] {stats.get('entities', len(entities))} entities, {stats.get('vectors', len(passages))} vectors "
+          f"({stats.get('store', st.name)}, {settings.embed_model})"
+          + "".join(f", {k}={v}" for k, v in stats.items() if k not in ("entities", "vectors", "store")))
+    return stats
 
 
+# ---- read side: delegated to the configured store (kept for callers) ----
 def load_entities() -> dict[str, Entity]:
-    return _entities_at(_mtime(ENTITIES_PATH))
-
-
-@lru_cache(maxsize=1)
-def _bm25_at(_mt: float):
-    if not BM25_PATH.exists():
-        return None
-    with BM25_PATH.open("rb") as fh:
-        return pickle.load(fh)
-
-
-def load_bm25():
-    return _bm25_at(_mtime(BM25_PATH))
+    from .storage import index_store
+    return index_store().load_entities()

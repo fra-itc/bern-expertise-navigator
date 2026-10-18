@@ -179,7 +179,7 @@ def _quote_candidates(e: Entity, topics: list[dict], ents: dict[str, Entity]):
     """
     forms = [t["found_as"] for t in topics]
     topical = ("description", "expertise", "infrastructure")
-    linked = [ents[i] for i in search.graph().get(e.id, []) if i in ents and ents[i].entity_type in ("project", "unit")]
+    linked = [ents[i] for i in search.neighbors([e.id]).get(e.id, []) if i in ents and ents[i].entity_type in ("project", "unit")]
     linked.sort(key=lambda x: not any(f in x.name.lower() for f in forms))
 
     def sentences(ent: Entity, need_topic: bool):

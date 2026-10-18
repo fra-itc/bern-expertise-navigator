@@ -116,12 +116,50 @@ GROUP BY e.id, e.name, e.role ORDER BY best_sim DESC;
 
 Planner note: with few rows and a weakly selective filter, Postgres may prefer a bitmap scan on the `source` index followed by an exact sort. This is correct, because at that scale it is faster. The HNSW index comes into play when the table grows or when the query has no filter. After a bulk load run `ANALYZE nav.passage;`: `bern_app` has the MAINTAIN privilege.
 
+## Migrations
+
+`initdb/` runs only on an empty volume. Later schema changes are versioned SQL files in `migrations/`
+(`0002_*.sql`, ...), each one wrapped in a transaction and recording itself in `nav.schema_migrations`.
+
+- Fresh volume: the image copies `migrations/` to `/migrations` and `initdb/06-migrations.sh` applies them in order.
+- Existing database: apply each new file once, as the owner:
+
+  ```bash
+  docker compose exec -T db psql -U postgres -d bern -v ON_ERROR_STOP=1 < migrations/0002_index_order_and_match_ref.sql
+  docker compose exec -T db psql -U postgres -d bern -v ON_ERROR_STOP=1 < migrations/0003_case_search_filters.sql
+  docker compose exec -T db psql -U postgres -d bern -v ON_ERROR_STOP=1 < migrations/0005_case_company_sources.sql
+  ```
+
+The app (`navigator/pgstore.py`) checks `nav.schema_migrations` at connect time and refuses to start
+with a `schema_outdated` error if a migration it needs is missing.
+
+| Version | What |
+|---|---|
+| `0002_index_order_and_match_ref` | `nav.entity.load_order` (input order, for identical tie-breaks with the file backend); `nav.case_match.entity_ref` (match id survives a reindex that drops the entity) |
+| `0002_remove_technical_review` | (team, main) end of the technical-review step: open review statuses become `new`, status CHECK narrowed to `new/contacted/call_scheduled/closed`, review columns **dropped**. Already part of the fresh `initdb/` schema (registered by `05-migrations.sql`); not required by the app |
+| `0003_case_search_filters` | `nav."case".canton/area/niche` (search-first request filters, `config/medtech_areas.yaml` ids) + index `(area, niche)`; on databases that still have the review columns they become nullable and unused (nothing dropped) |
+| `0005_case_company_sources` | request from a company link / shared documents and broad search (main `32a3c4c`..`ae7ba6e`): `nav."case".city/understood/company_url/need/website/documents`, `nav.case_match.archetype`; `request_text` defaults to `''`. Additive only (`0004` is reserved by the papers branch) |
+
+Order on an existing database: `0002_index_order_and_match_ref`, then `0003_case_search_filters`, then `0005_case_company_sources` (all required by the app).
+`0002_remove_technical_review` is independent and destructive (drops the review columns): take a backup first
+(see below) if that data matters.
+
 ## Backup and restore
 
 ```bash
 docker compose exec -T db pg_dump -U postgres -d bern -Fc > bern_$(date +%F).dump
 docker compose exec -T db pg_restore -U postgres -d bern --clean --if-exists < bern_YYYY-MM-DD.dump
 ```
+
+**After every restore, realign the AGE catalog** (once, as `postgres`):
+
+```bash
+docker compose exec -T db psql -U postgres -d bern -v ON_ERROR_STOP=1 < post-restore-age.sql
+```
+
+AGE stores the graph schema OID as a plain `oid` (`ag_graph.graphid`, `ag_label.graph`). A restore recreates the schema
+`expertise_graph` with a new OID, so `cypher()` fails with `graph with oid NNNNN does not exist` until the catalog is
+realigned. Tables, vectors and FTS are unaffected. Running the script again is a no-op.
 
 The dump includes both the `nav` schema and the AGE graph (the `expertise_graph` schema and `ag_catalog.ag_graph`/`ag_label`). To restore into an empty DB, first run `CREATE EXTENSION age; CREATE EXTENSION vector;`, which initdb already does.
 

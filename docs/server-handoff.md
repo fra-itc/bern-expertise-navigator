@@ -120,6 +120,9 @@ empty. Schema changes made after that must be migrations: apply them as
 docker exec bern-db-db-1 pg_dump -U postgres -d bern -Fc > ~/bern_$(date +%F).dump
 ```
 
+Restoring: `pg_restore`, then **always** run `src/db/post-restore-age.sql` as `postgres`. Without it, the graph queries
+(Cypher) fail after a restore. See `src/db/README.md` → *Backup and restore*.
+
 No automatic backup is scheduled yet.
 
 ### Wiring the app (next step, not done in this PR)

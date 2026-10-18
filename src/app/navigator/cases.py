@@ -1,6 +1,7 @@
 """Company requests ("cases"): company link or info -> plain summary -> partners in Bern -> pitch & invite.
 
-Stored locally in SQLite (data/cases.db): one JSON document per case plus its activity log.
+Stored through storage.case_store(): SQLite (data/cases.db, one JSON document per case plus its
+activity log) when DATABASE_URL is empty, nav."case"/case_match/case_event when it is set.
 Nothing is sent anywhere by the server: emails open in the officer's own mail client (mailto)
 and calls are offered as a calendar file (.ics).
 """
@@ -20,6 +21,7 @@ import yaml
 
 from . import archetypes, company as company_web, documents as docs, index, llm, plain, search, showcase, understand
 from .config import CONFIG_DIR, DATA_DIR
+from .storage import case_store
 
 DB = DATA_DIR / "cases.db"
 _lock = threading.Lock()
@@ -163,28 +165,45 @@ def _conn() -> sqlite3.Connection:
     return c
 
 
+class SqliteCaseStore:
+    """File backend (DATABASE_URL empty): the historical SQLite JSON-blob store."""
+    name = "sqlite"
+
+    def save(self, case: Case) -> None:
+        with _lock, _conn() as c:
+            c.execute("INSERT OR REPLACE INTO cases VALUES (?, ?, ?)", (case.id, case.updated_at, case.model_dump_json()))
+
+    def get(self, cid: str) -> Case | None:
+        with _conn() as c:
+            row = c.execute("SELECT data FROM cases WHERE id = ?", (cid,)).fetchone()
+        return Case.model_validate_json(row[0]) if row else None
+
+    def list(self) -> list[Case]:
+        with _conn() as c:
+            rows = c.execute("SELECT data FROM cases ORDER BY updated_at DESC").fetchall()
+        return [Case.model_validate_json(r[0]) for r in rows]
+
+    def delete(self, cid: str) -> None:
+        with _lock, _conn() as c:
+            c.execute("DELETE FROM cases WHERE id = ?", (cid,))
+
+
 def save(case: Case) -> Case:
     case.updated_at = _now()
-    with _lock, _conn() as c:
-        c.execute("INSERT OR REPLACE INTO cases VALUES (?, ?, ?)", (case.id, case.updated_at, case.model_dump_json()))
+    case_store().save(case)
     return case
 
 
 def get(cid: str) -> Case | None:
-    with _conn() as c:
-        row = c.execute("SELECT data FROM cases WHERE id = ?", (cid,)).fetchone()
-    return Case.model_validate_json(row[0]) if row else None
+    return case_store().get(cid)
 
 
 def list_cases() -> list[Case]:
-    with _conn() as c:
-        rows = c.execute("SELECT data FROM cases ORDER BY updated_at DESC").fetchall()
-    return [Case.model_validate_json(r[0]) for r in rows]
+    return case_store().list()
 
 
 def delete(cid: str) -> None:
-    with _lock, _conn() as c:
-        c.execute("DELETE FROM cases WHERE id = ?", (cid,))
+    case_store().delete(cid)
 
 
 def log(case: Case, actor: str, kind: str, text: str = "") -> None:

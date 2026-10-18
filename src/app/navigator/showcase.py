@@ -14,6 +14,7 @@ from . import crawl, index, search
 from .config import CONFIG_DIR, DATA_DIR
 from .extract import _norm
 from .schema import Entity
+from .storage import index_store
 
 SHOWCASE = CONFIG_DIR / "showcase.yaml"
 
@@ -25,16 +26,16 @@ def _first_sentence(e: Entity, limit: int = 220) -> str | None:
     return s if len(s) <= limit else s[: limit - 1].rsplit(" ", 1)[0] + "…"
 
 
-def _people(e: Entity, ents: dict[str, Entity]) -> list[Entity]:
+def _people(e: Entity, ents: dict[str, Entity], nb: dict[str, list[str]]) -> list[Entity]:
     """Linked people, the lab's own contact(s) first, then by seniority."""
-    ppl = [ents[i] for i in search.graph().get(e.id, []) if i in ents and ents[i].entity_type == "person"]
+    ppl = [ents[i] for i in nb.get(e.id, []) if i in ents and ents[i].entity_type == "person"]
     own = set(e.source_urls)
     on_lab_page = lambda p: any(ev.url in own and ev.field == "name" for ev in p.evidence)  # noqa: E731
     return sorted(ppl, key=lambda p: (not on_lab_page(p), -search.seniority(p), p.name))
 
 
-def _card(e: Entity, ents: dict[str, Entity]) -> dict:
-    ppl = _people(e, ents)
+def _card(e: Entity, ents: dict[str, Entity], nb: dict[str, list[str]]) -> dict:
+    ppl = _people(e, ents, nb)
     own = set(e.source_urls)
     lead = ppl[0] if ppl and (search.seniority(ppl[0]) >= 1.0
                               or any(ev.url in own and ev.field == "name" for ev in ppl[0].evidence)) else None
@@ -77,19 +78,20 @@ def _build(_key: tuple) -> dict:
     cfg = yaml.safe_load(SHOWCASE.read_text()) if SHOWCASE.exists() else {}
     ents = index.load_entities()
     pages = {p.url: _norm(p.text + " " + p.title) for p in crawl.load_pages()}
+    nb = search.neighbors([e.id for e in ents.values() if e.entity_type in ("unit", "infrastructure")])
     labs = sorted((e for e in ents.values() if e.entity_type == "unit"),
-                  key=lambda e: (-len(_people(e, ents)), e.name))
+                  key=lambda e: (-len(_people(e, ents, nb)), e.name))
     facilities = sorted((e for e in ents.values() if e.entity_type == "infrastructure"), key=lambda e: e.name)
     return {
         "themes": [_theme(t, ents) for t in cfg.get("themes", [])] if ents else [],
         "highlights": _verified(cfg.get("highlights"), pages),
         "engage": _verified(cfg.get("engage"), pages),
-        "labs": [_card(e, ents) for e in labs],
-        "facilities": [_card(e, ents) for e in facilities],
+        "labs": [_card(e, ents, nb) for e in labs],
+        "facilities": [_card(e, ents, nb) for e in facilities],
     }
 
 
 def build() -> dict:
-    key = (index._mtime(index.ENTITIES_PATH), SHOWCASE.stat().st_mtime if SHOWCASE.exists() else 0,
+    key = (index_store().version(), SHOWCASE.stat().st_mtime if SHOWCASE.exists() else 0,
            tuple(sorted(f.stat().st_mtime for f in (DATA_DIR / "pages").glob("*.jsonl"))))
     return _build(key)

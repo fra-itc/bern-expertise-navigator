@@ -50,6 +50,10 @@ class Settings:
     # Empty -> embedded Qdrant on disk (data/qdrant), no server needed
     qdrant_url: str = os.getenv("QDRANT_URL", "")
     collection: str = os.getenv("QDRANT_COLLECTION", "expertise")
+    # Set -> Postgres backend (nav schema + pgvector + AGE graph), see storage.py. Empty -> files.
+    database_url: str = os.getenv("DATABASE_URL", "")
+    pg_pool_max: int = int(os.getenv("PG_POOL_MAX", "8"))
+    pg_ef_search: int = int(os.getenv("PG_HNSW_EF_SEARCH", "100"))
     # Abstention: below these scores we say "no verifiable source"
     # Abstain when BOTH the best semantic match is weak AND few query words occur in the best matches
     min_vector_score: float = float(os.getenv("MIN_VECTOR_SCORE", "0.825"))

@@ -112,7 +112,8 @@ def cmd_extract(a):
 def cmd_index(a):
     p = DATA_DIR / "extracted.jsonl"
     ents = [Entity.model_validate_json(l) for l in p.open() if l.strip()]
-    index.build(ents)
+    # --source: the Postgres backend replaces only that source (one transaction); files always rebuild all
+    index.build(ents, sources=[a.source] if a.source else None)
 
 
 def cmd_all(a):

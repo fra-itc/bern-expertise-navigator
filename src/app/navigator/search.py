@@ -2,7 +2,7 @@
 from __future__ import annotations
 
 import re
-from collections import Counter, defaultdict
+from collections import Counter
 from concurrent.futures import ThreadPoolExecutor
 from functools import lru_cache
 
@@ -12,6 +12,7 @@ from pydantic import BaseModel
 from . import index, llm
 from .config import load_glossary, load_sources, settings
 from .extract import name_key, unit_key
+from .storage import index_store
 from .schema import Affiliation, Entity, SearchResponse, SearchResult, SourceRef
 
 RRF_K = 60
@@ -93,13 +94,8 @@ def match_person(name: str, ents: dict[str, Entity]) -> list[str]:
 
 # ---------------- retrieval -----------------------------------------------
 def bm25_rank(text: str, top: int = 100) -> tuple[list[str], float]:
-    b = index.load_bm25()
-    toks = index.tokenize(text)
-    if not b or not toks:
-        return [], 0.0
-    scores = b["bm25"].get_scores(toks)
-    order = np.argsort(-scores)[:top]
-    return [b["ids"][i] for i in order if scores[i] > 0], float(scores[order[0]]) if len(order) else 0.0
+    """Lexical ranking for RRF: BM25 (file backend) or Postgres FTS (pg backend), same contract."""
+    return index_store().lexical_rank(index.tokenize(text), top)
 
 
 def vector_rank(q: str, extra: list[str], top: int = 200,
@@ -110,7 +106,7 @@ def vector_rank(q: str, extra: list[str], top: int = 200,
     best: dict[str, float] = {}
     orig: dict[str, float] = {}
     for j, (text, vec) in enumerate(zip(texts, vecs)):
-        for eid, score in index.vector_search(vec, top, sources):
+        for eid, score in index_store().vector_search(vec, top, sources):
             best[eid] = max(best.get(eid, 0.0), score * (1.0 if j == 0 else 0.97))
             if j == 0:
                 orig[eid] = max(orig.get(eid, 0.0), score)
@@ -160,30 +156,15 @@ def fair_top(ids: list[str], ents: dict[str, Entity], k: int) -> list[str]:
 
 
 # ---------------- lightweight knowledge graph -----------------------------
-@lru_cache(maxsize=2)
-def _graph(_key: float) -> dict[str, list[str]]:
-    """person <-> unit, person <-> project, project <-> unit links (by name, within one source)."""
-    ents = index.load_entities()
-    by_name: dict[tuple[str, str], list[str]] = defaultdict(list)
-    for e in ents.values():
-        if e.entity_type != "person":
-            by_name[(e.source, unit_key(e.name))].append(e.id)
-    g: dict[str, list[str]] = defaultdict(list)
-    for e in ents.values():
-        for target in (e.unit, e.institute, *e.projects):
-            for tid in by_name.get((e.source, unit_key(target or "")), []):
-                if tid != e.id:
-                    g[e.id].append(tid)
-                    g[tid].append(e.id)
-    return {k: list(dict.fromkeys(v)) for k, v in g.items()}
+# person <-> unit, person <-> project, project <-> unit links (by name, within one source).
+# The rules live in graph.py; the store answers neighbours (adjacency list or Cypher on AGE).
+def neighbors(ids: list[str]) -> dict[str, list[str]]:
+    return index_store().neighbors(list(dict.fromkeys(ids))) if ids else {}
 
 
-def graph() -> dict[str, list[str]]:
-    return _graph(index._mtime(index.ENTITIES_PATH))
-
-
-def related(e: Entity, ents: dict[str, Entity], limit: int = 8) -> list[str]:
-    nb = [ents[i] for i in graph().get(e.id, []) if i in ents]
+def related(e: Entity, ents: dict[str, Entity], limit: int = 8, nb_ids: list[str] | None = None) -> list[str]:
+    ids = nb_ids if nb_ids is not None else neighbors([e.id]).get(e.id, [])
+    nb = [ents[i] for i in ids if i in ents]
     # people first (by seniority), then units / projects
     nb.sort(key=lambda x: (x.entity_type != "person", -seniority(x)))
     return [x.name for x in nb[:limit]]
@@ -214,11 +195,10 @@ def propagate(fused: dict[str, float], ents: dict[str, Entity], depth: int = 20)
     parent's score damped by seniority, so group heads come before students.
     """
     via: dict[str, str] = {}
-    g = graph()
-    for pid in sorted(fused, key=lambda x: -fused[x])[:depth]:
-        parent = ents.get(pid)
-        if not parent or parent.entity_type == "person":
-            continue
+    parents = [pid for pid in sorted(fused, key=lambda x: -fused[x])[:depth]
+               if (p := ents.get(pid)) and p.entity_type != "person"]
+    g = neighbors(parents)
+    for pid in parents:
         for cid in g.get(pid, []):
             c = ents.get(cid)
             if not c or c.entity_type != "person":
@@ -390,6 +370,7 @@ def search(q: str, k: int = 10, sources: list[str] | None = None, types: list[st
         return explain(q, ents[eid], terms)
 
     explained = list(_pool.map(_explain, top))
+    nb = neighbors(top)
     results = []
     for eid, (why, refs) in zip(top, explained):
         e = ents[eid]
@@ -402,7 +383,7 @@ def search(q: str, k: int = 10, sources: list[str] | None = None, types: list[st
             affiliation=Affiliation(unit=e.unit, institute=e.institute, institution=e.source_label),
             institution=e.source_label, expertise=e.expertise, projects=e.projects,
             infrastructure_services=e.infrastructure, description=(e.description or [None])[0],
-            contact=e.email, why_match=why, related=related(e, ents),
+            contact=e.email, why_match=why, related=related(e, ents, nb_ids=nb.get(eid, [])),
             via=ents[via[eid]].name if eid in via else None, sources=refs, score=round(fused[eid], 4), confidence=round(conf, 2)))
     if not results:
         return _abstain(q, terms)

@@ -7,6 +7,10 @@ trafilatura==2.0.0
 selectolax==0.3.27
 rank-bm25==0.2.2
 qdrant-client==1.12.1
+# Postgres backend (used only when DATABASE_URL is set)
+psycopg[binary]==3.3.6
+psycopg-pool==3.3.3
+pgvector==0.5.1
 sentence-transformers==3.3.1
 pytest==8.3.4
 numpy>=1.26
