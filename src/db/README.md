@@ -189,6 +189,8 @@ Planner note: with few rows and a weakly selective filter, Postgres may prefer a
   docker compose exec -T db psql -U postgres -d bern -v ON_ERROR_STOP=1 < migrations/0003_case_search_filters.sql
   docker compose exec -T db psql -U postgres -d bern -v ON_ERROR_STOP=1 < migrations/0004_papers.sql
   docker compose exec -T db psql -U postgres -d bern -v ON_ERROR_STOP=1 < migrations/0005_case_company_sources.sql
+  docker compose exec -T db psql -U postgres -d bern -v ON_ERROR_STOP=1 < migrations/0006_evidence_publication_field.sql
+  docker compose exec -T db psql -U postgres -d bern -v ON_ERROR_STOP=1 < migrations/0007_case_offer.sql
   ```
 
 The app (`navigator/pgstore.py`) checks `nav.schema_migrations` at connect time and refuses to start
@@ -199,12 +201,13 @@ with a `schema_outdated` error if a migration it needs is missing.
 | `0002_index_order_and_match_ref` | `nav.entity.load_order` (input order, for identical tie-breaks with the file backend); `nav.case_match.entity_ref` (match id survives a reindex that drops the entity) |
 | `0002_remove_technical_review` | (team, main) end of the technical-review step: open review statuses become `new`, status CHECK narrowed to `new/contacted/call_scheduled/closed`, review columns **dropped**. Already part of the fresh `initdb/` schema (registered by `05-migrations.sql`); not required by the app |
 | `0003_case_search_filters` | `nav."case".canton/area/niche` (search-first request filters, `config/medtech_areas.yaml` ids) + index `(area, niche)`; on databases that still have the review columns they become nullable and unused (nothing dropped) |
-| `0004_papers` | papers: `nav.paper`, `paper_author`, `paper_chunk` (HNSW), `research_profile` (HNSW), `author_match`, `topic_map`, `paper_topic`, `similarity`; graph labels `Paper`, `AUTHORED`, `ABOUT`, `CITES`, `SIMILAR_TO` (+ indexes, grants to `bern_app`). Additive and idempotent; independent of `0005` (no shared tables/columns), so it can be applied before or after it |
-| `0005_case_company_sources` | request from a company link / shared documents and broad search (main `32a3c4c`..`ae7ba6e`): `nav."case".city/understood/company_url/need/website/documents`, `nav.case_match.archetype`; `request_text` defaults to `''`. Additive only (`0004` is reserved by the papers branch) |
+| `0004_papers` | papers: `nav.paper`, `paper_author`, `paper_chunk` (HNSW), `research_profile` (HNSW), `author_match`, `topic_map`, `paper_topic`, `similarity`; graph labels `Paper`, `AUTHORED`, `ABOUT`, `CITES`, `SIMILAR_TO` (+ indexes, grants to `bern_app`); also widens `nav.entity.extractor` to accept `openalex` (the same CHECK as `0006`). Additive and idempotent; independent of `0005` (no shared tables/columns), so it can be applied before or after it |
+| `0005_case_company_sources` | request from a company link / shared documents and broad search (main `32a3c4c`..`ae7ba6e`): `nav."case".city/understood/company_url/need/website/documents`, `nav.case_match.archetype`; `request_text` defaults to `''`. Additive only (`0004` is the papers migration) |
 | `0006_evidence_publication_field` | lets the Postgres backend index the team's OpenAlex source: `nav.entity.extractor` also allows `openalex`, `nav.evidence.field` also allows `publication`. Without it `index` fails on the first OpenAlex entity. Only widens two CHECKs; idempotent |
+| `0007_case_offer` | `nav."case".offer` (jsonb, `cases.Offer`): the "what Bern offers" paragraph is stored, so reading a request no longer rebuilds it and resets the partner selection. `NULL` on older rows: the app builds it on the next read. Additive and idempotent |
 
 Order on an existing database: `0002_index_order_and_match_ref`, `0003_case_search_filters`, `0004_papers`, then
-`0005_case_company_sources`, `0006_evidence_publication_field` (all required by the app). `0004` and `0005` touch disjoint objects: a database that
+`0005_case_company_sources`, `0006_evidence_publication_field`, `0007_case_offer` (all required by the app). `0004` and `0005` touch disjoint objects: a database that
 already has `0005` takes `0004` as-is.
 
 `0002_remove_technical_review` is independent and destructive (drops the review columns): take a backup first

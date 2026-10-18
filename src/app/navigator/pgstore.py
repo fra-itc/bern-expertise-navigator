@@ -30,7 +30,8 @@ DIM = 768
 FTS_CONFIG = "nav.simple_unaccent"
 # 0002_remove_technical_review (main) is not required: the store neither reads nor writes the review columns.
 REQUIRED_MIGRATIONS = ("0001_initial", "0002_index_order_and_match_ref", "0003_case_search_filters",
-                       "0004_papers", "0005_case_company_sources", "0006_evidence_publication_field")
+                       "0004_papers", "0005_case_company_sources", "0006_evidence_publication_field",
+                       "0007_case_offer")
 _REINDEX_LOCK = 0x6E617669  # pg_advisory_xact_lock key: one reindex at a time
 
 
@@ -728,21 +729,22 @@ class PgCaseStore:
             cur.execute(
                 'INSERT INTO nav."case"(id, created_at, updated_at, status, company, contact_name, contact_email, '
                 "country, canton, area, niche, request_text, analysis, no_match_message, outreach, "
-                "city, understood, company_url, need, website, documents) "
-                "VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s) ON CONFLICT (id) DO UPDATE SET "
+                "city, understood, company_url, need, website, documents, offer) "
+                "VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s) ON CONFLICT (id) DO UPDATE SET "
                 "updated_at = EXCLUDED.updated_at, status = EXCLUDED.status, company = EXCLUDED.company, "
                 "contact_name = EXCLUDED.contact_name, contact_email = EXCLUDED.contact_email, country = EXCLUDED.country, "
                 "canton = EXCLUDED.canton, area = EXCLUDED.area, niche = EXCLUDED.niche, "
                 "request_text = EXCLUDED.request_text, analysis = EXCLUDED.analysis, "
                 "no_match_message = EXCLUDED.no_match_message, outreach = EXCLUDED.outreach, city = EXCLUDED.city, "
                 "understood = EXCLUDED.understood, company_url = EXCLUDED.company_url, need = EXCLUDED.need, "
-                "website = EXCLUDED.website, documents = EXCLUDED.documents",
+                "website = EXCLUDED.website, documents = EXCLUDED.documents, offer = EXCLUDED.offer",
                 (case.id, case.created_at, case.updated_at, case.status, case.company, case.contact_name,
                  case.contact_email, case.country, case.canton, case.area, case.niche, case.request_text,
                  Jsonb(case.analysis.model_dump(mode="json")), case.no_match_message, Jsonb(case.outreach),
                  case.city, Jsonb(case.understood), case.company_url, case.need,
                  Jsonb(case.website.model_dump(mode="json")) if case.website else None,
-                 Jsonb([d.model_dump(mode="json") for d in case.documents])))
+                 Jsonb([d.model_dump(mode="json") for d in case.documents]),
+                 Jsonb(case.offer.model_dump(mode="json")) if case.offer else None))
             cur.execute("DELETE FROM nav.case_match WHERE case_id = %s", (case.id,))
             cur.executemany(
                 "INSERT INTO nav.case_match(case_id, entity_id, entity_ref, rank, name, entity_type, role, unit, "
@@ -757,7 +759,7 @@ class PgCaseStore:
 
     _CASE_COLS = ('id, created_at, updated_at, status, company, contact_name, contact_email, country, canton, area, '
                   'niche, request_text, analysis, no_match_message, outreach, city, understood, company_url, need, website, '
-                  'documents')
+                  'documents, offer')
 
     def _load(self, cur, where: str, params: tuple) -> list:
         from .cases import Case, Event, Match
@@ -781,12 +783,12 @@ class PgCaseStore:
             events[cid].append(Event(at=_iso(at, seconds=True), actor=actor, kind=kind, text=text))
         out = []
         for (cid, created, updated, status, company, cname, cemail, country, canton, area, niche, req, analysis,
-             nomatch, outreach, city, understood, curl, need, website, documents) in heads:
+             nomatch, outreach, city, understood, curl, need, website, documents, offer) in heads:
             out.append(Case(id=cid, created_at=_iso(created, seconds=True), updated_at=_iso(updated, seconds=True),
                             status=status, company=company, contact_name=cname, contact_email=cemail, country=country,
                             canton=canton, area=area, niche=niche, request_text=req, analysis=analysis, matches=matches.get(cid, []),
                             no_match_message=nomatch, city=city, understood=understood or [], company_url=curl,
-                            need=need, website=website, documents=documents or [],
+                            need=need, website=website, documents=documents or [], offer=offer,
                             outreach=outreach or {}, events=events.get(cid, [])))
         return out
 
