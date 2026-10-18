@@ -56,6 +56,9 @@ class Settings:
     min_coverage: float = float(os.getenv("MIN_COVERAGE", "0.5"))
     # Fairness: max results from the same unit in the top-k
     max_per_unit: int = int(os.getenv("MAX_PER_UNIT", "3"))
+    # a researcher known only from publication records (OpenAlex: no role, no lab page) ranks slightly below
+    # the institutes' own profiles at equal relevance
+    record_only_weight: float = float(os.getenv("RECORD_ONLY_WEIGHT", "0.9"))
     use_llm_expansion: bool = os.getenv("USE_LLM_EXPANSION", "1") == "1"
     use_llm_explain: bool = os.getenv("USE_LLM_EXPLAIN", "1") == "1"
 
@@ -76,6 +79,8 @@ class Source:
     priority_keywords: list[str]
     skip_keywords: list[str]
     page_types: dict[str, list[str]] = field(default_factory=dict)
+    type: str = "web"                                   # "web" (crawl a website) or "openalex" (scholarly API)
+    options: dict = field(default_factory=dict)         # type-specific settings (e.g. institution, subfields)
 
     def allows(self, url: str) -> bool:
         host = (urlparse(url).hostname or "").lower()
@@ -112,6 +117,8 @@ def load_sources(only: str | None = None) -> list[Source]:
             # extra_skip_keywords adds to the defaults instead of replacing them
             skip_keywords=s.get("skip_keywords", d.get("skip_keywords", [])) + s.get("extra_skip_keywords", []),
             page_types=s.get("page_types", {}),
+            type=s.get("type", "web"),
+            options=s.get("openalex", {}),
         ))
     if only and not out:
         raise SystemExit(f"Unknown source '{only}' in sources.yaml")

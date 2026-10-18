@@ -473,7 +473,7 @@
 
   /* ======================= PUBLIC: home ======================= */
   const searchBox = (q = "", target = "#/search") => `<form class="searchbox" id="sForm" role="search" data-target="${target}">${ICON.search}
-      <input id="sQ" type="search" value="${esc(q)}" placeholder="${esc(t("ph"))}" aria-label="${esc(t("go"))}" autocomplete="off">
+      <input id="sQ" type="search" value="${esc(q)}" aria-label="${esc(t("go"))}" autocomplete="off">
       <button class="btn-primary" type="submit">${esc(t("go"))}</button></form>`;
   function bindSearchBox() {
     $("#sForm")?.addEventListener("submit", (ev) => {
@@ -735,7 +735,7 @@
     view().innerHTML = `<a class="back" href="#/staff/requests">${ICON.back}${esc(t("cs.back"))}</a>${newTabs("broad")}
       <form class="nr" id="broadForm" novalidate>
         <h1>${esc(t("bs.title"))}</h1>
-        <div class="nr-box">${ICON.search}<input id="bsQ" maxlength="500" autocomplete="off" spellcheck="false" placeholder="${esc(t("bs.ph"))}" value="${esc(prev.q || "")}">
+        <div class="nr-box">${ICON.search}<input id="bsQ" maxlength="500" autocomplete="off" spellcheck="false" aria-label="${esc(t("bs.title"))}" value="${esc(prev.q || "")}">
           <button class="btn-primary btn-brand" type="submit">${esc(t("nw.find"))}</button></div>
         <div class="bs-understood" id="bsU" aria-live="polite"></div>
         <div class="chips nr-try"><span class="muted">${esc(t("nw.try"))}:</span>${examples.map((x) => `<button type="button" class="chip" data-q="${esc(x)}">${esc(x)}</button>`).join("")}</div>

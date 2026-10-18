@@ -2,8 +2,8 @@
 
 **Hack Apertus 2026 · Bern Economic Development Agency challenge**
 
-One search across the public websites of UniBE, ARTORG and Diabetes Center Berne, plus a workspace that helps the
-canton **bring companies to Bern**. Every result is structured and linked to the page and the verbatim sentence that
+One search across the University of Bern's medtech researchers (from OpenAlex publication records) and the public
+websites of ARTORG and Diabetes Center Berne, plus a workspace that helps the canton **bring companies to Bern**. Every result is structured and linked to the page and the verbatim sentence that
 supports it.
 
 The app has three clearly separated areas:
@@ -48,6 +48,14 @@ make test                       # unit tests: no GPU, no network, no model downl
 **Crawling is always explicit.** `make crawl SOURCE=<name>` fetches one source. Sources already saved in
 `data/pages/` are skipped unless you add `RECRAWL=1`. No other target touches the network.
 
+**University of Bern comes from OpenAlex** (`type: openalex` in `config/sources.yaml`), not from crawling unibe.ch:
+`make crawl SOURCE=unibe` reads the open OpenAlex API (CC0 data) for authors who signed medtech-field papers as
+University of Bern since 2023. A person counts only through papers where *their own* authorship lists UniBE (OpenAlex's
+"last known institution" mixes up namesakes). Each researcher becomes one record (name, ORCID, department as written on
+their papers, research topics, recent publications with DOI), linked to their openalex.org page. Researchers who also
+have an ARTORG or DCB profile are merged into that profile, which gains their publications. Without a key, OpenAlex
+allows the first 10,000 matching papers; set `OPENALEX_API_KEY` (free, openalex.org/settings/api) for more.
+
 ## Using it
 
 1. Open **Staff workspace** → choose *Business development*, enter your name → **New request**: paste the
@@ -80,7 +88,7 @@ public websites ─► 1 crawl ─► 2 classify ─► 3 extract ────�
 
 | Stage | Module | Where Apertus is used, and why |
 |---|---|---|
-| 1 Crawl | `crawl.py` | none (deterministic, polite, bounded; robots.txt incl. wildcards; directory pages kept via DOM text) |
+| 1 Crawl | `crawl.py`, `openalex.py` | none (deterministic, polite, bounded; robots.txt incl. wildcards; directory pages kept via DOM text). UniBE: OpenAlex API records, affiliation checked per paper |
 | 2 Classify | `classify.py` | only for pages the URL rules can't classify |
 | 3 Extract | `extract.py`, `rules_extract.py` | **Main use.** Page → entities as constrained JSON; each value must quote the page verbatim or it is dropped. `rules_extract.py` is the no-LLM baseline that passes through the same verifier |
 | 4 Index | `index.py` | none (local multilingual embeddings + BM25) |
@@ -95,12 +103,13 @@ public websites ─► 1 crawl ─► 2 classify ─► 3 extract ────�
 |---|---|---|---|
 | 1 | ≥ 80% expected experts in top 10 | Hybrid BM25 + vectors, RRF, lab → head-of-lab propagation | `make eval` → `recall_at_k` |
 | 2 | Synonyms / lay terms | `config/glossary.yaml` + Apertus expansion + multilingual embeddings | `synonym_twins_consistent` |
-| 3 | 100% traceable | Snippet must occur verbatim on the crawled page, else dropped (`data/rejected.jsonl`) | `traceability`, `tests/` |
+| 3 | 100% traceable | Snippet must occur verbatim on the crawled page or OpenAlex record, else dropped (`data/rejected.jsonl`) | `traceability`, `tests/` |
 | 4 | Structured results | `SearchResult`: person/unit, role, affiliation, institution, expertise, projects, infrastructure, contact, why, related, sources, confidence | `/docs` |
 | 5 | All three sources | `sources.yaml`: `unibe`, `artorg`, `dcb` | `/stats` |
 | 6 | Easy to extend | One YAML block, then `make crawl SOURCE=<name> && make pipeline` | live |
 | — | Honest when unsure | Weak semantic match **and** low word coverage → "no verifiable source"; unknown person name → "no such person" | out-of-domain queries in the golden set |
 | — | Fair discoverability | Max `MAX_PER_UNIT` people and `MAX_PER_UNIT` labs/projects per unit in the top k | config |
+| — | Profiles first | At equal relevance, people known only from publication records rank slightly below institute profiles (`RECORD_ONLY_WEIGHT`, 0.9) | config |
 
 ## Adding a new institution
 
@@ -128,7 +137,7 @@ against the saved page, and anything unverifiable is dropped automatically. The 
 
 ```
 config/        sources.yaml · unibe_subdomains.txt · glossary.yaml · plain_glossary.yaml · showcase.yaml · medtech_areas.yaml · example_requests.yaml
-app/navigator/ config · schema · llm · crawl · classify · extract · rules_extract · index · search · plain · cases · showcase · api · cli
+app/navigator/ config · schema · llm · crawl · openalex · classify · extract · rules_extract · index · search · plain · cases · showcase · api · cli
 app/navigator/static/  index.html · app.css · app.js   (no build step, no CDN: works air-gapped)
 eval/          golden_set.yaml · run_eval.py
 tests/         verifier, robots.txt, rules extractor, offline search, LLM client, request workflow
@@ -147,7 +156,7 @@ data/          (generated, git-ignored) pages/, entities.jsonl, vectors.npy, bm2
 ## Compliance
 
 - Public pages only; robots.txt (with wildcard rules) respected; polite delay; identifiable user agent; crawling only
-  on explicit command.
+  on explicit command. OpenAlex: public API, CC0 data, paced below its rate limit.
 - Only what the institutions already publish; every record points to its source page. Copyright stays with them.
 - nDSG / GDPR: no tracking and no query logging. Company requests stay in the local database and can be deleted from
   the UI. Example requests are fictional.

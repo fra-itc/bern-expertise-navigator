@@ -54,17 +54,30 @@ sources:
 
   - name: unibe
     label: University of Bern
-    # Seeds are generated from the supplied subdomain inventory (one host per line)
-    seeds_file: config/unibe_subdomains.txt
-    domains_from_seeds: true
-    max_pages: 1500
-    max_depth: 3
-    extra_skip_keywords: [index_ger.html, index_fra.html, /studium/, /studies/, /publications/, /publikationen/]
-    page_types:
-      person: ["/ueber_uns/personen/", "/about_us/people/", "/personen/", "/people/", "/group_members/", "/team/"]
-      unit: ["/ueber_uns/", "/about_us/", "/forschung/", "/research/"]
-      project: ["/forschungsprojekte/", "/research_projects/", "/projekte/"]
-      infrastructure: ["/dienstleistungen/", "/services/", "/infrastruktur/", "/facilities/"]
+    # University of Bern researchers from OpenAlex (open scholarly database, api.openalex.org): people who
+    # published under a University of Bern affiliation in medtech-relevant fields. Their record (topics,
+    # department, publications with DOI) is the evidence; every line links to openalex.org.
+    type: openalex
+    openalex:
+      institution: I118564535          # University of Bern (ROR 02k7v4d05)
+      from_date: "2023-01-01"           # publications since
+      min_works: 3                      # at least 3 papers with a University of Bern affiliation
+      max_authors: 600
+      max_publications: 6               # listed per researcher
+      # OpenAlex subfields: Biomedical Engineering; Endocrinology, Diabetes & Metabolism; Radiology & Imaging;
+      # Radiological & Ultrasound Technology; Surgery; Cardiology; Orthopedics; Otorhinolaryngology;
+      # Ophthalmology; Urology; Neurology; Artificial Intelligence; Computer Vision; Health Informatics;
+      # Pulmonary Medicine; Rehabilitation
+      subfields: [2204, 2712, 2741, 3614, 2746, 2705, 2732, 2733, 2731, 2748, 2728, 1702, 1707, 2718, 2740, 2742]
+
+  # UniBE websites as an alternative (needs the supplied subdomain inventory):
+  # - name: unibe_web
+  #   label: University of Bern (websites)
+  #   seeds_file: config/unibe_subdomains.txt
+  #   domains_from_seeds: true
+  #   max_pages: 1500
+  #   max_depth: 3
+  #   extra_skip_keywords: [index_ger.html, index_fra.html, /studium/, /studies/, /publications/, /publikationen/]
 
   # Example of adding a 4th site (used in the live demo):
   # - name: insel

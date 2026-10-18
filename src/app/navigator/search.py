@@ -10,7 +10,7 @@ import numpy as np
 from pydantic import BaseModel
 
 from . import index, llm
-from .config import load_glossary, settings
+from .config import load_glossary, load_sources, settings
 from .extract import name_key, unit_key
 from .schema import Affiliation, Entity, SearchResponse, SearchResult, SourceRef
 
@@ -117,6 +117,11 @@ def vector_rank(q: str, extra: list[str], top: int = 200,
     return sorted(best, key=lambda k: -best[k]), orig
 
 
+@lru_cache(maxsize=1)
+def _record_only_sources() -> frozenset[str]:
+    return frozenset(s.name for s in load_sources() if s.type == "openalex")
+
+
 def rrf(*rankings: list[str]) -> dict[str, float]:
     s: dict[str, float] = {}
     for r in rankings:
@@ -134,10 +139,11 @@ def fair_top(ids: list[str], ents: dict[str, Entity], k: int) -> list[str]:
         if not e:
             continue
         is_person = e.entity_type == "person"
-        unit = (unit_key(e.unit or e.name) if not is_person else unit_key(e.unit or e.source), is_person)
+        # people are capped per lab; someone whose lab is unknown counts on their own (no shared bucket)
+        unit = (unit_key(e.unit or e.name) if not is_person else (unit_key(e.unit) if e.unit else "id:" + e.id), is_person)
         if is_person and per_unit[unit] >= settings.max_per_unit:
             # the lab is full: a more senior person (e.g. the group head) replaces its most junior pick
-            same = [x for x in out if ents[x].entity_type == "person" and unit_key(ents[x].unit or ents[x].source) == unit[0]]
+            same = [x for x in out if ents[x].entity_type == "person" and ents[x].unit and unit_key(ents[x].unit) == unit[0]]
             weakest = min(same, key=lambda x: seniority(ents[x]), default=None)
             if weakest and seniority(e) > seniority(ents[weakest]):
                 out[out.index(weakest)] = eid
@@ -361,6 +367,10 @@ def search(q: str, k: int = 10, sources: list[str] | None = None, types: list[st
         return _abstain(q, terms)
 
     fused = rrf(bm_q, bm_x, vec_ids)
+    record_only = _record_only_sources()
+    for eid in fused:
+        if eid in ents and ents[eid].source in record_only:
+            fused[eid] *= settings.record_only_weight
     via = propagate(fused, ents)
     for i, eid in enumerate(pinned):
         fused[eid] = fused.get(eid, 0.0) + 1.0 - i * 1e-3
