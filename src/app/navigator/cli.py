@@ -123,7 +123,7 @@ def cmd_stats(a):
 def cmd_papers(a):
     """papers {collect,embed,link,all}: OpenAlex papers of the indexed people (see navigator/papers.py)."""
     from . import papers
-    from .openalex import OpenAlexClient
+    from .openalex_client import OpenAlexClient
     from .storage import index_store
     st = index_store()
     steps = ["collect", "embed", "link"] if a.step == "all" else [a.step]

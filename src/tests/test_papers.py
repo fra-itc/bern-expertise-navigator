@@ -11,9 +11,9 @@ import pytest
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "app"))
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
-from navigator import llm, openalex, papers  # noqa: E402
+from navigator import llm, papers  # noqa: E402
 from navigator.config import settings  # noqa: E402
-from navigator.openalex import OpenAlexClient, OpenAlexError, candidate_summary, parse_work, reconstruct_abstract  # noqa: E402
+from navigator.openalex_client import OpenAlexClient, OpenAlexError, candidate_summary, parse_work, reconstruct_abstract  # noqa: E402
 from papers_fixtures import (FIX, PDF_BYTES, PDF_TEXT, PDF_URL, SCENARIO, FakeLLM, corpus,  # noqa: E402
                              openalex_handler, pages, pdf_handler)
 

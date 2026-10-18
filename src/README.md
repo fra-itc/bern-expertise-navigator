@@ -90,7 +90,7 @@ public websites ─► 1 crawl ─► 2 classify ─► 3 extract ────�
 | 2 Classify | `classify.py` | only for pages the URL rules can't classify |
 | 3 Extract | `extract.py`, `rules_extract.py` | **Main use.** Page → entities as constrained JSON; each value must quote the page verbatim or it is dropped. `rules_extract.py` is the no-LLM baseline that passes through the same verifier |
 | 4 Index | `index.py` | none (local multilingual embeddings + BM25) |
-| 6 Papers | `papers.py`, `openalex.py` | Chooses the OpenAlex author profile of each person among the given candidates (or none), and maps paper topics onto existing Topics; validated against the whitelist, rules when the LLM is down |
+| 6 Papers | `papers.py`, `openalex_client.py` | Chooses the OpenAlex author profile of each person among the given candidates (or none), and maps paper topics onto existing Topics; validated against the whitelist, rules when the LLM is down |
 | 5 Search | `search.py` | Query analysis (synonyms, lay terms, DE/EN/FR, person names) and match explanations written only from the cited evidence |
 | Requests | `plain.py`, `cases.py` | Plain-language summary of a company request plus explanations of terms the glossary lacks (labelled *AI explanation – check*). Emails are a deterministic template: no generated claims |
 | Pitch | `brief.py` | none in the claims: the brief and the officer's explanation are assembled only from the chosen partners, verbatim snippets, verified proof points and DOIs found on the institutions' pages |

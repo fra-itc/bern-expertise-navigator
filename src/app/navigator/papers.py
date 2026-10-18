@@ -31,7 +31,7 @@ from pydantic import BaseModel
 from . import llm
 from .config import DATA_DIR, settings
 from .extract import name_key
-from .openalex import OpenAlexClient, OpenAlexError, candidate_summary, parse_work, short_id
+from .openalex_client import OpenAlexClient, OpenAlexError, candidate_summary, parse_work, short_id
 from .schema import AuthorMatch, Entity, EntityLink, Page, Work
 
 PAPERS_DIR = DATA_DIR / "papers"

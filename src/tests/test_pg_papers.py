@@ -16,7 +16,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "app"))
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 from navigator import config, crawl, index, llm, papers, search  # noqa: E402
-from navigator.openalex import OpenAlexClient  # noqa: E402
+from navigator.openalex_client import OpenAlexClient  # noqa: E402
 from navigator.storage import index_store  # noqa: E402
 from papers_fixtures import FakeLLM, corpus, openalex_handler, pages, pdf_handler  # noqa: E402
 from test_pg_backend import fake_embed  # noqa: E402
