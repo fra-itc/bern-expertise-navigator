@@ -66,7 +66,7 @@ test('Knowledge Base follows Search only for server-approved canton sessions', a
   const w = app(t, { fetcher: async (url) => url === '/staff/session' ? { ok: true, json: async () => ({ can_manage_knowledge: true }) } : undefined });
   await until(() => w.document.querySelector('.kb-nav'));
   const nav = w.document.querySelector('.kb-nav');
-  assert.equal(nav.previousElementSibling.getAttribute('href'), '#/staff/dashboard');
+  assert.equal(nav.previousElementSibling.getAttribute('href'), '#/staff/observability');
   assert.equal(nav.querySelector('strong').textContent, 'Knowledge Base');
 });
 test('private workspace adds link inputs progressively and saves company knowledge', async (t) => {

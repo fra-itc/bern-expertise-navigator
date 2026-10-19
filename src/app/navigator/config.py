@@ -42,6 +42,8 @@ class Settings:
     # Hack Apertus convention: LLM_NAME / LLM_BASE_URL / LLM_API_KEY (LLM_MODEL kept as an alias)
     llm_base_url: str = _env("LLM_BASE_URL", default="http://vllm:8000/v1").rstrip("/")
     llm_model: str = _env("LLM_NAME", "LLM_MODEL", default="swiss-ai/Apertus-v1.5-8B")
+    # the manager dashboard's written analysis: a small, fast model on the same gateway
+    insight_model: str = os.getenv("INSIGHT_LLM_MODEL", "apertus-v1-5-8b")
     llm_api_key: str = _env("LLM_API_KEY", default="not-needed")
     llm_timeout: float = float(os.getenv("LLM_TIMEOUT", "120"))
     llm_concurrency: int = int(os.getenv("LLM_CONCURRENCY", "8"))

@@ -32,7 +32,8 @@ def record(route: str, meter: llm.Meter, total_s: float) -> None:
         return
     row = {"at": time.strftime("%Y-%m-%dT%H:%M:%S"), "route": route, "case_id": meter.case_id,
            "calls": meter.calls, "prompt_tokens": meter.prompt_tokens, "completion_tokens": meter.completion_tokens,
-           "llm_s": round(meter.seconds, 2), "total_s": round(total_s, 2), "model": settings.llm_model}
+           "llm_s": round(meter.seconds, 2), "total_s": round(total_s, 2),
+           "model": ", ".join(sorted(meter.models)) or settings.llm_model}
     with _lock:
         USAGE_PATH.parent.mkdir(parents=True, exist_ok=True)
         with USAGE_PATH.open("a") as fh:

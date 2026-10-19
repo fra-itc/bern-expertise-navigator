@@ -166,7 +166,34 @@
       "sg.lead": "Companies suggested by Apertus for “{q}”, each checked on its own website. The description is the company's own.",
       "sg.choose": "Choose and analyse", "sg.none": "None of these: continue with the search only", "sg.back": "Change the search",
       "sg.place": "names {p} on its website", "sg.topic": "talks about", "sg.ai": "Suggested by Apertus: the model may not know every company, check before contacting one.",
-      "nav.dash": "Dashboard", "db.title": "Dashboard", "db.lead": "What Apertus costs per request, and how well the search finds the right experts.",
+      "nav.dash": "Dashboard", "nav.obs": "LLM Observability", "db.title": "LLM Observability", "db.lead": "Integrated monitoring of the language model: what it costs (tokens), how fast it answers, and the quality of what it produces.",
+      "db.r.insight": "Dashboard summary (Apertus 8B)",
+      "mg.title": "Dashboard", "mg.lead": "Where company requests stand, at a glance. Click a figure to see the requests behind it.",
+      "mg.period": "Period", "mg.r7": "7 days", "mg.r30": "30 days", "mg.r90": "90 days", "mg.rall": "All",
+      "mg.hero": "Requests received", "mg.heroD": "{n} in total since the start", "mg.heroP": "in the last {d} days",
+      "st.todo": "To do", "st.ready": "Pitch ready", "st.done": "Invited", "st.replied": "Company replied", "st.none": "No match",
+      "st.todoD": "Partners to check, pitch to prepare", "st.readyD": "Prepared, not yet sent", "st.doneD": "Invitation sent, call or closed",
+      "st.repliedD": "Waiting for our answer", "st.noneD": "No partner found in Bern",
+      "mg.share": "{p} of the period",
+      "mg.attn": "Needs your attention", "mg.attnNone": "Nothing is waiting for a decision.",
+      "at.replied": "{n} companies replied and are waiting for an answer", "at.ready_waiting": "{n} pitches ready for more than 2 days, not sent",
+      "at.todo_waiting": "{n} requests waiting for more than 3 days", "at.no_match": "{n} requests without a partner in Bern",
+      "lv.critical": "Urgent", "lv.warning": "Waiting", "lv.serious": "Check",
+      "mg.show": "Show", "mg.hide": "Hide", "mg.open": "Open",
+      "mg.kpiPitch": "Time to pitch", "mg.kpiPitchV": "{d} days", "mg.kpiPitchD": "median, from request to prepared pitch",
+      "mg.kpiMatch": "Partner found", "mg.kpiMatchD": "of requests", "mg.kpiOpen": "Pitch opened", "mg.kpiReply": "Replied", "mg.ofInvited": "of invited companies",
+      "mg.trend": "Requests received over time", "mg.trendD": "Each column is split by where those requests stand today",
+      "mg.work": "Work done over time", "mg.w.received": "Requests received", "mg.w.pitches": "Pitches prepared", "mg.w.invitations": "Invitations sent", "mg.w.replies": "Replies received",
+      "mg.funnel": "How far requests get", "mg.funnelD": "Each step counts the requests that reached it; the % is of all requests received",
+      "fu.received": "Received", "fu.matched": "Partners found", "fu.pitch": "Pitch prepared", "fu.invited": "Invited", "fu.replied": "Replied",
+      "mg.areas": "Medtech areas", "mg.countries": "Where companies come from", "mg.unknown": "Not stated",
+      "mg.ai": "The situation in brief", "mg.aiWorking": "Apertus 8B is writing the summary…",
+      "mg.aiBy": "Written by Apertus 8B ({m}), an AI model, from the figures on this page only. Check it against them.",
+      "mg.aiRules": "Written by rules from the figures on this page: Apertus 8B could not be used ({r}).",
+      "mg.why.unavailable": "not reachable", "mg.why.error": "it returned an error", "mg.why.unchecked_numbers": "it wrote numbers that are not on this page",
+      "mg.table": "Show as table", "mg.empty": "No requests in this period.", "mg.total": "Total", "mg.date": "Period start",
+      "mg.col.company": "Company", "mg.col.place": "Place", "mg.col.area": "Area", "mg.col.age": "Since received", "mg.sofar": "so far", "mg.workD": "The last point is the current period, still running", "mg.days": "{n} d",
+      "mg.board": "Requests board", "mg.obs": "LLM Observability",
       "db.priceSet": "Price: CHF {i} per million input tokens and CHF {o} per million output tokens ({m}).",
       "db.priceTodo": "Placeholder price (CHF {i} / CHF {o} per million input / output tokens). Set LLM_PRICE_IN_CHF_PER_M and LLM_PRICE_OUT_CHF_PER_M in .env for real figures.",
       "db.cost": "Cost of Apertus (live)", "db.since": "since {d}",
@@ -300,7 +327,34 @@
       "sg.lead": "Von Apertus vorgeschlagene Firmen für «{q}», jede auf ihrer eigenen Website geprüft. Die Beschreibung stammt von der Firma selbst.",
       "sg.choose": "Auswählen und analysieren", "sg.none": "Keine davon: nur mit der Suche weiter", "sg.back": "Suche ändern",
       "sg.place": "nennt {p} auf der Website", "sg.topic": "spricht über", "sg.ai": "Von Apertus vorgeschlagen: Das Modell kennt nicht jede Firma, bitte vor einer Kontaktaufnahme prüfen.",
-      "nav.dash": "Dashboard", "db.title": "Dashboard", "db.lead": "Was Apertus pro Anfrage kostet und wie gut die Suche die richtigen Fachleute findet.",
+      "nav.dash": "Dashboard", "nav.obs": "LLM-Observability", "db.title": "LLM-Observability", "db.lead": "Integriertes Monitoring des Sprachmodells: was es kostet (Tokens), wie schnell es antwortet und wie gut seine Ergebnisse sind.",
+      "db.r.insight": "Dashboard-Zusammenfassung (Apertus 8B)",
+      "mg.title": "Dashboard", "mg.lead": "Wo die Firmenanfragen stehen, auf einen Blick. Klicken Sie auf eine Zahl, um die Anfragen dahinter zu sehen.",
+      "mg.period": "Zeitraum", "mg.r7": "7 Tage", "mg.r30": "30 Tage", "mg.r90": "90 Tage", "mg.rall": "Alle",
+      "mg.hero": "Eingegangene Anfragen", "mg.heroD": "{n} insgesamt seit Beginn", "mg.heroP": "in den letzten {d} Tagen",
+      "st.todo": "Zu erledigen", "st.ready": "Pitch bereit", "st.done": "Eingeladen", "st.replied": "Firma hat geantwortet", "st.none": "Kein Treffer",
+      "st.todoD": "Partner prüfen, Pitch vorbereiten", "st.readyD": "Vorbereitet, noch nicht versandt", "st.doneD": "Einladung versandt, Gespräch oder abgeschlossen",
+      "st.repliedD": "Wartet auf unsere Antwort", "st.noneD": "Kein Partner in Bern gefunden",
+      "mg.share": "{p} des Zeitraums",
+      "mg.attn": "Braucht Ihre Aufmerksamkeit", "mg.attnNone": "Nichts wartet auf einen Entscheid.",
+      "at.replied": "{n} Firmen haben geantwortet und warten auf eine Antwort", "at.ready_waiting": "{n} Pitches seit über 2 Tagen bereit, nicht versandt",
+      "at.todo_waiting": "{n} Anfragen warten seit über 3 Tagen", "at.no_match": "{n} Anfragen ohne Partner in Bern",
+      "lv.critical": "Dringend", "lv.warning": "Wartet", "lv.serious": "Prüfen",
+      "mg.show": "Anzeigen", "mg.hide": "Ausblenden", "mg.open": "Öffnen",
+      "mg.kpiPitch": "Zeit bis zum Pitch", "mg.kpiPitchV": "{d} Tage", "mg.kpiPitchD": "Median, von der Anfrage bis zum Pitch",
+      "mg.kpiMatch": "Partner gefunden", "mg.kpiMatchD": "der Anfragen", "mg.kpiOpen": "Pitch geöffnet", "mg.kpiReply": "Geantwortet", "mg.ofInvited": "der eingeladenen Firmen",
+      "mg.trend": "Eingegangene Anfragen im Zeitverlauf", "mg.trendD": "Jede Säule ist danach aufgeteilt, wo diese Anfragen heute stehen",
+      "mg.work": "Erledigte Arbeit im Zeitverlauf", "mg.w.received": "Eingegangene Anfragen", "mg.w.pitches": "Vorbereitete Pitches", "mg.w.invitations": "Versandte Einladungen", "mg.w.replies": "Erhaltene Antworten",
+      "mg.funnel": "Wie weit Anfragen kommen", "mg.funnelD": "Jeder Schritt zählt die Anfragen, die ihn erreicht haben; % bezogen auf alle eingegangenen Anfragen",
+      "fu.received": "Eingegangen", "fu.matched": "Partner gefunden", "fu.pitch": "Pitch vorbereitet", "fu.invited": "Eingeladen", "fu.replied": "Geantwortet",
+      "mg.areas": "Medtech-Bereiche", "mg.countries": "Woher die Firmen kommen", "mg.unknown": "Nicht angegeben",
+      "mg.ai": "Die Lage in Kürze", "mg.aiWorking": "Apertus 8B schreibt die Zusammenfassung…",
+      "mg.aiBy": "Geschrieben von Apertus 8B ({m}), einem KI-Modell, nur aus den Zahlen auf dieser Seite. Bitte mit ihnen abgleichen.",
+      "mg.aiRules": "Nach Regeln aus den Zahlen auf dieser Seite geschrieben: Apertus 8B konnte nicht verwendet werden ({r}).",
+      "mg.why.unavailable": "nicht erreichbar", "mg.why.error": "Fehler", "mg.why.unchecked_numbers": "es schrieb Zahlen, die nicht auf dieser Seite stehen",
+      "mg.table": "Als Tabelle anzeigen", "mg.empty": "Keine Anfragen in diesem Zeitraum.", "mg.total": "Total", "mg.date": "Beginn des Zeitraums",
+      "mg.col.company": "Firma", "mg.col.place": "Ort", "mg.col.area": "Bereich", "mg.col.age": "Seit Eingang", "mg.sofar": "bisher", "mg.workD": "Der letzte Punkt ist der laufende Zeitraum", "mg.days": "{n} T.",
+      "mg.board": "Anfragen-Übersicht", "mg.obs": "LLM-Observability",
       "db.priceSet": "Preis: CHF {i} pro Million Eingabe-Tokens und CHF {o} pro Million Ausgabe-Tokens ({m}).",
       "db.priceTodo": "Platzhalterpreis (CHF {i} / CHF {o} pro Million Eingabe- / Ausgabe-Tokens). Für echte Zahlen LLM_PRICE_IN_CHF_PER_M und LLM_PRICE_OUT_CHF_PER_M in .env setzen.",
       "db.cost": "Kosten von Apertus (live)", "db.since": "seit {d}",
@@ -434,7 +488,34 @@
       "sg.lead": "Entreprises proposées par Apertus pour « {q} », chacune vérifiée sur son propre site. La description est celle de l'entreprise.",
       "sg.choose": "Choisir et analyser", "sg.none": "Aucune : continuer avec la recherche seule", "sg.back": "Modifier la recherche",
       "sg.place": "mentionne {p} sur son site", "sg.topic": "parle de", "sg.ai": "Proposées par Apertus : le modèle ne connaît pas toutes les entreprises, vérifiez avant tout contact.",
-      "nav.dash": "Tableau de bord", "db.title": "Tableau de bord", "db.lead": "Ce que coûte Apertus par demande, et dans quelle mesure la recherche trouve les bons experts.",
+      "nav.dash": "Tableau de bord", "nav.obs": "Observabilité LLM", "db.title": "Observabilité LLM", "db.lead": "Suivi intégré du modèle de langage : ce qu'il coûte (tokens), sa rapidité et la qualité de ce qu'il produit.",
+      "db.r.insight": "Synthèse du tableau de bord (Apertus 8B)",
+      "mg.title": "Tableau de bord", "mg.lead": "Où en sont les demandes d'entreprises, en un coup d'œil. Cliquez sur un chiffre pour voir les demandes concernées.",
+      "mg.period": "Période", "mg.r7": "7 jours", "mg.r30": "30 jours", "mg.r90": "90 jours", "mg.rall": "Tout",
+      "mg.hero": "Demandes reçues", "mg.heroD": "{n} au total depuis le début", "mg.heroP": "sur les {d} derniers jours",
+      "st.todo": "À traiter", "st.ready": "Pitch prêt", "st.done": "Invitée", "st.replied": "L'entreprise a répondu", "st.none": "Aucun partenaire",
+      "st.todoD": "Partenaires à vérifier, pitch à préparer", "st.readyD": "Préparé, pas encore envoyé", "st.doneD": "Invitation envoyée, appel ou clôturée",
+      "st.repliedD": "Attend notre réponse", "st.noneD": "Aucun partenaire trouvé à Berne",
+      "mg.share": "{p} de la période",
+      "mg.attn": "Demande votre attention", "mg.attnNone": "Rien n'attend de décision.",
+      "at.replied": "{n} entreprises ont répondu et attendent une réponse", "at.ready_waiting": "{n} pitchs prêts depuis plus de 2 jours, non envoyés",
+      "at.todo_waiting": "{n} demandes en attente depuis plus de 3 jours", "at.no_match": "{n} demandes sans partenaire à Berne",
+      "lv.critical": "Urgent", "lv.warning": "En attente", "lv.serious": "À vérifier",
+      "mg.show": "Afficher", "mg.hide": "Masquer", "mg.open": "Ouvrir",
+      "mg.kpiPitch": "Délai jusqu'au pitch", "mg.kpiPitchV": "{d} jours", "mg.kpiPitchD": "médiane, de la demande au pitch préparé",
+      "mg.kpiMatch": "Partenaire trouvé", "mg.kpiMatchD": "des demandes", "mg.kpiOpen": "Pitch ouvert", "mg.kpiReply": "Réponse", "mg.ofInvited": "des entreprises invitées",
+      "mg.trend": "Demandes reçues dans le temps", "mg.trendD": "Chaque colonne est répartie selon l'état actuel de ces demandes",
+      "mg.work": "Travail effectué dans le temps", "mg.w.received": "Demandes reçues", "mg.w.pitches": "Pitchs préparés", "mg.w.invitations": "Invitations envoyées", "mg.w.replies": "Réponses reçues",
+      "mg.funnel": "Jusqu'où vont les demandes", "mg.funnelD": "Chaque étape compte les demandes qui l'ont atteinte ; le % se rapporte à toutes les demandes reçues",
+      "fu.received": "Reçues", "fu.matched": "Partenaires trouvés", "fu.pitch": "Pitch préparé", "fu.invited": "Invitées", "fu.replied": "Réponse",
+      "mg.areas": "Domaines medtech", "mg.countries": "D'où viennent les entreprises", "mg.unknown": "Non indiqué",
+      "mg.ai": "La situation en bref", "mg.aiWorking": "Apertus 8B rédige la synthèse…",
+      "mg.aiBy": "Rédigé par Apertus 8B ({m}), un modèle d'IA, uniquement à partir des chiffres de cette page. À vérifier avec eux.",
+      "mg.aiRules": "Rédigé par des règles à partir des chiffres de cette page : Apertus 8B n'a pas pu être utilisé ({r}).",
+      "mg.why.unavailable": "injoignable", "mg.why.error": "erreur", "mg.why.unchecked_numbers": "il a écrit des chiffres absents de cette page",
+      "mg.table": "Afficher en tableau", "mg.empty": "Aucune demande sur cette période.", "mg.total": "Total", "mg.date": "Début de période",
+      "mg.col.company": "Entreprise", "mg.col.place": "Lieu", "mg.col.area": "Domaine", "mg.col.age": "Depuis réception", "mg.sofar": "jusqu'ici", "mg.workD": "Le dernier point est la période en cours", "mg.days": "{n} j",
+      "mg.board": "Tableau des demandes", "mg.obs": "Observabilité LLM",
       "db.priceSet": "Prix : CHF {i} par million de tokens d'entrée et CHF {o} par million de tokens de sortie ({m}).",
       "db.priceTodo": "Prix provisoire (CHF {i} / CHF {o} par million de tokens d'entrée / de sortie). Définissez LLM_PRICE_IN_CHF_PER_M et LLM_PRICE_OUT_CHF_PER_M dans .env pour des chiffres réels.",
       "db.cost": "Coût d'Apertus (en direct)", "db.since": "depuis le {d}",
@@ -673,7 +754,7 @@
     } else {
       // still to do: requests without a pitch, and companies that replied
       const open = S.cases.filter((c) => (c.status === "new" && !c.has_brief && c.matched !== false) || c.status === "interested").length;
-      const nav = !staff ? "" : tab("#/staff/requests", "requests", t("nav.requests"), open || "") + tab("#/staff/new", "new", t("nav.new")) + tab("#/staff/search", "ssearch", t("nav.search")) + tab("#/staff/dashboard", "dash", t("nav.dash")) + (cantonMember?.can_manage_knowledge ? `<a class="kb-nav ${active === 'knowledge' ? 'on' : ''}" href="#/staff/knowledge" ${active === 'knowledge' ? 'aria-current="page"' : ''}>${ICON.doc}<strong>${esc(window.KnowledgeWorkspace.title(LANG))}</strong></a>` + tab('#/staff/analytics', 'analytics', 'Analytics') : '');
+      const nav = !staff ? "" : tab("#/staff/requests", "requests", t("nav.requests"), open || "") + tab("#/staff/new", "new", t("nav.new")) + tab("#/staff/search", "ssearch", t("nav.search")) + tab("#/staff/dashboard", "dash", t("nav.dash")) + tab("#/staff/observability", "obs", t("nav.obs")) + (cantonMember?.can_manage_knowledge ? `<a class="kb-nav ${active === 'knowledge' ? 'on' : ''}" href="#/staff/knowledge" ${active === 'knowledge' ? 'aria-current="page"' : ''}>${ICON.doc}<strong>${esc(window.KnowledgeWorkspace.title(LANG))}</strong></a>` + tab('#/staff/analytics', 'analytics', 'Analytics') : '');
       bar.innerHTML = `<div class="topbar-in">${brand(t("brand.staffSub"), staff ? roleHome() : "#/staff")}<span class="staff-tag">${esc(t("staff.tag"))}</span>
         ${nav ? `<nav class="tabs" aria-label="Workspace">${nav}</nav>` : ""}
         <div class="topbar-right">${aiStatus()}${langSel()}${themeBtn()}
@@ -736,9 +817,10 @@
     }
     await refreshCases();
     const sub = p[1] || "";
-    if (!["requests", "new", "search", "case", "dashboard"].includes(sub)) return go(roleHome());
-    renderChrome("staff", { requests: "requests", new: "new", search: "ssearch", case: "requests", dashboard: "dash" }[sub] || "");
-    if (sub === "dashboard") return viewDashboard();
+    if (!["requests", "new", "search", "case", "dashboard", "observability"].includes(sub)) return go(roleHome());
+    renderChrome("staff", { requests: "requests", new: "new", search: "ssearch", case: "requests", dashboard: "dash", observability: "obs" }[sub] || "");
+    if (sub === "dashboard") return viewManager();
+    if (sub === "observability") return viewObservability();
     if (S.casesError && sub === "requests") {
       view().innerHTML = `<section class="panel empty" role="alert"><h1>${esc(t("rq.loadError"))}</h1><p>${esc(S.casesError)}</p><button class="btn-primary" id="retryCases" type="button">${esc(t("retry"))}</button></section>`;
       $("#retryCases").addEventListener("click", () => route());
@@ -1023,10 +1105,11 @@
     }
   }
 
-  /* ======================= STAFF: dashboard (Apertus cost, search recall) ======================= */
+  /* ======================= STAFF: LLM observability (Apertus cost, latency, search recall) ======================= */
   const ROUTE_KEY = { "GET /search": "search", "POST /companies/suggest": "suggest", "POST /cases": "create",
     "POST /cases/{cid}/rematch": "rematch", "POST /cases/{cid}/draft": "draft", "POST /cases/{cid}/brief": "brief",
-    "POST /cases/{cid}/matches": "matches", "POST /cases/{cid}/details": "details", "POST /briefs/{token}/reply": "reply" };
+    "POST /cases/{cid}/matches": "matches", "POST /cases/{cid}/details": "details", "POST /briefs/{token}/reply": "reply",
+    "GET /cases/overview/analysis": "insight" };
   const routeLabel = (r) => (ROUTE_KEY[r] ? t("db.r." + ROUTE_KEY[r]) : r);
   const nf = (v, d = 0) => (v == null ? "–" : Number(v).toLocaleString(LANG, { minimumFractionDigits: d, maximumFractionDigits: d }));
   // small amounts keep four decimals: a search costs fractions of a centime
@@ -1035,7 +1118,7 @@
   const secs = (v) => (v == null ? "–" : `${nf(v, v < 1 ? 2 : 1)} s`);
   const pctTxt = (v) => (v == null ? "–" : LANG === "en" ? `${nf(v)}%` : `${nf(v)} %`);
 
-  async function viewDashboard() {
+  async function viewObservability() {
     view().innerHTML = spinner();
     let d;
     try { d = await api("/dashboard"); }
@@ -1091,6 +1174,221 @@
         <div class="db-tiles">${tile(t("db.rx"), chf(rx.cost_chf), t("db.rxD", { n: nf(rx.pages), t: nf(rx.tokens) }))}</div>
         <p class="muted">${esc(rx.basis === "measured" ? t("db.rxMeasured", { c: nf(rx.measured_calls) }) : t("db.rxEstimated"))}</p></section>
       <section class="panel db-sec" aria-labelledby="dbQ"><div class="panel-h"><h2 id="dbQ">${esc(t("db.quality"))}</h2></div>${quality}</section>`;
+  }
+
+  /* ======================= STAFF/manager: dashboard (where requests stand, trends, AI summary) ======================= */
+  // the request board's stages, in this order everywhere: KPI tiles, stacked columns, legend, table (colour slots 1-5)
+  const STAGES = ["todo", "ready", "done", "replied", "none"];
+  const FUNNEL = ["received", "matched", "pitch", "invited", "replied"];
+  const MG = { days: Number(store.get("nav-mg-days", 30)), data: null, tips: [] };
+  const pctOf = (a, b) => (b ? Math.round((100 * a) / b) : null);
+  const shortDate = (iso) => new Date(`${iso}T00:00:00Z`).toLocaleDateString(LANG, { day: "numeric", month: "short", timeZone: "UTC" });
+
+  /** A clean axis maximum and ticks (0 / 1 / 2 … or 0 / 5 / 10 …). */
+  function niceScale(max) {
+    const step = [1, 2, 5, 10, 20, 25, 50, 100, 200, 250, 500, 1000].find((st) => max / st <= 5) || Math.ceil(max / 5);
+    const top = Math.max(step, Math.ceil(max / step) * step);
+    return { top, ticks: Array.from({ length: top / step + 1 }, (_, i) => i * step) };
+  }
+
+  /** One tooltip for the page; its content is built with textContent (labels are data). */
+  function tipLayer(root) {
+    $("#mgTip")?.remove();               // inside the dashboard, so it sees the chart colours
+    const tip = document.createElement("div"); tip.id = "mgTip"; tip.className = "mg-tip"; tip.setAttribute("role", "status"); root.appendChild(tip);
+    const show = (el, x, y) => {
+      const d = MG.tips[+el.dataset.tip]; if (!d) return;
+      tip.replaceChildren();
+      const h = document.createElement("div"); h.className = "mg-tip-h"; h.textContent = d.title; tip.appendChild(h);
+      for (const r of d.rows) {
+        const row = document.createElement("div"); row.className = "mg-tip-r";
+        if (r.color) { const k = document.createElement("i"); k.className = "mg-key"; k.style.background = `var(${r.color})`; row.appendChild(k); }
+        const v = document.createElement("b"); v.textContent = r.value; row.appendChild(v);
+        const l = document.createElement("span"); l.textContent = r.label; row.appendChild(l);
+        tip.appendChild(row);
+      }
+      tip.style.display = "block";
+      const w = tip.offsetWidth, hgt = tip.offsetHeight;
+      tip.style.left = `${Math.min(window.innerWidth - w - 8, Math.max(8, x + 14))}px`;
+      tip.style.top = `${Math.max(8, y - hgt - 10)}px`;
+      root.querySelectorAll(".mg-hit.on").forEach((e) => e.classList.remove("on")); el.classList.add("on");
+    };
+    const hide = () => { tip.style.display = "none"; root.querySelectorAll(".mg-hit.on").forEach((e) => e.classList.remove("on")); };
+    root.addEventListener("pointermove", (ev) => { const el = ev.target.closest("[data-tip]"); el ? show(el, ev.clientX, ev.clientY) : hide(); });
+    root.addEventListener("pointerleave", hide);
+    root.addEventListener("focusin", (ev) => { const el = ev.target.closest("[data-tip]"); if (el) { const b = el.getBoundingClientRect(); show(el, b.left + b.width / 2, b.top); } });
+    root.addEventListener("focusout", hide);
+  }
+  const addTip = (title, rows) => MG.tips.push({ title, rows }) - 1;
+
+  /** Requests received per period, stacked by the stage they are in today. */
+  function stackChart(o) {
+    const n = o.periods.length, W = 760, H = 230, pl = 34, pr = 8, pt = 12, pb = 28;
+    const tot = o.periods.map((_, i) => STAGES.reduce((a, s) => a + o.received[s][i], 0));
+    const { top, ticks } = niceScale(Math.max(1, ...tot));
+    const band = (W - pl - pr) / n, bw = Math.max(4, Math.min(24, band * 0.62));
+    const y = (v) => pt + (H - pt - pb) * (1 - v / top);
+    const every = Math.ceil(n / 8);
+    let g = ticks.map((v) => `<line class="mg-grid" x1="${pl}" x2="${W - pr}" y1="${y(v)}" y2="${y(v)}"/><text class="mg-axis" x="${pl - 6}" y="${y(v) + 4}" text-anchor="end">${v}</text>`).join("");
+    o.periods.forEach((p, i) => {
+      const cx = pl + band * i + band / 2, x = cx - bw / 2;
+      const segs = STAGES.map((s, k) => ({ s, k, v: o.received[s][i] })).filter((z) => z.v);
+      let acc = 0;
+      segs.forEach((z, j) => {
+        const y0 = y(acc), y1 = y(acc + z.v), last = j === segs.length - 1, first = j === 0;
+        const yt = y1 + (last ? 0 : 1), h = Math.max(1, y0 - y1 - (last ? 0 : 1) - (first ? 0 : 1));
+        const r = last ? Math.min(4, h, bw / 2) : 0;
+        g += r ? `<path fill="var(--viz-${z.k + 1})" d="M${x},${yt + h} V${yt + r} Q${x},${yt} ${x + r},${yt} H${x + bw - r} Q${x + bw},${yt} ${x + bw},${yt + r} V${yt + h} Z"/>`
+          : `<rect fill="var(--viz-${z.k + 1})" x="${x}" y="${yt}" width="${bw}" height="${h}"/>`;
+        acc += z.v;
+      });
+      if (i % every === 0 || i === n - 1) g += `<text class="mg-axis" x="${cx}" y="${H - 8}" text-anchor="middle">${esc(shortDate(p))}</text>`;
+      const tip = addTip(`${o.unit === "week" ? "≥ " : ""}${shortDate(p)} · ${tot[i]} ${t("mg.total").toLowerCase()}`,
+        STAGES.map((s, k) => ({ color: `--viz-${k + 1}`, label: t("st." + s), value: String(o.received[s][i]) })));
+      g += `<rect class="mg-hit" data-tip="${tip}" tabindex="0" x="${pl + band * i}" y="${pt}" width="${band}" height="${H - pt - pb}" aria-label="${esc(`${shortDate(p)}: ${tot[i]}`)}"/>`;
+    });
+    g += `<line class="mg-base" x1="${pl}" x2="${W - pr}" y1="${y(0)}" y2="${y(0)}"/>`;
+    const legend = `<div class="mg-legend">${STAGES.map((s, k) => `<span><i class="mg-sw" style="background:var(--viz-${k + 1})"></i>${esc(t("st." + s))}</span>`).join("")}</div>`;
+    const table = `<details class="mg-tbl"><summary>${esc(t("mg.table"))}</summary><div class="db-scroll"><table class="db-table"><thead><tr><th scope="col">${esc(t("mg.date"))}</th>
+      ${STAGES.map((s) => `<th scope="col" class="n">${esc(t("st." + s))}</th>`).join("")}<th scope="col" class="n">${esc(t("mg.total"))}</th></tr></thead>
+      <tbody>${o.periods.map((p, i) => `<tr><td>${esc(shortDate(p))}</td>${STAGES.map((s) => `<td class="n">${o.received[s][i]}</td>`).join("")}<td class="n"><b>${tot[i]}</b></td></tr>`).join("")}</tbody></table></div></details>`;
+    return `${legend}<svg class="mg-svg" viewBox="0 0 ${W} ${H}" role="img" aria-label="${esc(t("mg.trend"))}">${g}</svg>${table}`;
+  }
+
+  /** One small chart per kind of work: a single series each, so no legend; the title names it. */
+  function workCharts(o) {
+    const n = o.periods.length, W = 240, H = 64, pt = 6, pb = 6;
+    const max = Math.max(1, ...Object.values(o.work).flat());
+    return `<div class="mg-minis">${["received", "pitches", "invitations", "replies"].map((k) => {
+      const v = o.work[k], total = v.reduce((a, b) => a + b, 0);
+      const x = (i) => (n === 1 ? W / 2 : 4 + ((W - 8) * i) / (n - 1)), y = (val) => pt + (H - pt - pb) * (1 - val / max);
+      const pts = v.map((val, i) => `${x(i)},${y(val)}`).join(" ");
+      const hits = v.map((val, i) => `<rect class="mg-hit" data-tip="${addTip(`${shortDate(o.periods[i])}${i === n - 1 ? ` (${t("mg.sofar")})` : ""}`, [{ color: "--viz-1", label: t("mg.w." + k), value: String(val) }])}"
+        x="${n === 1 ? 0 : x(i) - (W - 8) / (2 * (n - 1))}" y="0" width="${n === 1 ? W : (W - 8) / (n - 1)}" height="${H}"/>`).join("");
+      return `<figure class="mg-mini"><figcaption><span>${esc(t("mg.w." + k))}</span><b>${total}</b></figcaption>
+        <svg class="mg-svg" viewBox="0 0 ${W} ${H}" role="img" aria-label="${esc(`${t("mg.w." + k)}: ${total}`)}">
+          <line class="mg-base" x1="0" x2="${W}" y1="${y(0)}" y2="${y(0)}"/>
+          ${n > 1 ? `<polygon class="mg-wash" points="${x(0)},${y(0)} ${pts} ${x(n - 1)},${y(0)}"/><polyline class="mg-line" points="${pts}"/>` : ""}
+          <circle class="mg-dot now" cx="${x(n - 1)}" cy="${y(v[n - 1])}" r="4"/>${hits}</svg></figure>`;
+    }).join("")}</div>`;
+  }
+
+  /** How far the requests got: an ordered ramp, one bar per step; the % is of all requests received. */
+  function funnelChart(o) {
+    const base = o.funnel.received || 0;
+    return `<div class="mg-funnel">${FUNNEL.map((k, i) => {
+      const v = o.funnel[k], w = base ? (100 * v) / base : 0;
+      return `<div class="mg-frow"><span class="mg-fl">${esc(t("fu." + k))}</span>
+        <span class="mg-ftrack"><span class="mg-fbar" style="width:${Math.max(v ? 1.5 : 0, w)}%;background:var(--fun-${i + 1})"></span></span>
+        <span class="mg-fv"><b>${v}</b> <span class="muted">${base ? `${pctOf(v, base)}%` : ""}</span></span></div>`;
+    }).join("")}</div>`;
+  }
+
+  function barList(rows, label) {
+    const max = Math.max(1, ...rows.map((r) => r[1]));
+    return rows.length ? `<div class="mg-bars">${rows.map(([k, v]) => `<div class="mg-brow"><span class="mg-bl">${esc(label(k))}</span>
+      <span class="mg-btrack"><span class="mg-bbar" style="width:${(100 * v) / max}%"></span></span><b class="mg-bv">${v}</b></div>`).join("")}</div>`
+      : `<p class="muted">${esc(t("mg.empty"))}</p>`;
+  }
+
+  /** The requests behind a figure, with a link to work on each. */
+  function requestList(title, rows) {
+    const d = $("#mgDrawer");
+    d.innerHTML = `<div class="panel-h"><h2 id="mgDrawerH" tabindex="-1">${esc(title)} <span class="muted">${rows.length}</span></h2>
+        <button class="btn btn-sm" type="button" id="mgDrawerX">${ICON.x || "✕"}${esc(t("mg.hide"))}</button></div>
+      ${rows.length ? `<div class="db-scroll"><table class="db-table"><thead><tr><th scope="col">${esc(t("mg.col.company"))}</th><th scope="col">${esc(t("mg.col.place"))}</th>
+        <th scope="col">${esc(t("mg.col.area"))}</th><th scope="col" class="n">${esc(t("mg.col.age"))}</th><th scope="col"></th></tr></thead>
+        <tbody>${rows.map((r) => `<tr><td><a href="#/staff/case/${esc(r.id)}"><b>${esc(companyOf(r))}</b></a></td><td>${esc(placeOf(r) || "–")}</td>
+          <td>${esc((r.niche || r.area) && areaLabel(r.area, r.niche) || r.area || "–")}</td><td class="n">${esc(t("mg.days", { n: r.age_days }))}</td>
+          <td class="n"><a class="btn btn-sm" href="#/staff/case/${esc(r.id)}">${esc(t("mg.open"))}</a></td></tr>`).join("")}</tbody></table></div>`
+        : `<p class="muted">${esc(t("mg.empty"))}</p>`}`;
+    d.hidden = false;
+    $("#mgDrawerX").addEventListener("click", () => { d.hidden = true; $$(".mg-stage[aria-expanded=true], .mg-attn button[aria-expanded=true]").forEach((b) => b.setAttribute("aria-expanded", "false")); });
+    $("#mgDrawerH").focus();
+  }
+
+  async function viewManager() {
+    await areas();
+    const root = $(".mg");
+    if (root) root.classList.add("loading");            // a new period keeps the frame while it loads
+    else view().innerHTML = spinner();
+    let o;
+    try { o = await api(`/cases/overview?days=${MG.days}`); }
+    catch (e) { view().innerHTML = `<div class="callout warn">${ICON.info}<span>${esc(t("err"))}: ${esc(e.message)}</span></div>`; return; }
+    MG.data = o; MG.tips = [];
+    const byId = new Map(o.requests.map((r) => [r.id, r]));
+    const st = o.stages, k = o.kpi, rate = (v) => (v == null ? "–" : `${v}%`);
+    const tile = (label, value, sub) => `<div class="db-tile"><span class="db-l">${esc(label)}</span><b class="db-v">${esc(value)}</b>${sub ? `<span class="db-s">${esc(sub)}</span>` : ""}</div>`;
+    const ranges = [[7, "mg.r7"], [30, "mg.r30"], [90, "mg.r90"], [0, "mg.rall"]];
+    const lvIcon = { critical: ICON.info, warning: ICON.cal || ICON.info, serious: ICON.search };
+    view().innerHTML = `<div class="mg">
+      <div class="page-h"><div><h1>${esc(t("mg.title"))}</h1><p>${esc(t("mg.lead"))}</p></div>
+        <div class="actions"><a class="btn-primary btn-brand" href="#/staff/new">${ICON.plus}${esc(t("nav.new"))}</a>
+          <a class="btn" href="#/staff/requests">${ICON.inbox}${esc(t("mg.board"))}</a><a class="btn" href="#/staff/observability">${ICON.shield}${esc(t("mg.obs"))}</a></div></div>
+      <div class="mg-filters" role="group" aria-label="${esc(t("mg.period"))}"><span class="muted">${esc(t("mg.period"))}</span>
+        <div class="seg-tabs">${ranges.map(([d, l]) => `<button type="button" data-days="${d}" aria-pressed="${d === MG.days}" class="${d === MG.days ? "on" : ""}">${esc(t(l))}</button>`).join("")}</div></div>
+
+      <div class="mg-top">
+        <div class="mg-hero"><span class="db-l">${esc(t("mg.hero"))}</span><b>${o.total}</b>
+          <span class="db-s">${esc(o.days ? t("mg.heroP", { d: o.days }) : t("mg.heroD", { n: o.all_total }))}</span></div>
+        <div class="db-tiles mg-kpis">
+          ${tile(t("mg.kpiPitch"), k.days_to_pitch == null ? "–" : t("mg.kpiPitchV", { d: k.days_to_pitch }), t("mg.kpiPitchD"))}
+          ${tile(t("mg.kpiMatch"), rate(k.match_rate), t("mg.kpiMatchD"))}
+          ${tile(t("mg.kpiOpen"), rate(k.open_rate), t("mg.ofInvited"))}
+          ${tile(t("mg.kpiReply"), rate(k.reply_rate), t("mg.ofInvited"))}</div></div>
+
+      <div class="mg-stages">${STAGES.map((s, i) => `<button type="button" class="mg-stage" data-stage="${s}" aria-expanded="false" aria-controls="mgDrawer">
+          <span class="mg-st-h"><i class="mg-sw" style="background:var(--viz-${i + 1})"></i>${esc(t("st." + s))}</span>
+          <b>${st[s]}</b><span class="db-s">${esc(t("st." + s + "D"))}</span>
+          <span class="mg-share">${o.total ? esc(t("mg.share", { p: `${pctOf(st[s], o.total)}%` })) : ""}</span></button>`).join("")}</div>
+      <section class="panel mg-drawer" id="mgDrawer" hidden aria-live="polite"></section>
+
+      <div class="mg-row">
+        <section class="panel mg-attn" aria-labelledby="mgAttnH"><div class="panel-h"><h2 id="mgAttnH">${esc(t("mg.attn"))}</h2></div>
+          ${o.attention.length ? `<ul>${o.attention.map((a, i) => `<li class="lv-${a.level}"><span class="mg-lv">${lvIcon[a.level] || ""}${esc(t("lv." + a.level))}</span>
+            <span class="mg-at">${esc(t("at." + a.kind, { n: a.ids.length }))}</span>
+            <button class="btn btn-sm" type="button" data-attn="${i}" aria-expanded="false" aria-controls="mgDrawer">${esc(t("mg.show"))}</button></li>`).join("")}</ul>`
+            : `<p class="muted">${ICON.check}${esc(t("mg.attnNone"))}</p>`}</section>
+        <section class="panel mg-ai" aria-labelledby="mgAiH"><div class="panel-h"><h2 id="mgAiH">${ICON.sparkle}${esc(t("mg.ai"))}</h2></div>
+          <div id="mgAi" aria-live="polite">${spinner(t("mg.aiWorking"))}</div></section></div>
+
+      <section class="panel mg-chart" aria-labelledby="mgTrendH"><div class="panel-h"><h2 id="mgTrendH">${esc(t("mg.trend"))}</h2><span class="muted">${esc(t("mg.trendD"))}</span></div>
+        ${o.total ? stackChart(o) : `<p class="muted">${esc(t("mg.empty"))}</p>`}</section>
+      <section class="panel mg-chart" aria-labelledby="mgWorkH"><div class="panel-h"><h2 id="mgWorkH">${esc(t("mg.work"))}</h2><span class="muted">${esc(t("mg.workD"))}</span></div>${workCharts(o)}</section>
+      <div class="mg-row">
+        <section class="panel mg-chart" aria-labelledby="mgFunH"><div class="panel-h"><h2 id="mgFunH">${esc(t("mg.funnel"))}</h2></div>
+          <p class="muted">${esc(t("mg.funnelD"))}</p>${funnelChart(o)}</section>
+        <section class="panel mg-chart" aria-labelledby="mgAreaH"><div class="panel-h"><h2 id="mgAreaH">${esc(t("mg.areas"))}</h2></div>
+          ${barList(o.by_area, (a) => (a ? areaLabel(a, "") || a : t("mg.unknown")))}
+          <h3 class="db-h3">${esc(t("mg.countries"))}</h3>${barList(o.by_country, (c) => c || t("mg.unknown"))}</section></div>
+    </div>`;
+    tipLayer($(".mg"));
+    $$("[data-days]").forEach((b) => b.addEventListener("click", () => {
+      MG.days = Number(b.dataset.days); store.set("nav-mg-days", MG.days); viewManager();
+    }));
+    const expand = (btn, title, rows) => {
+      const was = btn.getAttribute("aria-expanded") === "true";
+      $$(".mg-stage, .mg-attn button").forEach((x) => x.setAttribute("aria-expanded", "false"));
+      if (was) { $("#mgDrawer").hidden = true; return; }
+      btn.setAttribute("aria-expanded", "true"); requestList(title, rows);
+    };
+    $$(".mg-stage").forEach((b) => b.addEventListener("click", () =>
+      expand(b, t("st." + b.dataset.stage), o.requests.filter((r) => r.stage === b.dataset.stage).sort((a, c) => c.age_days - a.age_days))));
+    $$("[data-attn]").forEach((b) => b.addEventListener("click", () => {
+      const a = o.attention[+b.dataset.attn];
+      expand(b, t("at." + a.kind, { n: a.ids.length }), a.ids.map((id) => byId.get(id)).filter(Boolean));
+    }));
+    loadInsight(o);
+  }
+
+  async function loadInsight(o) {
+    const box = $("#mgAi");
+    let a;
+    try { a = await api(`/cases/overview/analysis?days=${o.days || 0}&lang=${LANG}`); }
+    catch (e) { if (box) box.innerHTML = `<div class="callout warn">${ICON.info}<span>${esc(t("err"))}: ${esc(e.message)}</span></div>`; return; }
+    if (!box || !box.isConnected || MG.data !== o) return;       // the period changed meanwhile
+    box.innerHTML = `<p class="mg-ai-text">${esc(a.text)}</p>
+      <p class="mg-ai-foot">${a.by === "apertus" ? `${ICON.sparkle}${esc(t("mg.aiBy", { m: a.model }))}` : `${ICON.info}${esc(t("mg.aiRules", { r: t("mg.why." + (a.reason || "unavailable")) }))}`}
+        · <time datetime="${esc(a.generated_at)}">${esc(fmtDate(a.generated_at))}</time></p>`;
   }
 
   /* ======================= STAFF/officer: new request (company link or info first) ======================= */

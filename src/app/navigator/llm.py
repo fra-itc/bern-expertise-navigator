@@ -43,10 +43,12 @@ class Meter:
     completion_tokens: int = 0
     seconds: float = 0.0           # time spent waiting for Apertus
     case_id: str = ""              # the request (case) the calls were made for, when known
+    models: set[str] = field(default_factory=set)   # the models that answered
     _lock: threading.Lock = field(default_factory=threading.Lock, repr=False)
 
-    def add(self, prompt: int, completion: int, seconds: float) -> None:
+    def add(self, prompt: int, completion: int, seconds: float, model: str = "") -> None:
         with self._lock:
+            self.models.add(model or settings.llm_model)
             self.calls += 1
             self.prompt_tokens += prompt
             self.completion_tokens += completion
@@ -131,14 +133,15 @@ def _keys(schema: type[BaseModel]) -> str:
 
 
 def chat(messages: list[dict], *, schema: type[BaseModel] | None = None,
-         max_tokens: int = 2048, temperature: float = 0.0, mode: str | None = None) -> str:
+         max_tokens: int = 2048, temperature: float = 0.0, mode: str | None = None, model: str | None = None) -> str:
     """mode: force one structured-output mode. "none" (format described in the prompt) is ~10x faster than
-    guided "json_schema" decoding on the shared Apertus gateway, so interactive calls use it."""
+    guided "json_schema" decoding on the shared Apertus gateway, so interactive calls use it.
+    model: another model served by the same gateway (default: LLM_MODEL)."""
     global _mode_idx
     forced = mode
     while True:
         body: dict = {
-            "model": settings.llm_model,
+            "model": model or settings.llm_model,
             "messages": messages,
             "temperature": temperature,
             "max_tokens": max_tokens,
@@ -173,7 +176,7 @@ def chat(messages: list[dict], *, schema: type[BaseModel] | None = None,
             usage["prompt_tokens"] += u.get("prompt_tokens", 0)
             usage["completion_tokens"] += u.get("completion_tokens", 0)
         if (m := _meter.get()) is not None:
-            m.add(u.get("prompt_tokens", 0), u.get("completion_tokens", 0), time.monotonic() - t0)
+            m.add(u.get("prompt_tokens", 0), u.get("completion_tokens", 0), time.monotonic() - t0, model or settings.llm_model)
         return data["choices"][0]["message"]["content"] or ""
 
 

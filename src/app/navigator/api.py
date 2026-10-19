@@ -19,7 +19,7 @@ from fastapi.responses import FileResponse, JSONResponse, Response
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
 
-from . import (archetypes, brief, cases, crawl, dashboard, documents, index, llm, plain, reply, search as search_mod, showcase,
+from . import (archetypes, brief, cases, crawl, dashboard, documents, index, llm, overview, plain, reply, search as search_mod, showcase,
                suggest, understand)
 from .config import DATA_DIR, load_sources, settings
 from .schema import EntityDetail, RelatedRef, SearchResponse
@@ -245,6 +245,19 @@ def list_cases():
              "matched": bool(c.matches), "views": ((c.outreach or {}).get("brief") or {}).get("views", 0),
              "replies": len((c.outreach or {}).get("replies", []))}
             for c in cases.list_cases()]
+
+
+# manager dashboard (under /cases: behind the staff login; declared before /cases/{cid})
+@app.get("/cases/overview")
+def get_overview(days: int = Query(30, ge=0, le=3650)):
+    """Where the requests received in the last `days` days (0: all) stand, the work over time, what needs action."""
+    return overview.build(days or None)
+
+
+@app.get("/cases/overview/analysis")
+def get_overview_analysis(days: int = Query(30, ge=0, le=3650), lang: Literal["en", "de", "fr"] = "en"):
+    """A few plain sentences on the situation, written by Apertus 8B from the aggregate figures only."""
+    return overview.analysis(overview.build(days or None), lang)
 
 
 @app.post("/documents", response_model=documents.Document)
