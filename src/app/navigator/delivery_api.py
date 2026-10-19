@@ -11,7 +11,7 @@ class Send(BaseModel):
     idempotency_key: str = Field(min_length=16,max_length=100,pattern=r'^[a-zA-Z0-9_-]+$')
 
 @router.get('/cases/{cid}/delivery')
-def status(cid: str, response: Response, user=Depends(knowledge_access.require_member)):
+def status(cid: str, response: Response, user=Depends(knowledge_access.require_case_member)):
     response.headers['Cache-Control'] = 'no-store'
     case = cases.get(cid)
     if not case:
@@ -30,7 +30,7 @@ def pdf(token: str):
     return Response(pitch_pdf.render(data), media_type='application/pdf', headers={'Content-Disposition':'attachment; filename="Bern-pitch.pdf"','Cache-Control':'no-store'})
 
 @router.post('/cases/{cid}/delivery')
-def send(cid: str, body: Send, user=Depends(knowledge_access.require_representative)):
+def send(cid: str, body: Send, user=Depends(knowledge_access.require_case_representative)):
     case = cases.get(cid)
     if not case:
         raise HTTPException(404,'Unknown lead')
@@ -50,7 +50,7 @@ def send(cid: str, body: Send, user=Depends(knowledge_access.require_representat
     except ValueError as exc:
         raise HTTPException(422,str(exc)) from exc
     if not result['duplicate']:
-        cases.log(case,user['email'],'email_delivery',result['status'])
+        cases.log(case,user['email'] or user['name'],'email_delivery',result['status'])
         if result['status'] == 'sent':
             case.status = 'contacted'
         cases.save(case)

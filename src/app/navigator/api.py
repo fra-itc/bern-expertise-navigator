@@ -13,7 +13,7 @@ from pathlib import Path
 from typing import Literal
 
 from fastapi import FastAPI, HTTPException, Query, Request, Depends
-from .knowledge_access import require_representative
+from .knowledge_access import require_case_representative
 from fastapi.concurrency import run_in_threadpool
 from fastapi.responses import FileResponse, JSONResponse, Response
 from fastapi.staticfiles import StaticFiles
@@ -63,9 +63,9 @@ app.include_router(knowledge_workflow_router)
 @app.middleware('http')
 async def staff_workspace_boundary(request: Request, call_next):
     if request.url.path == '/cases' or request.url.path.startswith('/cases/'):
-        from .knowledge_access import require_member
+        from .knowledge_access import require_case_member
         try:
-            require_member(request)
+            require_case_member(request)
         except HTTPException as error:
             return JSONResponse({'detail': error.detail}, status_code=error.status_code)
     return await call_next(request)
@@ -374,7 +374,7 @@ class DraftReq(StaffAction):
 
 
 @app.post("/cases/{cid}/draft")
-def draft(cid: str, body: DraftReq, user=Depends(require_representative)):
+def draft(cid: str, body: DraftReq, user=Depends(require_case_representative)):
     c = _case_or_404(cid)
     if not any(m.selected for m in c.matches) and not c.outreach.get("brief"):
         raise HTTPException(400, "Choose at least one partner first")
@@ -392,7 +392,7 @@ class BriefReq(StaffAction):
 
 
 @app.post("/cases/{cid}/brief")
-def prepare_brief(cid: str, body: BriefReq, request: Request, user=Depends(require_representative)):
+def prepare_brief(cid: str, body: BriefReq, request: Request, user=Depends(require_case_representative)):
     """"Generate pitch": Output 1 (strategic pitch for the CEO, published under a private link) + Output 2
     (simplified preface for the officer). Nothing has to be entered: name and language come from the request.
     Approved Knowledge Base companies can be added to the partners."""
@@ -509,7 +509,7 @@ class Outcome(StaffAction):
 
 
 @app.post("/cases/{cid}/outcome", response_model=cases.Case)
-def outcome(cid: str, body: Outcome, user=Depends(require_representative)):
+def outcome(cid: str, body: Outcome, user=Depends(require_case_representative)):
     c = _case_or_404(cid)
     if not any(m.selected for m in c.matches) and not c.outreach.get("brief"):
         raise HTTPException(409, "Choose at least one partner first")
@@ -529,7 +529,7 @@ def outcome(cid: str, body: Outcome, user=Depends(require_representative)):
 
 
 @app.get("/cases/{cid}/invite.ics")
-def invite(cid: str, start: str, minutes: int = Query(30, ge=10, le=240), organizer: str = "", organizer_email: str = "", user=Depends(require_representative)):
+def invite(cid: str, start: str, minutes: int = Query(30, ge=10, le=240), organizer: str = "", organizer_email: str = "", user=Depends(require_case_representative)):
     c = _case_or_404(cid)
     try:
         body = cases.ics(c, start, minutes, organizer, organizer_email)

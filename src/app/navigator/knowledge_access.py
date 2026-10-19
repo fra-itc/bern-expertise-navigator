@@ -101,6 +101,26 @@ def require_representative(request: Request):
     return user
 
 
+
+def enforced() -> bool:
+    """Canton accounts protect the staff workspace once the operator configures them (or the local preview).
+    Until then the workspace (/cases, behind the Caddy staff login) works as before; the Knowledge Base,
+    discovery and analytics stay closed, since they need an account either way."""
+    return bool(os.getenv("KB_ACCOUNTS_FILE", "")) or os.getenv("KB_INTERNAL_PREVIEW") == "1"
+
+
+_STAFF = {"email": "", "name": "staff", "role": "representative", "can_manage_knowledge": False, "can_create_pitch": True}
+
+
+def require_case_member(request: Request):
+    """/cases routes: a canton account once accounts are configured, else the existing staff login suffices."""
+    return require_member(request) if enforced() else _STAFF
+
+
+def require_case_representative(request: Request):
+    return require_representative(request) if enforced() else _STAFF
+
+
 if __name__ == "__main__":
     import argparse
     import getpass

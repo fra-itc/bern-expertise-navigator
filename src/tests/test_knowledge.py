@@ -22,6 +22,7 @@ def client(tmp_path, monkeypatch):
                                   "password_hash": knowledge_access.password_hash("test-password")},
     }
     monkeypatch.setattr(knowledge_access, "accounts", lambda: configured)
+    monkeypatch.setenv("KB_ACCOUNTS_FILE", str(tmp_path / "accounts.json"))   # the operator configured accounts
     return TestClient(app)
 
 
@@ -152,6 +153,17 @@ def test_agent_cannot_generate_or_send_pitch_or_change_production_role(client):
         payload = {'actor': 'Agent', 'kind': 'email', 'subject': 'Pitch', 'body': 'Reviewed', 'idempotency_key': 'test-role-key-123456'}
         assert client.post('/cases/missing/' + path, json=payload).status_code == 403
     assert client.patch('/staff/preview-role', json={'role': 'representative'}).status_code == 403
+
+
+def test_without_accounts_the_workspace_keeps_the_staff_login_and_the_knowledge_base_stays_closed(tmp_path, monkeypatch):
+    monkeypatch.delenv("KB_ACCOUNTS_FILE", raising=False)
+    monkeypatch.delenv("KB_INTERNAL_PREVIEW", raising=False)
+    monkeypatch.setattr(cases, "DB", tmp_path / "cases.db")
+    client = TestClient(app)
+    assert client.get("/cases").status_code == 200          # behind the Caddy staff login, as before
+    assert client.post("/cases/missing/draft", json={"actor": "Maria"}).status_code == 404   # past the role check
+    assert client.get("/kb/companies").status_code == 403   # not behind Caddy: needs a canton account
+    assert client.get("/discovery/runs").status_code == 403
 
 
 def test_cases_are_private_without_verified_session(client):
