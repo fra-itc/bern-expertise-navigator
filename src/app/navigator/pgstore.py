@@ -112,6 +112,11 @@ def _pg(url: str) -> _Pg:
         return _pg_ok[url]
 
 
+# (relation, start label, end label) of every structural edge as stored, from graph.EDGE_RULES
+_STRUCTURAL_EDGES = sorted({(rel, *((graph.LABEL[a], graph.LABEL[b]) if d == "fwd" else (graph.LABEL[b], graph.LABEL[a])))
+                            for (a, b), (rel, d) in graph.EDGE_RULES.items()})
+
+
 def _cypher(cur, query: str, params: dict | None = None, cols: str = "v agtype"):
     """Run Cypher on expertise_graph; params go through AGE's single agtype parameter."""
     q = f"SELECT * FROM cypher('{GRAPH}', $$ {query} $$" + (", %s" if params is not None else "") + f") AS ({cols})"
@@ -396,18 +401,26 @@ class PgIndexStore:
         """Structural neighbours via Cypher, ordered like the file backend's adjacency list (edge seq)."""
         if not ids:
             return {}
-        # One query per structural label: an unlabelled pattern also walks the paper graph (AUTHORED, CITES, ABOUT,
-        # SIMILAR_TO: ~78k edges), which took seconds per call and hit the statement timeout under load.
-        rows = []
-        with self.pg.op("neighbors") as cur:
-            for rel in graph.STRUCTURAL:
-                _cypher(cur, f"MATCH (a)-[r:{rel}]-(b) WHERE a.entity_id IN $ids AND r.seq IS NOT NULL "
-                             "RETURN a.entity_id, b.entity_id, r.seq", {"ids": list(ids)},
-                        cols="a agtype, b agtype, seq agtype")
-                rows += [(json.loads(a), json.loads(b_), int(json.loads(s))) for a, b_, s in cur.fetchall()]
+        # Fully typed patterns only, one per stored (relation, start label, end label) and direction: an unlabelled
+        # pattern also walks the paper graph (AUTHORED, CITES, ABOUT, SIMILAR_TO: ~78k edges) and took 4.5 s per call
+        # on production (statement timeouts under load); a typed one takes milliseconds.
+        types = {i: e.entity_type for i, e in self.load_entities().items()}
+        by_label: dict[str, list[str]] = defaultdict(list)
+        for i in dict.fromkeys(ids):
+            if i in types:
+                by_label[graph.LABEL[types[i]]].append(i)
         acc: dict[str, list[tuple[int, str]]] = defaultdict(list)
-        for a, b_, s in rows:
-            acc[a].append((s, b_))
+        with self.pg.op("neighbors") as cur:
+            for rel, ls, ld in _STRUCTURAL_EDGES:
+                for side, mine in (("a", by_label.get(ls)), ("b", by_label.get(ld))):
+                    if not mine:
+                        continue
+                    other = "b" if side == "a" else "a"
+                    _cypher(cur, f"MATCH (a:{ls})-[r:{rel}]->(b:{ld}) WHERE {side}.entity_id IN $ids "
+                                 f"AND r.seq IS NOT NULL RETURN {side}.entity_id, {other}.entity_id, r.seq",
+                            {"ids": mine}, cols="x agtype, y agtype, seq agtype")
+                    for x, y, s in cur.fetchall():
+                        acc[json.loads(x)].append((int(json.loads(s)), json.loads(y)))
         return {i: list(dict.fromkeys(n for _, n in sorted(acc.get(i, [])))) for i in ids}
 
     # ---------------- papers (migration 0004) --------------------------------------
