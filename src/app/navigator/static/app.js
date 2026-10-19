@@ -754,7 +754,7 @@
     } else {
       // still to do: requests without a pitch, and companies that replied
       const open = S.cases.filter((c) => (c.status === "new" && !c.has_brief && c.matched !== false) || c.status === "interested").length;
-      const nav = !staff ? "" : tab("#/staff/requests", "requests", t("nav.requests"), open || "") + tab("#/staff/new", "new", t("nav.new")) + tab("#/staff/search", "ssearch", t("nav.search")) + tab("#/staff/dashboard", "dash", t("nav.dash")) + tab("#/staff/observability", "obs", t("nav.obs")) + (cantonMember?.can_manage_knowledge ? `<a class="kb-nav ${active === 'knowledge' ? 'on' : ''}" href="#/staff/knowledge" ${active === 'knowledge' ? 'aria-current="page"' : ''}>${ICON.doc}<strong>${esc(window.KnowledgeWorkspace.title(LANG))}</strong></a>` + tab('#/staff/analytics', 'analytics', 'Analytics') : '');
+      const nav = !staff ? "" : tab("#/staff/dashboard", "dash", t("nav.dash")) + tab("#/staff/requests", "requests", t("nav.requests"), open || "") + tab("#/staff/new", "new", t("nav.new")) + tab("#/staff/search", "ssearch", t("nav.search")) + tab("#/staff/observability", "obs", t("nav.obs")) + (cantonMember?.can_manage_knowledge ? `<a class="kb-nav ${active === 'knowledge' ? 'on' : ''}" href="#/staff/knowledge" ${active === 'knowledge' ? 'aria-current="page"' : ''}>${ICON.doc}<strong>${esc(window.KnowledgeWorkspace.title(LANG))}</strong></a>` + tab('#/staff/analytics', 'analytics', 'Analytics') : '');
       bar.innerHTML = `<div class="topbar-in">${brand(t("brand.staffSub"), staff ? roleHome() : "#/staff")}<span class="staff-tag">${esc(t("staff.tag"))}</span>
         ${nav ? `<nav class="tabs" aria-label="Workspace">${nav}</nav>` : ""}
         <div class="topbar-right">${aiStatus()}${langSel()}${themeBtn()}
