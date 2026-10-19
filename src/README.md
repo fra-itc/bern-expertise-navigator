@@ -116,8 +116,10 @@ allows the first 10,000 matching papers; set `OPENALEX_API_KEY` (free, openalex.
 Names are self-declared and stored only in the browser (prototype, no passwords); every action is recorded in the
 request's activity log with that name.
 
-Emails are never sent by the server: **Open in email app** uses `mailto:` and the officer sends from their own mail
-client. **Calendar invite** downloads a standard `.ics` file.
+By default, **Open in email app** uses `mailto:` and the officer sends from their own client.
+An explicitly configured SMTP account enables **Send email with PDF**, with a public HTTPS pitch link,
+PDF attachment and delivery history. No email is sent on generation. **Calendar invite** downloads a
+standard `.ics` file. Setup and limits: [interactive pitch and presentation](../docs/pitch-experience.md).
 
 ## Pipeline
 

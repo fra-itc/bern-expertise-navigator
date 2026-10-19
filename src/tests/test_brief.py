@@ -38,6 +38,9 @@ OFF = {"actor": "Maria"}
 @pytest.fixture()
 def client(tmp_path, monkeypatch):
     monkeypatch.setattr(cases, "DB", tmp_path / "cases.db")
+    from navigator import knowledge_access, published_pitch
+    monkeypatch.setattr(knowledge_access, "member", lambda request: {"email": "officer@example.test", "role": "representative"})
+    monkeypatch.setattr(published_pitch, "DB", tmp_path / "published.db")
     monkeypatch.setattr(llm, "available", lambda *a, **k: False)
     monkeypatch.setattr(brief.index, "load_entities", lambda: ENTS)
     monkeypatch.setattr(search, "neighbors", lambda ids: {})
@@ -56,6 +59,20 @@ def _chosen_case(client):
     cid = client.post("/cases", json=REQ).json()["id"]
     client.post(f"/cases/{cid}/selection", json={"selected": ["p1"], **OFF})   # p2 is offered but not chosen
     return cid
+
+
+def test_pdf_download_and_disabled_server_delivery(client, monkeypatch):
+    from navigator import knowledge_access
+    monkeypatch.setattr(knowledge_access, 'member', lambda request: {'email': 'officer@example.test', 'role': 'representative'})
+    monkeypatch.delenv('SMTP_HOST', raising=False)
+    cid = _chosen_case(client)
+    prepared = client.post(f'/cases/{cid}/brief', json=OFF).json()
+    pdf = client.get('/briefs/' + prepared['token'] + '/pdf')
+    assert pdf.status_code == 200 and pdf.content.startswith(b'%PDF')
+    assert pdf.content == client.get('/briefs/' + prepared['token'] + '/pdf').content
+    assert client.get(f'/cases/{cid}/delivery').json()['configured'] is False
+    response = client.post(f'/cases/{cid}/delivery', json={'subject': 'Pitch', 'body': 'Reviewed message', 'idempotency_key': 'test-delivery-key-1234'})
+    assert response.status_code == 503
 
 
 def test_brief_only_chosen_partners_and_everything_sourced(client):
@@ -126,3 +143,52 @@ def test_company_name_is_read_from_the_profile():
     for text in ("The company focuses on glucose sensors.", "They develop glucose sensors."):
         c.analysis.summary = text
         assert cases.guess_company(c) == ""
+
+
+def test_local_company_only_pitch_and_email(client, monkeypatch):
+    from navigator import knowledge, complementarity
+    record = {"id": "local", "revision": "v1", "name": "Example Materials", "canton": "Bern", "status": "ready",
+              "sources": [{"url": "https://example.org/materials", "text": "Biocompatibility testing and microfabrication for medical devices."}]}
+    monkeypatch.setattr(knowledge, "get", lambda key: record if key == "local" else None)
+    cid = client.post("/cases", json=REQ).json()["id"]
+    client.post(f"/cases/{cid}/selection", json={"selected": [], **OFF})   # only the Knowledge Base company
+    source = next(complementarity.passages(record))
+    result = client.post(f"/cases/{cid}/brief", json={**OFF, "knowledge_sources": [{key: source[key] for key in ("id", "source_id", "revision")}]})
+    assert result.status_code == 200
+    data = result.json()
+    assert data["brief"]["items"][0]["name"] == "Example Materials"
+    assert data["brief"]["items"][0]["quote"]["text"] == record["sources"][0]["text"]
+    email = client.post(f"/cases/{cid}/draft", json={**OFF, "link": "https://example.test/#/b/" + data["token"]})
+    assert email.status_code == 200 and "Example Materials" in email.json()["body"]
+    record["revision"] = "v2"
+    assert client.post(f"/cases/{cid}/brief", json={**OFF, "knowledge_sources": [{key: source[key] for key in ("id", "source_id", "revision")}] }).status_code == 422
+
+
+@pytest.mark.parametrize('lang', ['en', 'de', 'fr'])
+@pytest.mark.parametrize('mixed', [False, True])
+def test_kb_approvals_survive_regeneration_and_summary_matches(client, monkeypatch, lang, mixed):
+    from navigator import knowledge, complementarity
+    record = {'id':'local','revision':'v1','name':'Example Materials','canton':'Bern','status':'ready',
+              'sources':[{'url':'https://example.org/materials','text':'Biocompatibility testing and microfabrication for medical devices.'}]}
+    monkeypatch.setattr(knowledge,'get',lambda key:record if key=='local' else None)
+    cid=client.post('/cases',json=REQ).json()['id']
+    client.post(f'/cases/{cid}/selection',json={**OFF,'selected':['p1'] if mixed else []})
+    source=next(complementarity.passages(record))
+    refs=[{key:source[key] for key in ('id','revision','source_id')}]
+    first=client.post(f'/cases/{cid}/brief',json={**OFF,'lang':lang,'knowledge_sources':refs}).json()
+    expected=brief.COMMERCIAL[lang]['summary'].format(company=REQ['company'],n=2 if mixed else 1)
+    assert first['summary']['text']==expected
+    assert any('Example Materials' in line['text'] for line in first['explainer'][1]['lines'])
+    stored=client.get(f'/cases/{cid}').json()['outreach']['brief']
+    assert stored['knowledge_sources']==refs
+    assert 'knowledge_sources' not in client.get('/briefs/'+first['token']).json()
+    regenerated=client.post(f'/cases/{cid}/brief',json={**OFF,'lang':lang})
+    assert regenerated.status_code==200
+    assert 'Example Materials' in [i['name'] for i in regenerated.json()['brief']['items']]
+    assert regenerated.json()['token']==first['token']   # the link stays the same until it is disabled
+    record['revision']='v2'
+    assert client.post(f'/cases/{cid}/brief',json=OFF).status_code==422
+    cleared=client.post(f'/cases/{cid}/brief',json={**OFF,'knowledge_sources':[]})
+    assert cleared.status_code==(200 if mixed else 400)
+    if mixed:
+        assert 'Example Materials' not in [i['name'] for i in cleared.json()['brief']['items']]

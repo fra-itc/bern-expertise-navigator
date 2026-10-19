@@ -36,6 +36,9 @@ class DocumentError(ValueError):
 
 
 class Document(BaseModel):
+    original_id: str | None = Field(default=None, pattern=r'^[0-9a-f]{32}$')
+    original_size: int = Field(default=0, ge=0, le=25_000_000)
+    original_sha256: str | None = Field(default=None, pattern=r'^[0-9a-f]{64}$')
     name: str = Field(..., max_length=200)
     kind: str = Field(..., max_length=40)
     pages: int = 0               # pages / slides / sheets, when the format has them

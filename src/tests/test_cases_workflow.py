@@ -19,6 +19,9 @@ REQ = {"company": "Example Sensors GmbH (fictional)", "contact_name": "Anna Exam
 @pytest.fixture()
 def client(tmp_path, monkeypatch):
     monkeypatch.setattr(cases, "DB", tmp_path / "cases.db")
+    from navigator import knowledge_access, published_pitch
+    monkeypatch.setattr(knowledge_access, "member", lambda request: {"email": "officer@example.test", "role": "representative"})
+    monkeypatch.setattr(published_pitch, "DB", tmp_path / "published.db")
     monkeypatch.setattr(llm, "available", lambda *a, **k: False)
     fake = [Match(id=f"e{i}", name=n, entity_type=t, institution="DCB", url=f"https://www.dcberne.com/{i}", why="test")
             for i, (n, t) in enumerate([("Prof. A", "person"), ("Lab B", "unit"), ("Dr. C", "person")])]
@@ -32,6 +35,13 @@ def test_plain_language_terms_from_glossary():
     assert {"continuous glucose monitoring", "type 1 diabetes", "clinical study", "regulatory affairs"} <= found
     de = plain.find_terms("needle-free CGM", "de")
     assert any("Blutzucker" in t["plain"] for t in de)
+
+
+def test_lead_match_scope_is_saved_and_validated(client):
+    response = client.post('/cases', json={**REQ, 'match_scope': 'north'})
+    assert response.status_code == 200
+    assert client.get('/cases/' + response.json()['id']).json()['match_scope'] == 'north'
+    assert client.post('/cases', json={**REQ, 'match_scope': 'worldwide'}).status_code == 422
 
 
 def test_full_workflow(client):

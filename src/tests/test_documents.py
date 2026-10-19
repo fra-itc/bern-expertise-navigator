@@ -105,6 +105,9 @@ def test_zip_bomb_is_refused(monkeypatch):
 
 def test_upload_then_case(tmp_path, monkeypatch):
     monkeypatch.setattr(cases, "DB", tmp_path / "cases.db")
+    from navigator import knowledge_access, published_pitch
+    monkeypatch.setattr(knowledge_access, "member", lambda request: {"email": "officer@example.test", "role": "representative"})
+    monkeypatch.setattr(published_pitch, "DB", tmp_path / "published.db")
     monkeypatch.setattr(llm, "available", lambda *a, **k: False)
     queries = []
     monkeypatch.setattr(cases, "find_matches", lambda a, k=12: (queries.append(a.search_query) or [], None))

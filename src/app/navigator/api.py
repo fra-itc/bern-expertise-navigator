@@ -12,7 +12,8 @@ from pathlib import Path
 
 from typing import Literal
 
-from fastapi import FastAPI, HTTPException, Query, Request
+from fastapi import FastAPI, HTTPException, Query, Request, Depends
+from .knowledge_access import require_representative
 from fastapi.concurrency import run_in_threadpool
 from fastapi.responses import FileResponse, JSONResponse, Response
 from fastapi.staticfiles import StaticFiles
@@ -30,7 +31,8 @@ STATIC = Path(__file__).parent / "static"
 def _warm_up():
     """Load the embedding model and the index before the first user query (cold start ~15 s on CPU)."""
     try:
-        index.load_entities()
+        if not index.load_entities():
+            return
         index.embed(["warm up"], query=True)
         showcase.build()
     except Exception as e:  # noqa: BLE001 - warm-up must never crash the server
@@ -44,6 +46,29 @@ async def lifespan(_app: FastAPI):
 
 
 app = FastAPI(title="Research & Expertise Navigator", version="0.3.0", lifespan=lifespan)
+from .knowledge_api import router as knowledge_router
+app.include_router(knowledge_router)
+from .delivery_api import router as delivery_router
+app.include_router(delivery_router)
+from .speech import router as speech_router
+app.include_router(speech_router)
+from .discovery_api import router as discovery_router
+from .vault_api import router as vault_router
+app.include_router(discovery_router)
+app.include_router(vault_router)
+from .knowledge_workflow import router as knowledge_workflow_router
+app.include_router(knowledge_workflow_router)
+
+
+@app.middleware('http')
+async def staff_workspace_boundary(request: Request, call_next):
+    if request.url.path == '/cases' or request.url.path.startswith('/cases/'):
+        from .knowledge_access import require_member
+        try:
+            require_member(request)
+        except HTTPException as error:
+            return JSONResponse({'detail': error.detail}, status_code=error.status_code)
+    return await call_next(request)
 
 
 @app.exception_handler(StorageError)
@@ -246,9 +271,13 @@ def document_types():
 
 @app.post("/cases", response_model=cases.Case)
 def create_case(req: cases.NewCase):
+    from . import vault
     try:
+        vault.validate_references(req.documents)
         return cases.create(req)
     except cases.company_web.FetchError as e:
+        raise HTTPException(422, str(e)) from None
+    except vault.VaultError as e:
         raise HTTPException(422, str(e)) from None
 
 
@@ -268,6 +297,8 @@ def get_case(cid: str):
 def delete_case(cid: str):
     _case_or_404(cid)
     cases.delete(cid)
+    from . import published_pitch
+    published_pitch.withdraw(cid)
     return {"ok": True}
 
 
@@ -343,43 +374,77 @@ class DraftReq(StaffAction):
 
 
 @app.post("/cases/{cid}/draft")
-def draft(cid: str, body: DraftReq):
+def draft(cid: str, body: DraftReq, user=Depends(require_representative)):
     c = _case_or_404(cid)
-    if not any(m.selected for m in c.matches):
+    if not any(m.selected for m in c.matches) and not c.outreach.get("brief"):
         raise HTTPException(400, "Choose at least one partner first")
     return cases.draft_email(c, body.lang, body.slots, body.sender, body.team, body.link)
 
 
 class BriefReq(StaffAction):
+    knowledge_sources: list[dict[str, str]] | None = Field(default=None, max_length=20)
     lang: Literal["en", "de", "fr"] | None = None      # the CEO's pitch; None: from where the company is
     ui_lang: Literal["en", "de", "fr"] | None = None   # the officer's preface; None: same as the pitch
     email: str = ""
     team: str = ""
+    primary_color: str | None = Field(None, pattern=r"^#[0-9a-fA-F]{6}$")
+    company_logo: str | None = Field(None, max_length=400000)
 
 
 @app.post("/cases/{cid}/brief")
-def prepare_brief(cid: str, body: BriefReq):
+def prepare_brief(cid: str, body: BriefReq, request: Request, user=Depends(require_representative)):
     """"Generate pitch": Output 1 (strategic pitch for the CEO, published under a private link) + Output 2
-    (simplified preface for the officer). Nothing has to be entered: name and language come from the request."""
+    (simplified preface for the officer). Nothing has to be entered: name and language come from the request.
+    Approved Knowledge Base companies can be added to the partners."""
     c = _case_or_404(cid)
-    if not any(m.selected for m in c.matches):
-        raise HTTPException(400, "Choose at least one partner first")
+    from . import knowledge_workflow, knowledge_access
+    approved = []
+    selections = body.knowledge_sources
+    if selections is None:
+        selections = (c.outreach.get("brief") or {}).get("knowledge_sources", [])
+    if selections:
+        knowledge_access.require_member(request)
+        try:
+            approved = knowledge_workflow.resolve(c, selections)
+        except ValueError as e:
+            raise HTTPException(422, str(e)) from None
+    if not any(m.selected for m in c.matches) and not approved:
+        raise HTTPException(400, "Choose at least one supported research or company source first")
     lang = body.lang or brief.pitch_lang(c)
     c.company = cases.guess_company(c)
     out = brief.build(c, lang, {"name": body.actor, "email": body.email, "team": body.team}, body.ui_lang)
+    knowledge_workflow.enrich(out, c, approved)
+    from .pitch_branding import validate_logo
     old = c.outreach.get("brief") or {}
+    branding = dict((old.get("data") or {}).get("branding", {}))
+    if body.primary_color is not None:
+        branding["primary_color"] = body.primary_color.lower()
+    if body.company_logo is not None:
+        try:
+            branding["company_logo"] = validate_logo(body.company_logo)
+        except ValueError as exc:
+            raise HTTPException(422, str(exc)) from exc
+    out["brief"]["branding"] = branding
     # the same link stays valid for another BRIEF_LINK_DAYS; a disabled link is never switched back on
     token = old.get("token") if old.get("token") and not old.get("revoked_at") else secrets.token_urlsafe(12)
     seen = {k: old[k] for k in ("views", "first_view", "last_view") if k in old and token == old.get("token")}
     if old.get("token") and token != old["token"]:   # the disabled link keeps answering "no longer active", not 404
         c.outreach = {**c.outreach, "retired_links": [*c.outreach.get("retired_links", []), old["token"]]}
     c.outreach = {**c.outreach, "brief": {"token": token, "lang": lang, "at": cases._now(), "data": out["brief"],
-                                          "explainer": out["explainer"], "stats": out["stats"],
+                                          "explainer": out["explainer"], "summary": out["summary"], "stats": out["stats"],
+                                          "knowledge_sources": [{key: source[key] for key in ("id", "source_id", "revision")}
+                                                                for source in (selections or [])],
                                           "expires_at": reply.new_expiry(), **seen}}
     cases.log(c, body.actor, "brief_prepared",
               f"Pitch generated ({lang.upper()}): {out['stats']['claims']} sourced statements, "
               f"{out['stats']['publications']} publications")
     cases.save(c)
+    from . import published_pitch
+    published_pitch.save(token, c.id, out['brief'], c.outreach['brief']['at'])
+    from . import discovery
+    for source in approved:
+        if source.get('candidate_id'):
+            discovery.mark_used(source['candidate_id'])
     return {"token": token, **out}
 
 
@@ -444,9 +509,9 @@ class Outcome(StaffAction):
 
 
 @app.post("/cases/{cid}/outcome", response_model=cases.Case)
-def outcome(cid: str, body: Outcome):
+def outcome(cid: str, body: Outcome, user=Depends(require_representative)):
     c = _case_or_404(cid)
-    if not any(m.selected for m in c.matches):
+    if not any(m.selected for m in c.matches) and not c.outreach.get("brief"):
         raise HTTPException(409, "Choose at least one partner first")
     if body.kind == "email":
         c.status = "contacted"
@@ -464,7 +529,7 @@ def outcome(cid: str, body: Outcome):
 
 
 @app.get("/cases/{cid}/invite.ics")
-def invite(cid: str, start: str, minutes: int = Query(30, ge=10, le=240), organizer: str = "", organizer_email: str = ""):
+def invite(cid: str, start: str, minutes: int = Query(30, ge=10, le=240), organizer: str = "", organizer_email: str = "", user=Depends(require_representative)):
     c = _case_or_404(cid)
     try:
         body = cases.ics(c, start, minutes, organizer, organizer_email)
