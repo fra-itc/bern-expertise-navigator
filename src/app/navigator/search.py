@@ -1,6 +1,7 @@
 """Stage 5 — hybrid search, fair ranking, cited explanations, honest abstention."""
 from __future__ import annotations
 
+import logging
 import re
 from collections import Counter
 from concurrent.futures import ThreadPoolExecutor
@@ -15,6 +16,8 @@ from .extract import name_key, unit_key
 from .storage import PaperHit, index_store
 from .schema import Affiliation, Entity, SearchResponse, SearchResult, SourceRef
 
+log = logging.getLogger(__name__)
+
 RRF_K = 60
 NO_SOURCE_MSG = ("No verifiable public source found for this query in the indexed websites. "
                  "Try broader or alternative terms, or check another institution.")
@@ -28,6 +31,9 @@ RESULT_FLOOR_MARGIN = 0.03
 class _QueryAnalysis(BaseModel):
     terms: list[str]
     person_names: list[str] = []
+    grounded: list[str] = []          # the terms copied from the index vocabulary (see vocabulary_candidates)
+    rewrite: str = ""                 # the query restated in technical English (searched semantically first)
+    error: str | None = None          # why the LLM expansion is missing, when it failed
 
 
 def glossary_terms(q: str) -> list[str]:
@@ -39,22 +45,107 @@ def glossary_terms(q: str) -> list[str]:
     return out
 
 
+class _Expansion(BaseModel):
+    """What Apertus returns: the query as a specialist would put it, the matching index vocabulary,
+    then its own expert terms, then translations."""
+    technical_query: str = ""
+    index_terms: list[str] = []
+    expert_terms: list[str] = []
+    translations: list[str] = []
+    person_names: list[str] = []
+
+
+# Expansion budget. Index terms are picked from a list we give the model (grounded); free terms and
+# translations are capped so they cannot crowd out the domain vocabulary.
+MAX_INDEX_TERMS, MAX_EXPERT_TERMS, MAX_TRANSLATIONS, MAX_LLM_TERMS = 3, 3, 2, 8
+VOCAB_CANDIDATES, VOCAB_ENTITIES = 30, 25
+
+
+def vocabulary_candidates(q: str, n: int = VOCAB_CANDIDATES) -> list[str]:
+    """Grounding for the expansion: the topic labels, units and services of the entities the raw query
+    already reaches (vector + lexical), ranked by how high those entities rank. The model may only pick
+    index terms from this list, so they are words the index actually uses. (An entity's `projects` are
+    left out: on extracted pages they are often sentence fragments; project entities bring their name.)"""
+    ents = index.load_entities()
+    if not ents:
+        return []
+    vec = index.embed([q], query=True)[0]
+    vec_ids = [eid for eid, _ in index_store().vector_search(vec, VOCAB_ENTITIES, None)]
+    fused = rrf(vec_ids, bm25_rank(q, VOCAB_ENTITIES)[0])
+    score: dict[str, float] = {}
+    shown: dict[str, str] = {}
+    for eid in sorted(fused, key=lambda x: -fused[x])[:VOCAB_ENTITIES]:
+        e = ents.get(eid)
+        if not e:
+            continue
+        labels = [*e.expertise, *e.infrastructure, e.unit or ""]
+        if e.entity_type != "person":
+            labels.append(e.name)
+        for lab in dict.fromkeys(x.strip() for x in labels):
+            key = lab.lower()
+            if not 3 <= len(key) <= 80 or key == q.lower():
+                continue
+            score[key] = score.get(key, 0.0) + fused[eid]
+            shown.setdefault(key, lab)
+    return [shown[k] for k in sorted(score, key=lambda k: (-score[k], k))[:n]]
+
+
+def _clean(xs: list[str]) -> list[str]:
+    return [t.strip().lower() for t in xs if 1 < len(t.strip()) < 80]
+
+
+def merge_expansion(r: _Expansion, candidates: list[str], q: str = "") -> _QueryAnalysis:
+    """Ordered, bounded term list: the technical restatement, grounded index terms, expert terms,
+    translations. An 'index term' the model invented (not in the candidate list) is demoted to an
+    expert term, so `grounded` only ever holds words the index uses."""
+    allowed = {c.lower() for c in candidates}
+    rewrite = next(iter(_clean([r.technical_query])), "")
+    picked = _clean(r.index_terms)
+    grounded = [t for t in picked if t in allowed][:MAX_INDEX_TERMS]
+    expert = ([t for t in picked if t not in allowed] + _clean(r.expert_terms))[:MAX_EXPERT_TERMS]
+    terms = [t for t in dict.fromkeys([rewrite, *grounded, *expert, *_clean(r.translations)[:MAX_TRANSLATIONS]])
+             if t and t != q.lower()][:MAX_LLM_TERMS]
+    return _QueryAnalysis(terms=terms, grounded=[t for t in grounded if t in terms],
+                          rewrite=rewrite if rewrite in terms else "",
+                          person_names=[n for n in r.person_names if n.strip()])
+
+
+def _expansion_prompt(q: str, candidates: list[str]) -> list[dict]:
+    # alphabetical: the model should judge every term, not take the first few.
+    # Without grounding the list is empty and index_terms come back empty.
+    listed = "\n".join(f"- {c}" for c in sorted(candidates, key=str.lower)) or "- (none)"
+    return [
+        {"role": "system", "content": "You map search queries onto the vocabulary of a university research index. JSON only."},
+        {"role": "user", "content": (
+            "A user searches for experts. The query may use lay words or another language (English, German, French).\n"
+            "INDEX TERMS are topic labels, units and services found in the index near this query; many are unrelated.\n"
+            "Return:\n"
+            "- technical_query: the query restated in English the way a specialist in the field would phrase it "
+            "(the technical name of the topic, a few words).\n"
+            f"- index_terms: up to {MAX_INDEX_TERMS} INDEX TERMS, copied exactly, that name the query's specific topic. "
+            "Never a broad field (e.g. a whole discipline or 'AI in healthcare'). Empty if none fits.\n"
+            f"- expert_terms: up to {MAX_EXPERT_TERMS} short English terms. If the query uses lay words, the "
+            "specialist names of what the user means (the topic, the procedure, the device). If it already uses "
+            "specialist terms, only their synonyms and abbreviations: no sub-topics, mechanisms or neighbouring topics.\n"
+            f"- translations: up to {MAX_TRANSLATIONS} translations of the technical_query into German or French "
+            "(into English if the query is not in English).\n"
+            "- person_names: names of specific people mentioned in the query (empty if none).\n"
+            "No explanations.\n"
+            f"QUERY: {q}\nINDEX TERMS:\n{listed}")},
+    ]
+
+
 @lru_cache(maxsize=1024)
-def llm_analyze(q: str) -> _QueryAnalysis:
+def llm_analyze(q: str, candidates: tuple[str, ...] = ()) -> _QueryAnalysis:
+    """Never raises: on an LLM failure the search falls back to the glossary, and the error is logged
+    and returned in `error` instead of disappearing."""
     try:
-        r = llm.chat_json([
-            {"role": "system", "content": "You help search university research websites. JSON only."},
-            {"role": "user", "content": (
-                "For the search query below return:\n"
-                "- terms: up to 8 short alternative search terms (technical synonyms, abbreviations, lay terms) "
-                "in English, German and French. No explanations.\n"
-                "- person_names: names of specific people mentioned in the query (empty if none).\n"
-                f"QUERY: {q}")},
-        ], _QueryAnalysis, mode="none", max_tokens=250, temperature=0.0)
-        terms = [t.strip().lower() for t in r.terms if 1 < len(t.strip()) < 60][:8]  # type: ignore[attr-defined]
-        return _QueryAnalysis(terms=terms, person_names=[n for n in r.person_names if n.strip()])  # type: ignore[attr-defined]
-    except llm.LLMError:
-        return _QueryAnalysis(terms=[])
+        r = llm.chat_json(_expansion_prompt(q, list(candidates)), _Expansion, mode="none",
+                          max_tokens=300, temperature=0.0)
+    except llm.LLMError as e:
+        log.warning("query expansion failed, glossary only: %s", e)
+        return _QueryAnalysis(terms=[], error=f"{type(e).__name__}: {e}"[:300])
+    return merge_expansion(r, list(candidates), q)  # type: ignore[arg-type]
 
 
 _TITLE_NAME = re.compile(r"\b(?i:prof|dr|pd)\.?\s+((?:[A-ZÄÖÜ][\w'’-]+\s*){1,3})")
@@ -65,12 +156,16 @@ def regex_person_names(q: str) -> list[str]:
     return [m.group(1).strip() for m in _TITLE_NAME.finditer(q)]
 
 
-def analyze(q: str) -> tuple[list[str], list[str]]:
+def analyze_query(q: str) -> _QueryAnalysis:
+    """Glossary terms first (curated bridges), then the LLM expansion (grounded when GROUND_EXPANSION=1)."""
     terms = glossary_terms(q)
     names = regex_person_names(q)
+    grounded: list[str] = []
+    rewrite, error = "", None
     if settings.use_llm_expansion and llm.available():
-        a = llm_analyze(q)
+        a = llm_analyze(q, tuple(vocabulary_candidates(q)) if settings.ground_expansion else ())
         terms += a.terms
+        grounded, rewrite, error = a.grounded, a.rewrite, a.error
         # Only names literally in the query with >= 2 words ("Parkinson disease" is not a person query)
         names += [n for n in a.person_names if len(n.split()) >= 2 and n.lower() in q.lower()]
     seen, out = {q.lower()}, []
@@ -78,7 +173,14 @@ def analyze(q: str) -> tuple[list[str], list[str]]:
         if t not in seen:
             seen.add(t)
             out.append(t)
-    return out, list(dict.fromkeys(names))
+    return _QueryAnalysis(terms=out, person_names=list(dict.fromkeys(names)),
+                          grounded=[t for t in grounded if t in out], rewrite=rewrite if rewrite in out else "",
+                          error=error)
+
+
+def analyze(q: str) -> tuple[list[str], list[str]]:
+    a = analyze_query(q)
+    return a.terms, a.person_names
 
 
 def expand(q: str) -> list[str]:
@@ -404,7 +506,8 @@ def search(q: str, k: int = 10, sources: list[str] | None = None, types: list[st
     ents = index.load_entities()
     if not ents:
         return _abstain(q, [], "The index is empty: run the pipeline (crawl -> extract -> index) first.")
-    terms, names = analyze(q)
+    qa = analyze_query(q)
+    terms, names = qa.terms, qa.person_names
 
     # Honest about people: a named person who is not on any indexed page -> no answer
     pinned: list[str] = []
@@ -416,7 +519,9 @@ def search(q: str, k: int = 10, sources: list[str] | None = None, types: list[st
 
     bm_q, bm_top = bm25_rank(q)
     bm_x, _ = bm25_rank(" ".join(terms)) if terms else ([], 0.0)
-    vec_ids, vec_orig = vector_rank(q, terms, sources=sources)
+    # the technical restatement is the closest text to what an expert's page says: embed it first
+    sem_terms = [qa.rewrite, *(t for t in terms if t != qa.rewrite)] if qa.rewrite else terms
+    vec_ids, vec_orig = vector_rank(q, sem_terms, sources=sources)
     # papers (Postgres only): an entity's best paper chunk is semantic evidence like its own snippets
     phits, qvec = paper_hits(q)
     sem = dict(vec_orig)
@@ -426,10 +531,12 @@ def search(q: str, k: int = 10, sources: list[str] | None = None, types: list[st
 
     # Honest abstention: weak semantic match AND the query's words are mostly absent from the best
     # candidates AND no expansion term occurs verbatim. Calibrated on eval/golden_set.yaml.
+    # Grounded terms were copied from these very candidates, so they cannot vouch for them.
     cands = [ents[i] for i in (sorted(sem, key=lambda x: -sem[x])[:5] + bm_q[:5]) if i in ents]
+    vouching = [t for t in terms if t not in qa.grounded]
     if not pinned and vec_top < settings.min_vector_score \
             and coverage(q, cands) <= settings.min_coverage \
-            and max([coverage(t, cands) for t in terms] or [0.0]) < 1.0:
+            and max([coverage(t, cands) for t in vouching] or [0.0]) < 1.0:
         return _abstain(q, terms)
 
     paper_ids = sorted(phits, key=lambda x: (-phits[x].cos, x))

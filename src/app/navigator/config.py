@@ -68,6 +68,9 @@ class Settings:
     record_only_weight: float = float(os.getenv("RECORD_ONLY_WEIGHT", "0.8"))
     use_llm_expansion: bool = os.getenv("USE_LLM_EXPANSION", "1") == "1"
     use_llm_explain: bool = os.getenv("USE_LLM_EXPLAIN", "1") == "1"
+    # Ground the expansion in the index vocabulary (the model picks from the labels the query already reaches).
+    # Off by default: on the golden set it lowered recall@10 (81-90% vs 93%) though it raised held-out twin overlap.
+    ground_expansion: bool = os.getenv("GROUND_EXPANSION", "0") == "1"
     # Cost on the dashboard: CHF per million tokens. Unset -> a placeholder, shown as such until the real price is known
     llm_price_in: float = float(os.getenv("LLM_PRICE_IN_CHF_PER_M", "0.50"))
     llm_price_out: float = float(os.getenv("LLM_PRICE_OUT_CHF_PER_M", "1.50"))
