@@ -347,7 +347,7 @@ _FIELD_NAME = {"name": "name", "description": "description", "expertise": "state
 
 
 def _join(xs: list[str]) -> str:
-    return xs[0] if len(xs) == 1 else ", ".join(xs[:-1]) + " and " + xs[-1]
+    return "" if not xs else xs[0] if len(xs) == 1 else ", ".join(xs[:-1]) + " and " + xs[-1]
 
 
 def fallback_why(q: str, terms: list[str], hits) -> str:

@@ -97,3 +97,34 @@ def test_person_unit_graph(built):
     r = search.search("closed-loop insulin delivery")
     jane = next(x for x in r.results if x.person_or_unit == "Jane Doe")
     assert "Diabetes Technology Lab" in jane.related
+
+
+# ---- rule-based "why" with the LLM unreachable (cases.find_matches calls search(..., llm_explain=False)) ----
+def test_join_of_nothing_is_empty():
+    assert search._join([]) == ""
+    assert search._join(["a"]) == "a"
+    assert search._join(["a", "b", "c"]) == "a, b and c"
+
+
+def test_fallback_why_when_query_words_sit_inside_longer_words():
+    """matched_evidence counts substrings ("robotics" in "telerobotics"), the phrase check needs a word start:
+    the snippet matches but names no query phrase. Must explain by field, not raise IndexError."""
+    e = ent(9, "Zed", "person", None, [])
+    e.evidence = [Evidence(field="expertise", value="x", snippet="Microneurosurgery and telerobotics.", url=URL)]
+    hits = search.matched_evidence(e, ["neurosurgery surgical robotics"])
+    assert hits and hits[0][0] > 0
+    why = search.fallback_why("neurosurgery surgical robotics", [], hits)
+    assert why == "Matches your query in its stated expertise; see the quoted source."
+
+
+def test_search_without_llm_explains_substring_only_match(built, monkeypatch):
+    """The cases.find_matches path: k=40, llm_explain=False, LLM unreachable, no network."""
+    monkeypatch.setattr(search.llm, "chat_json", lambda *a, **k: (_ for _ in ()).throw(search.llm.LLMError("down")))
+    e = ent(8, "Zed Robotics Lab", "unit", None, ["surgical robotics"])
+    e.evidence = [Evidence(field="expertise", value="surgical robotics", snippet="Microneurosurgery and telerobotics.",
+                           url=URL + "8")]
+    index.build([*built, e])
+    r = search.search("neurosurgery surgical robotics", k=40, llm_explain=False)
+    zed = next(x for x in r.results if x.person_or_unit == "Zed Robotics Lab")
+    assert zed.why_match == "Matches your query in its stated expertise; see the quoted source."
+    assert all(x.why_match for x in r.results)
