@@ -145,8 +145,8 @@ svg.i { width: 16px; height: 16px; flex: none; fill: none; stroke: currentColor;
   background: var(--info-bg); color: var(--info); }
 .ai-badge.rules { background: var(--surface-2); color: var(--ink-2); border: 1px solid var(--border); }
 .ai-badge svg { width: 13px; height: 13px; }
-abbr.jargon { text-decoration: underline dotted color-mix(in srgb, var(--info) 70%, transparent); text-underline-offset: 3px;
-  text-decoration-thickness: 1.5px; cursor: help; }
+/* glossary terms: bold, no underline; the plain explanation stays in the tooltip */
+abbr.jargon, abbr.jargon[title] { text-decoration: none; border-bottom: 0; font-weight: 700; cursor: help; }
 .empty { text-align: center; padding: 36px 20px; color: var(--muted); }
 .empty h3 { color: var(--ink); margin: 8px 0 4px; font-size: 17px; }
 .empty-ico { width: 48px; height: 48px; margin: 0 auto; border-radius: var(--radius); display: grid; place-items: center; background: var(--surface-2); color: var(--ink-2); }
