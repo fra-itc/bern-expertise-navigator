@@ -20,6 +20,7 @@ from psycopg.types.json import Jsonb
 from psycopg_pool import ConnectionPool, PoolTimeout
 
 from . import graph
+from .extract import strip_accents
 from .config import load_sources, settings
 from .schema import AuthorMatch, Entity, Evidence, Work, clean_text
 from .storage import IndexBundle, PaperHit, StorageError
@@ -27,7 +28,7 @@ from .storage import IndexBundle, PaperHit, StorageError
 BACKEND = "postgres"
 GRAPH = "expertise_graph"
 DIM = 768
-FTS_CONFIG = "nav.simple_unaccent"
+FTS_CONFIG = "nav.simple_unaccent"   # text search config of the tsv columns (nav.entity, nav.evidence, nav.paper)
 # 0002_remove_technical_review (main) is not required: the store neither reads nor writes the review columns.
 REQUIRED_MIGRATIONS = ("0001_initial", "0002_index_order_and_match_ref", "0003_case_search_filters",
                        "0004_papers", "0005_case_company_sources", "0006_evidence_publication_field",
@@ -132,6 +133,7 @@ class PgIndexStore:
         self.pg = pg
         self._lock = threading.Lock()
         self._cache: tuple[str, dict[str, Entity]] | None = None
+        self._bm25_cache: tuple[dict[str, Entity], tuple] | None = None
 
     @classmethod
     def for_url(cls, url: str) -> "PgIndexStore":
@@ -363,32 +365,46 @@ class PgIndexStore:
             return [(r[0], float(r[1])) for r in cur.fetchall()]
 
     def lexical_rank(self, tokens, top=100):
-        """FTS replacement for BM25: OR over the query tokens, ts_rank on entity fields + distinct snippets."""
+        """BM25 over the profiles' search text as the file backend ranks (same documents, tokenizer and rank_bm25
+        model; here also accent-insensitive, 'zurich' = 'Zürich'), built in memory once per index version."""
+        # The earlier FTS ranking (ts_rank summed over every evidence snippet) had no idf and no length
+        # normalisation: long publication-record profiles outranked labs and projects, and company queries lost
+        # them (Dexcom: "Bally Lab" from rank 30 to 57-84).
         if not tokens:
             return [], 0.0
-        tsq = " | ".join(dict.fromkeys(tokens))  # tokens are \\w{2,}: no tsquery operators inside
-        with self.pg.op("lexical_rank") as cur:
-            cur.execute(
-                "WITH q AS (SELECT to_tsquery(%(cfg)s::regconfig, %(q)s) AS q), "
-                "s AS (SELECT e.id, ts_rank(e.tsv, q.q) AS r FROM nav.entity e, q WHERE e.tsv @@ q.q "
-                "      UNION ALL "
-                "      SELECT d.entity_id, ts_rank(d.tsv, q.q) FROM "
-                "        (SELECT DISTINCT ON (entity_id, md5(snippet)) entity_id, tsv FROM nav.evidence, q "
-                "         WHERE tsv @@ q.q) d, q) "
-                "SELECT id, sum(r) AS score FROM s GROUP BY id ORDER BY score DESC, id LIMIT %(n)s",
-                {"cfg": FTS_CONFIG, "q": tsq, "n": top})
-            rows = cur.fetchall()
-        return [r[0] for r in rows if r[1] > 0], float(rows[0][1]) if rows else 0.0
+        ids, bm25 = self._bm25()
+        if not ids:
+            return [], 0.0
+        scores = bm25.get_scores([strip_accents(t) for t in tokens])
+        order = np.argsort(-scores)[:top]
+        return [ids[i] for i in order if scores[i] > 0], float(scores[order[0]]) if len(order) else 0.0
+
+    def _bm25(self):
+        from rank_bm25 import BM25Okapi
+        from . import index
+        ents = self.load_entities()
+        with self._lock:
+            if self._bm25_cache and self._bm25_cache[0] is ents:
+                return self._bm25_cache[1]
+        docs = [index.tokenize(strip_accents(e.search_text())) for e in ents.values()]
+        built = (list(ents), BM25Okapi(docs)) if docs else ([], None)
+        with self._lock:
+            self._bm25_cache = (ents, built)
+        return built
 
     def neighbors(self, ids):
         """Structural neighbours via Cypher, ordered like the file backend's adjacency list (edge seq)."""
         if not ids:
             return {}
+        # One query per structural label: an unlabelled pattern also walks the paper graph (AUTHORED, CITES, ABOUT,
+        # SIMILAR_TO: ~78k edges), which took seconds per call and hit the statement timeout under load.
+        rows = []
         with self.pg.op("neighbors") as cur:
-            _cypher(cur, "MATCH (a)-[r]-(b) WHERE a.entity_id IN $ids AND r.seq IS NOT NULL "
-                         "RETURN a.entity_id, b.entity_id, r.seq", {"ids": list(ids)},
-                    cols="a agtype, b agtype, seq agtype")
-            rows = [(json.loads(a), json.loads(b_), int(json.loads(s))) for a, b_, s in cur.fetchall()]
+            for rel in graph.STRUCTURAL:
+                _cypher(cur, f"MATCH (a)-[r:{rel}]-(b) WHERE a.entity_id IN $ids AND r.seq IS NOT NULL "
+                             "RETURN a.entity_id, b.entity_id, r.seq", {"ids": list(ids)},
+                        cols="a agtype, b agtype, seq agtype")
+                rows += [(json.loads(a), json.loads(b_), int(json.loads(s))) for a, b_, s in cur.fetchall()]
         acc: dict[str, list[tuple[int, str]]] = defaultdict(list)
         for a, b_, s in rows:
             acc[a].append((s, b_))
@@ -654,9 +670,9 @@ class PgIndexStore:
             cur.execute("SELECT EXISTS (SELECT 1 FROM nav.paper_chunk WHERE embedding IS NOT NULL)")
             return bool(cur.fetchone()[0])
 
+    _PAPER_URL = "coalesce('https://doi.org/' || p.doi, p.landing_url, 'https://openalex.org/' || p.id)"  # as cited
     _HIT_COLS = ("SELECT DISTINCT ON (pa.entity_id) pa.entity_id, 1 - h.dist, p.id, p.title, p.year, "
-                 "coalesce('https://doi.org/' || p.doi, p.landing_url, 'https://openalex.org/' || p.id), c.kind, "
-                 "c.text, pa.relation, p.fetched_at ")
+                 f"{_PAPER_URL}, c.kind, c.text, pa.relation, p.fetched_at ")
 
     def _hits(self, cur) -> dict[str, PaperHit]:
         return {r[0]: PaperHit(entity_id=r[0], cos=float(r[1]), paper_id=r[2], title=r[3], year=r[4], url=r[5],
@@ -677,6 +693,17 @@ class PgIndexStore:
                 "JOIN nav.paper_chunk c ON c.id = h.id ORDER BY pa.entity_id, h.dist, p.id, c.id",
                 {"v": np.asarray(qvec, dtype=np.float32), "m": settings.embed_model, "n": limit})
             return self._hits(cur)
+
+    def paper_texts(self, urls: list[str]) -> dict[str, str]:
+        """{paper url as cited (see _HIT_COLS): its stored title and text}, for checking a publication source's
+        snippet against the document it was taken from (eval traceability)."""
+        if not urls:
+            return {}
+        with self.pg.op("paper_texts") as cur:
+            cur.execute(f"SELECT {self._PAPER_URL} AS url, p.title || ' ' || string_agg(c.text, ' ' ORDER BY c.id) "
+                        "FROM nav.paper p JOIN nav.paper_chunk c ON c.paper_id = p.id "
+                        f"WHERE {self._PAPER_URL} = ANY(%s) GROUP BY 1, p.title", (list(dict.fromkeys(urls)),))
+            return {u: t for u, t in cur.fetchall()}
 
     def paper_best_for(self, qvec, ids: list[str]) -> dict[str, PaperHit]:
         """Exact best chunk of the given entities (people reached through SIMILAR_TO)."""

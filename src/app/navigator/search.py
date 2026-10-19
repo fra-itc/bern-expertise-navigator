@@ -12,6 +12,7 @@ from pydantic import BaseModel
 from . import index, llm
 from .config import load_glossary, load_sources, settings
 from .extract import name_key, unit_key
+from .rules_extract import section_heading
 from .storage import PaperHit, index_store
 from .schema import Affiliation, Entity, SearchResponse, SearchResult, SourceRef
 
@@ -184,6 +185,17 @@ def paper_why(h: PaperHit, snippet: str) -> str:
     return f"{lead} “{h.title}”{when}, which says: “{short}”"
 
 
+def unit_of(e: Entity) -> str | None:
+    """The entity's unit, unless it is a page-section heading ("Team members", "Ongoing Projects") that an older
+    index stored as one."""
+    return None if section_heading(e.unit) else e.unit
+
+
+def is_heading(e: Entity) -> bool:
+    """A unit/project entity that is only a page-section heading: never a result, never a graph parent."""
+    return e.entity_type != "person" and section_heading(e.name)
+
+
 def fair_top(ids: list[str], ents: dict[str, Entity], k: int) -> list[str]:
     """Diversity cap: at most N people and N units/projects per unit, so small groups stay visible."""
     per_unit: Counter[tuple[str, bool]] = Counter()
@@ -194,10 +206,11 @@ def fair_top(ids: list[str], ents: dict[str, Entity], k: int) -> list[str]:
             continue
         is_person = e.entity_type == "person"
         # people are capped per lab; someone whose lab is unknown counts on their own (no shared bucket)
-        unit = (unit_key(e.unit or e.name) if not is_person else (unit_key(e.unit) if e.unit else "id:" + e.id), is_person)
+        u = unit_of(e)
+        unit = (unit_key(u or e.name) if not is_person else (unit_key(u) if u else "id:" + e.id), is_person)
         if is_person and per_unit[unit] >= settings.max_per_unit:
             # the lab is full: a more senior person (e.g. the group head) replaces its most junior pick
-            same = [x for x in out if ents[x].entity_type == "person" and ents[x].unit and unit_key(ents[x].unit) == unit[0]]
+            same = [x for x in out if ents[x].entity_type == "person" and unit_of(ents[x]) and unit_key(unit_of(ents[x])) == unit[0]]
             weakest = min(same, key=lambda x: seniority(ents[x]), default=None)
             if weakest and seniority(e) > seniority(ents[weakest]):
                 out[out.index(weakest)] = eid
@@ -222,7 +235,7 @@ def neighbors(ids: list[str]) -> dict[str, list[str]]:
 
 def related(e: Entity, ents: dict[str, Entity], limit: int = 8, nb_ids: list[str] | None = None) -> list[str]:
     ids = nb_ids if nb_ids is not None else neighbors([e.id]).get(e.id, [])
-    nb = [ents[i] for i in ids if i in ents]
+    nb = [ents[i] for i in ids if i in ents and not is_heading(ents[i])]
     # people first (by seniority), then units / projects
     nb.sort(key=lambda x: (x.entity_type != "person", -seniority(x)))
     return [x.name for x in nb[:limit]]
@@ -254,7 +267,7 @@ def propagate(fused: dict[str, float], ents: dict[str, Entity], depth: int = 20)
     """
     via: dict[str, str] = {}
     parents = [pid for pid in sorted(fused, key=lambda x: -fused[x])[:depth]
-               if (p := ents.get(pid)) and p.entity_type != "person"]
+               if (p := ents.get(pid)) and p.entity_type != "person" and not is_heading(p)]
     g = neighbors(parents)
     for pid in parents:
         for cid in g.get(pid, []):
@@ -288,16 +301,49 @@ def matched_evidence(e: Entity, terms: list[str]):
     return topical[:3] or scored[:2]
 
 
-def coverage(q: str, docs: list[Entity]) -> float:
-    """Share of the query's content words (5-char prefix, so plurals match) found in the best document."""
-    qt = [t for t in index.tokenize(q) if len(t) > 2]
+def coverage(q: str, docs: list[Entity | str], skip: set[str] = frozenset()) -> float:
+    """Share of the query's content words (5-char prefix, so plurals match) found in the best document
+    (a profile, or a text such as a paper chunk)."""
+    qt = [t for t in index.tokenize(q) if len(t) > 2 and t not in skip]
     if not qt or not docs:
         return 0.0
     best = 0.0
     for d in docs:
-        txt = d.search_text().lower()
+        txt = (d if isinstance(d, str) else d.search_text()).lower()
         best = max(best, sum(bool(re.search(r"\b" + re.escape(t[:5]), txt)) for t in qt) / len(qt))
     return best
+
+
+GENERIC_DF = 0.30   # a word in more than 30% of the indexed profiles says nothing about a topic ("bern", "research")
+_df_cache: dict[int, tuple[int, dict[str, int]]] = {}
+
+
+def doc_freq() -> tuple[int, dict[str, int]]:
+    """Document frequency of each token over the indexed profiles (the same text BM25 indexes), on any backend."""
+    ents = index.load_entities()
+    if id(ents) not in _df_cache:   # both stores return the same object until the index changes
+        df: dict[str, int] = {}
+        for e in ents.values():
+            for t in set(index.tokenize(e.search_text())):
+                df[t] = df.get(t, 0) + 1
+        _df_cache.clear()
+        _df_cache[id(ents)] = (len(ents), df)
+    return _df_cache[id(ents)]
+
+
+def index_generic(words) -> set[str]:
+    n, df = doc_freq()
+    return {t for t in words if df.get(t, 0) > GENERIC_DF * n}
+
+
+def query_covered(q: str, sem_docs: list[Entity | str], lex_docs: list[Entity]) -> float:
+    """How well the index covers the query's words, for abstention. Words found in most profiles ("bern") are
+    left out. The semantically closest profiles count with partial coverage; a lexical candidate only when it
+    has every word: a lexical ranker always finds some profile with one or two of the words ("best ... delivery"
+    for "best pizza delivery in Bern"), which says nothing about the query."""
+    skip = index_generic(index.tokenize(q))
+    lex = coverage(q, lex_docs, skip)
+    return max(coverage(q, sem_docs, skip), lex if lex >= 1.0 else 0.0)
 
 
 def lexical_hit(e: Entity, terms: list[str]) -> bool:
@@ -422,14 +468,18 @@ def search(q: str, k: int = 10, sources: list[str] | None = None, types: list[st
     sem = dict(vec_orig)
     for eid, h in phits.items():
         sem[eid] = max(sem.get(eid, 0.0), h.cos)
-    vec_top = max(sem.values(), default=0.0)
-
     # Honest abstention: weak semantic match AND the query's words are mostly absent from the best
-    # candidates AND no expansion term occurs verbatim. Calibrated on eval/golden_set.yaml.
-    cands = [ents[i] for i in (sorted(sem, key=lambda x: -sem[x])[:5] + bm_q[:5]) if i in ents]
+    # candidates AND no expansion term occurs verbatim. The similarity threshold is calibrated
+    # (eval/golden_set.yaml) on the profiles' own vectors; a paper chunk's cosine is not comparable (0.83 for
+    # "deep-sea volcano geochemistry in Iceland", above every profile), so the closest papers count through
+    # their words, as semantic candidates in the coverage test.
+    vec_top = max(vec_orig.values(), default=0.0)
+    sem_c: list[Entity | str] = [ents[i] for i in sorted(vec_orig, key=lambda x: -vec_orig[x])[:5] if i in ents]
+    sem_c += [f"{h.title} {h.text}" for h in sorted(phits.values(), key=lambda h: (-h.cos, h.paper_id))[:5]]
+    lex_c = [ents[i] for i in bm_q[:5] if i in ents]
     if not pinned and vec_top < settings.min_vector_score \
-            and coverage(q, cands) <= settings.min_coverage \
-            and max([coverage(t, cands) for t in terms] or [0.0]) < 1.0:
+            and query_covered(q, sem_c, lex_c) <= settings.min_coverage \
+            and max([coverage(t, sem_c + lex_c) for t in terms] or [0.0]) < 1.0:
         return _abstain(q, terms)
 
     paper_ids = sorted(phits, key=lambda x: (-phits[x].cos, x))
@@ -449,7 +499,7 @@ def search(q: str, k: int = 10, sources: list[str] | None = None, types: list[st
     floor = settings.min_vector_score - RESULT_FLOOR_MARGIN
     all_terms = [q, *terms]
     ranked = [eid for eid in sorted(fused, key=lambda x: -fused[x])
-              if eid in ents
+              if eid in ents and not is_heading(ents[eid])
               and (not sources or ents[eid].source in sources)
               and (not types or ents[eid].entity_type in types)
               and (eid in pinned or eid in via or eid in via_sim or sem.get(eid, 0.0) >= floor
@@ -479,7 +529,7 @@ def search(q: str, k: int = 10, sources: list[str] | None = None, types: list[st
         conf = float(np.clip((sim - CONF_LO) / (CONF_HI - CONF_LO), 0, 1))
         results.append(SearchResult(
             id=e.id, person_or_unit=e.name, entity_type=e.entity_type, role=e.role,
-            affiliation=Affiliation(unit=e.unit, institute=e.institute, institution=e.source_label),
+            affiliation=Affiliation(unit=unit_of(e), institute=e.institute, institution=e.source_label),
             institution=e.source_label, expertise=e.expertise, projects=e.projects,
             infrastructure_services=e.infrastructure, description=(e.description or [None])[0],
             contact=e.email, why_match=why, related=related(e, ents, nb_ids=nb.get(eid, [])),

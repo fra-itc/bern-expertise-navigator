@@ -56,7 +56,10 @@ _NON_NAME_SUFFIX = ("eering", "ology", "ologie", "ics", "tion", "sion", "ment", 
 GENERIC_HEAD = re.compile(
     r"^(our |the )?(research( activities| projects| areas?)?|jobs?\b.*|job vacancies|vacancies|teaching|"
     r"student projects|((msc|master|bachelor|semester) )?thesis projects|theses|homepage|home|contacts?|partners?|software|back to .*|information|"
-    r"services?|facilities|our services|publications?|news.*|team|group members|members|staff|people|"
+    r"services?|facilities|our services|publications?|news.*|team|(group|team|lab) members|members|staff|people|"
+    # list headings of a lab's site ("Ongoing Projects", "Ended Projects", "All Researchers"): a section, not an entity
+    r"(ongoing|current|completed|ended|finished|past|previous|former|recent|selected|further|other|running) projects?|"
+    r"(all|our) (researchers|members|team)|"
     r"collaborations?|.*seminars?|education|about( us)?|overview|studienteilnehmende|.*archives|.*spin-offs|"
     r"(our )?core research pillars|downloads?|links?|media|events?|select page|projects?|focus( areas?)?|"
     r"innovation|community|get involved!?|career|imprint|legal notice|privacy policy|\d+|"
@@ -79,6 +82,12 @@ _NAME_TITLE = re.compile(rf"^([A-ZÄÖÜÉ][\w'’-]+ [A-ZÄÖÜÉ][\w'’-]+), 
 
 def _clean(line: str) -> str:
     return re.sub(r"^\s*[-*•·|]\s*", "", line).strip()
+
+
+def section_heading(name: str | None) -> bool:
+    """A page-section heading ("Ongoing Projects", "Team members") taken for a unit or project name: navigation,
+    not a research entity. Used by the extractor and, for indexes built before a heading was listed, at query time."""
+    return bool(name) and GENERIC_HEAD.match(name.strip(" :")) is not None
 
 
 def name_like(s: str) -> bool:

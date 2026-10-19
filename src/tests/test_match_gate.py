@@ -87,7 +87,7 @@ def test_document_frequencies_come_from_the_storage_interface(monkeypatch):
     """Regression: _doc_freq called index.load_bm25(), gone since the storage interface, so every request that
     reached the topic filter raised AttributeError. The real _doc_freq and find_matches run here, unstubbed."""
     monkeypatch.setattr(cases.index, "load_entities", lambda: ENTS)
-    monkeypatch.setattr(cases, "_df_cache", {})
+    monkeypatch.setattr(search, "_df_cache", {})
     monkeypatch.setattr(llm, "available", lambda *a, **k: False)
     n, df = cases._doc_freq()
     assert n == len(ENTS)

@@ -10,7 +10,7 @@ Capability matrix
     -------------------------------|------------------------------|----------------------------------------
     entities                       | data/entities.jsonl          | nav.entity + nav.evidence
     vector search (best per entity)| NumPy dot / Qdrant           | pgvector HNSW, hnsw.iterative_scan
-    lexical ranking for RRF        | BM25Okapi pickle             | FTS ts_rank (nav.entity.tsv + nav.evidence.tsv)
+    lexical ranking for RRF        | BM25Okapi pickle             | BM25Okapi in memory, same documents (per version)
     graph neighbours               | adjacency from graph.py      | Cypher on expertise_graph (same rules)
     pages / rejected claims stored | no (files written by extract)| nav.page / nav.rejected_claim
     partial (per-source) reindex   | no: always full rebuild      | yes: one transaction per call

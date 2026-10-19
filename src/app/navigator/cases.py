@@ -21,6 +21,7 @@ import yaml
 
 from . import archetypes, company as company_web, documents as docs, index, llm, needs, plain, search, showcase, understand
 from .config import CONFIG_DIR, DATA_DIR
+from .extract import name_key
 from .storage import case_store
 
 DB = DATA_DIR / "cases.db"
@@ -258,6 +259,7 @@ def niche_query(area: str, niche: str) -> str:
 
 
 PER_ARCHETYPE = 8
+ASSET_TYPES = ["unit", "project", "infrastructure"]
 
 
 # ---- relevance gate: a company only meets partners with a specific, stated link to its topic ------------
@@ -269,23 +271,13 @@ expertise expert experts partner partners partnership collaboration collaboratio
 global solution solutions service services application applications system systems product products device devices
 digital manufacturing management platform advanced novel new based enabled access support market data quality
 company companies business industry www com http https org""".split())
-GENERIC_DF = 0.30          # a word in more than 30% of the indexed profiles is not specific either
+GENERIC_DF = search.GENERIC_DF   # a word in more than 30% of the indexed profiles is not specific either
 NO_STRONG_MSG = ("No partner in Bern has a clear, specific link to this company's topics on its public pages. "
                  "Add what the company is looking for, or search with more specific terms.")
-_df_cache: dict[int, tuple[int, dict[str, int]]] = {}
 
 
 def _doc_freq() -> tuple[int, dict[str, int]]:
-    """Document frequency of each token over the indexed profiles (the same text BM25 indexes), on any backend."""
-    ents = index.load_entities()
-    if id(ents) not in _df_cache:   # the file store returns the same object until the index is rebuilt
-        df: dict[str, int] = {}
-        for e in ents.values():
-            for t in set(index.tokenize(e.search_text())):
-                df[t] = df.get(t, 0) + 1
-        _df_cache.clear()
-        _df_cache[id(ents)] = (len(ents), df)
-    return _df_cache[id(ents)]
+    return search.doc_freq()
 
 
 def topic_words(query: str) -> set[str]:
@@ -321,16 +313,35 @@ def specific(hits: set[str], central: set[str]) -> bool:
     return len(hits) >= 2 or any(len(t) >= 5 and t in central for t in hits)
 
 
+def dedupe_people(matches: list[Match]) -> list[Match]:
+    """One match per person: the same researcher indexed from a page and from a publication record ("Dr. med.
+    Dr. phil. Lia Bally" and "Lia Bally") takes one slot, kept where it ranks first."""
+    seen: set[str] = set()
+    out = []
+    for m in matches:
+        key = name_key(m.name) if m.entity_type == "person" else ""
+        if key and key in seen:
+            continue
+        seen.add(key)
+        out.append(m)
+    return out
+
+
 def find_matches(analysis: plain.RequestAnalysis, k: int = 40) -> tuple[list[Match], str | None]:
     """Everything Bern can offer this company, classified into the entity model (agents, offering,
     activities, capital, concepts). Up to MAX_PER_TYPE per type, in relevance order; among people the leads come first, so a
     company meets the professor or group head before an intern."""
     ents = index.load_entities()
-    r = search.search(analysis.search_query, k=k, llm_explain=False)
+    # people and the other assets (labs, projects, facilities) each get their own k candidates: in one shared
+    # list the people reached through papers, SIMILAR_TO and lab membership took the ranks the offer's few
+    # lab/project/facility slots are filled from (Dexcom on Postgres: "Bally Lab" ranked 47-84 of 40)
+    r = search.search(analysis.search_query, k=k, types=["person"], llm_explain=False)
     if r.abstained:
         return [], r.message
+    assets = search.search(analysis.search_query, k=k, types=ASSET_TYPES, llm_explain=False)
+    results = list({x.id: x for x in sorted([*r.results, *assets.results], key=lambda x: -x.score)}.values())
     out = []
-    for x in r.results:
+    for x in results:
         e = ents.get(x.id)
         desc = " ".join(e.description) if e and e.description else ""
         out.append(Match(
@@ -340,16 +351,16 @@ def find_matches(analysis: plain.RequestAnalysis, k: int = 40) -> tuple[list[Mat
             confidence=x.confidence, via=x.via,
             archetype=archetypes.classify(x.entity_type, x.person_or_unit, x.role, e.email if e else x.contact, desc)))
 
-    # only partners whose own public text names the company's topic; a person found through a lab, when the lab does
+    # only partners whose OWN public text names the company's topic. A candidate the graph brought in (a lab's
+    # member, a person with a similar research profile) passes the same test on its own text: the text of the node
+    # it came through says nothing about it ("Ongoing Projects" matched, its listed people did not).
     words = topic_words(analysis.search_query)
     central = central_words(analysis.search_query, words)
-    groups = {e.name: e for e in ents.values() if e.entity_type != "person"}
 
     def strong(m: Match) -> bool:
-        e, parent = ents.get(m.id), groups.get(m.via or "")
-        return bool(e and specific(topic_support(e.search_text(), words), central)) or \
-            bool(parent and specific(topic_support(parent.search_text(), words), central))
-    out = [m for m in out if strong(m)]
+        e = ents.get(m.id)
+        return bool(e and specific(topic_support(e.search_text(), words), central))
+    out = dedupe_people([m for m in out if strong(m)])
     if not out:
         return [], NO_STRONG_MSG
 
@@ -357,6 +368,7 @@ def find_matches(analysis: plain.RequestAnalysis, k: int = 40) -> tuple[list[Mat
         e = ents.get(m.id)
         sen = search.seniority(e) if e and m.entity_type == "person" else 1.0
         return 0 if sen >= 1.2 else 1 if sen >= 0.8 else 2
+
     out.sort(key=lambda m: (archetypes.ORDER.get(m.archetype, 99), band(m)))
     per: dict[str, int] = {}
     kept = []

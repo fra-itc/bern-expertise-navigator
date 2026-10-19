@@ -2,7 +2,8 @@
 
   1. recall@10 >= 80%          (expected experts/units in top 10)
   2. synonym twins             (lay-term query finds the same experts as the site term)
-  3. traceability = 100%       (every result has a source URL + a snippet found on a crawled page)
+  3. traceability = 100%       (every result has a source URL + a snippet found on a crawled page; a publication
+                                source's snippet must be in that paper's stored text, Postgres backend)
   7. abstention                (out-of-domain queries -> 'no verifiable source')
 
 Usage:  python eval/run_eval.py [--k 10] [--tag NAME]   (inside the api container: make eval)
@@ -28,6 +29,7 @@ from navigator.config import DATA_DIR, settings  # noqa: E402
 from navigator.crawl import load_pages  # noqa: E402
 from navigator.extract import _norm as snippet_norm  # noqa: E402
 from navigator.search import search  # noqa: E402
+from navigator.storage import index_store  # noqa: E402
 
 
 def norm(s: str) -> str:
@@ -52,9 +54,22 @@ def main():
     gs = yaml.safe_load(Path(a.golden).read_text())["queries"]
     # Same normalisation the extractor's verifier uses, so the check is identical to ingestion
     page_text = {p.url: snippet_norm(p.text + " " + p.title) for p in load_pages()}
+    store = index_store()
+    paper_text: dict[str, str] = {}
+
+    def traced(s) -> bool:
+        """The snippet is verbatim in the document at the source's URL: a crawled page, or (a publication source)
+        the paper text the snippet was taken from."""
+        if s.url in page_text:
+            return snippet_norm(s.snippet) in page_text[s.url]
+        if s.field != "publication" or not getattr(store, "supports_papers", False):
+            return False
+        if s.url not in paper_text:
+            paper_text.update({u: snippet_norm(t) for u, t in store.paper_texts([s.url]).items()})
+        return snippet_norm(s.snippet) in paper_text.get(s.url, "")
 
     found_total = expected_total = 0
-    results_total = traceable = 0
+    results_total = traceable = traced_by_paper = 0
     abst_ok = abst_total = 0
     twins_ok = twins_total = 0
     top_names: dict[str, set[str]] = {}
@@ -72,9 +87,10 @@ def main():
         top_names[item["id"]] = set(names)
         for res in r.results:
             results_total += 1
-            if res.sources and all(s.url in page_text and snippet_norm(s.snippet) in page_text[s.url]
-                                   for s in res.sources):
+            if res.sources and all(traced(s) for s in res.sources):
                 traceable += 1
+                if any(s.url not in page_text for s in res.sources):
+                    traced_by_paper += 1
             else:
                 untraceable.append({"query": item["query"], "result": res.person_or_unit})
         q = {"id": item["id"], "query": item["query"], "abstained": r.abstained,
@@ -112,6 +128,7 @@ def main():
         "recall_at_k": pct(found_total, expected_total),
         "synonym_twins_consistent": pct(twins_ok, twins_total),
         "traceability": pct(traceable, results_total),
+        "traceable_via_paper_text": traced_by_paper,   # results with a publication source checked on the paper
         "abstention_correct": pct(abst_ok, abst_total),
         "queries": len(gs),
         "k": a.k,

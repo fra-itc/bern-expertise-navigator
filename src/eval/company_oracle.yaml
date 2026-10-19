@@ -1,0 +1,41 @@
+# Company-case regression oracle: for a real company request, which Bern assets MUST be in the offer ("must"),
+# and which ones must NOT ("traps"). Checked by eval/run_oracle.py against the assets the offer cites
+# (cases.pick_assets over the non-"Weak match" matches), so it measures what the officer and the company see.
+#
+# A case runs once per stored request it names (`case_ids`, read from the case store: nav."case" on Postgres,
+# data/cases.db on the file backend). The stored company analysis (search query, needs) is re-used as is, so the
+# oracle tests matching and selection, not the LLM's reading of the website; several stored requests of the same
+# company give several analyses of the same site, and every one of them must pass.
+# A case can instead carry an inline `analysis` (search_query, company_needs, ...) built from public information.
+#
+# Names match case-, accent-, title- and punctuation-insensitively, as a substring either way (as eval/run_eval.py).
+# status: reviewed = confirmed by the team on a real case; draft = needs team review before it is trusted.
+
+cases:
+  - id: dexcom-de
+    company: Dexcom
+    status: reviewed   # teammate review of the /de-de case after the Postgres switch (2026-10-19)
+    note: >-
+      Continuous glucose monitoring maker. Reference request 08f47ed558 (file backend, before the switch) had the
+      right set; 34f889cca2 (Postgres, after the switch) lost García-Tirado, Bally Lab, Monitoring and enhance-d
+      and gained the two traps.
+    case_ids: ["08f47ed558", "5c6210fd23", "5961353982", "34f889cca2"]   # all https://www.dexcom.com/de-de requests
+    must:
+      - José Garcia-Tirado            # PrecisionLab, automated insulin delivery
+      - Bally Lab                     # closed-loop AID, digital biomarkers
+      - Monitoring                    # clinical trial monitoring service (CTU)
+      - "enhance-d: Enhanced Diabetes Self-Management"
+      - Lilian Witthauer
+      - Christoph Stettler
+      - Markus Laimer
+      - SPN-005
+      - SmartStart Health
+    traps:
+      - Christa E. Flück Pandey       # pediatric endocrinology; came in through the page heading "Ongoing Projects"
+      - Sensor Based Monitoring       # movement monitoring of elderly people; only shares the word "monitoring"
+      - Ongoing Projects              # a page heading extracted as a unit, not an asset
+      - Gerontechnology and Rehabilitation   # draft (not in the teammate's review): the lab behind "Sensor Based
+                                             # Monitoring"; same two shared words, elderly movement, not glucose
+
+# Follow-up (not in this PR): four more medtech cases (draft, from public information) with must/trap lists derived
+# from the index, each marked `status: draft` for team review.

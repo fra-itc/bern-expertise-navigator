@@ -214,7 +214,7 @@ def test_pg_search_behaviour(env):
     assert search.search("volcano geochemistry iceland").abstained
     jane = next(x for x in search.search("closed-loop insulin delivery").results if x.person_or_unit == "Jane Doe")
     assert "Diabetes Technology Lab" in jane.related
-    # FTS: simple + unaccent -> 'zurich' finds 'Zürich'
+    # lexical ranking is accent-insensitive: 'zurich' finds 'Zürich'
     ids, top = index_store().lexical_rank(index.tokenize("zurich imaging"))
     assert ids and ids[0] == hid(10) and top > 0
     # vector filter by type
