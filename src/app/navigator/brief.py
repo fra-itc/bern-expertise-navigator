@@ -17,6 +17,7 @@ import re
 from functools import lru_cache
 
 from . import archetypes, cases, crawl, index, llm, plain, search, showcase
+from . import needs as need_words
 from .cases import Case
 import yaml
 from pydantic import BaseModel, Field
@@ -30,11 +31,12 @@ _DOI = re.compile(r"\b(10\.\d{4,9}/[^\s\"<>|,;]+[^\s\"<>|,;.)\]])")
 T = {
     "en": {
         "kicker": "An invitation to meet Bern's research community",
-        "hook": "Your enquiry mentions {topics}. In Bern, {n} research team(s) describe work on these topics on their "
-                "public pages. We would like to introduce you to them in person.",
-        "hook_nt": "In Bern, {n} research team(s) describe work close to what {company} is doing. We would like to "
-                   "introduce you to them in person.",
-        "why": "Who you would meet", "topic": "Shared topic", "stmt": "sourced statements", "teams": "research teams",
+        "hook": "Your enquiry mentions {topics}. In Bern, we found {who} whose public pages describe work on these "
+                "topics. We would like to introduce you in person.",
+        "hook_nt": "In Bern, we found {who} whose public pages describe work close to what {company} is doing. We "
+                   "would like to introduce you in person.",
+        "who": ("one potential partner", "{n} potential partners (people, research teams, facilities and projects)"),
+        "why": "Who you would meet", "topic": "Shared topic", "stmt": "sourced statements", "teams": "potential partners",
         "pubs_n": "publications", "tech": "Technical details", "pubs": "Selected publications",
         "proof": "Bern in numbers", "visit": "Proposed: a half-day in Bern",
         "visit_meet": "Meet {who}", "visit_tour": "Visit the {what}", "visit_talk": "Discuss collaboration, pilots and next steps",
@@ -49,7 +51,8 @@ T = {
         "n.need": "Your need", "n.answer": "How Bern answers it", "n.with": "With", "n.est": "Estimated benefit",
         "n.calc": "How we calculated it", "m.with": ", for example with {names}",
         "n.canton": "Canton of Bern, business development",
-        "n.intro": "The Canton of Bern's business development team introduces you to the specialists in Bern who handle this.",
+        "n.intro": "We have not yet found a partner in Bern whose public pages show this; the Canton of Bern's "
+                   "business development team will look into it with you.",
         "n.generic": "Developing your products further with partners in Bern",
         "opp": "Strategic opportunities for {company}",
         "o.people": "Expertise to strengthen your products", "o.org": "Teams for joint development",
@@ -60,14 +63,15 @@ T = {
         "x.does": "What {company} does",
         "x.found": "What they need, and what we found in Bern",
         "x.need1": "They need {need}. In Bern we found: {names}.",
-        "x.need_us": "They need {need}. Our own team can help with that.",
+        "x.need_us": "They need {need}. We did not find a partner in Bern whose public pages show this.",
+        "x.need_agency": "They need {need}. Our own team can help with that.",
         "x.found0": "In Bern we found {groups} working in the same field.",
         "g.people": ("one expert", "{n} experts"), "g.org": ("one research team", "{n} research teams"),
         "g.offering": ("one lab or service", "{n} labs or services"),
         "g.activities": ("one research project", "{n} research projects"),
         "g.company": ("one local company", "{n} local companies"), "g.capital": ("one programme", "{n} programmes"),
         "x.why": "Why we chose these partners",
-        "x.why1": ("{names} works on exactly this: {plain}", "{names} work on exactly this: {plain}"),
+        "x.why1": ("{names} works on {term}: {plain}", "{names} work on {term}: {plain}"),
         "x.why2": ("{names} works in the same field as the company.", "{names} work in the same field as the company."),
         "r.people": "expert", "r.org": "research team", "r.offering": "lab or service", "r.activities": "research project",
         "r.company": "local company", "r.capital": "support programme",
@@ -79,11 +83,13 @@ T = {
     },
     "de": {
         "kicker": "Eine Einladung, Berns Forschung kennenzulernen",
-        "hook": "Ihre Anfrage erwähnt {topics}. In Bern beschreiben {n} Forschungsteam(s) auf ihren öffentlichen "
-                "Seiten Arbeiten zu diesen Themen. Gerne stellen wir sie Ihnen persönlich vor.",
-        "hook_nt": "In Bern beschreiben {n} Forschungsteam(s) Arbeiten, die nahe an dem liegen, was {company} macht. "
-                   "Gerne stellen wir sie Ihnen persönlich vor.",
-        "why": "Wen Sie treffen würden", "topic": "Gemeinsames Thema", "stmt": "belegte Aussagen", "teams": "Forschungsteams",
+        "hook": "Ihre Anfrage erwähnt {topics}. In Bern haben wir {who} öffentliche Seiten Arbeiten zu diesen Themen "
+                "beschreiben. Gerne stellen wir Sie persönlich vor.",
+        "hook_nt": "In Bern haben wir {who} öffentliche Seiten Arbeiten beschreiben, die nahe an dem liegen, was "
+                   "{company} macht. Gerne stellen wir Sie persönlich vor.",
+        "who": ("einen möglichen Partner gefunden, dessen",
+                "{n} mögliche Partner (Fachleute, Forschungsteams, Einrichtungen und Projekte) gefunden, deren"),
+        "why": "Wen Sie treffen würden", "topic": "Gemeinsames Thema", "stmt": "belegte Aussagen", "teams": "mögliche Partner",
         "pubs_n": "Publikationen", "tech": "Technische Details", "pubs": "Ausgewählte Publikationen",
         "proof": "Bern in Zahlen", "visit": "Vorschlag: ein halber Tag in Bern",
         "visit_meet": "Treffen mit {who}", "visit_tour": "Besuch: {what}", "visit_talk": "Austausch zu Zusammenarbeit, Pilotprojekten und nächsten Schritten",
@@ -98,7 +104,8 @@ T = {
         "n.need": "Ihr Bedarf", "n.answer": "Berns Antwort", "n.with": "Mit", "n.est": "Geschätzter Nutzen",
         "n.calc": "So haben wir gerechnet", "m.with": ", zum Beispiel mit {names}",
         "n.canton": "Kanton Bern, Wirtschaftsförderung",
-        "n.intro": "Die Wirtschaftsförderung des Kantons Bern vermittelt Ihnen die Fachleute in Bern, die sich damit befassen.",
+        "n.intro": "Wir haben in Bern noch keinen Partner gefunden, dessen öffentliche Seiten dies belegen; die "
+                   "Wirtschaftsförderung des Kantons Bern klärt das gerne mit Ihnen.",
         "n.generic": "Ihre Produkte mit Partnern in Bern weiterentwickeln",
         "opp": "Strategische Chancen für {company}",
         "o.people": "Fachwissen für Ihre Produkte", "o.org": "Teams für gemeinsame Entwicklung",
@@ -108,14 +115,15 @@ T = {
         "x.does": "Was {company} macht",
         "x.found": "Was sie brauchen und was wir in Bern gefunden haben",
         "x.need1": "Sie brauchen {need}. In Bern haben wir gefunden: {names}.",
-        "x.need_us": "Sie brauchen {need}. Dabei hilft unser eigenes Team.",
+        "x.need_us": "Sie brauchen {need}. In Bern haben wir keinen Partner gefunden, dessen öffentliche Seiten das belegen.",
+        "x.need_agency": "Sie brauchen {need}. Dabei hilft unser eigenes Team.",
         "x.found0": "In Bern haben wir {groups} im selben Gebiet gefunden.",
         "g.people": ("eine Fachperson", "{n} Fachpersonen"), "g.org": ("ein Forschungsteam", "{n} Forschungsteams"),
         "g.offering": ("ein Labor oder eine Dienstleistung", "{n} Labore oder Dienstleistungen"),
         "g.activities": ("ein Forschungsprojekt", "{n} Forschungsprojekte"),
         "g.company": ("eine lokale Firma", "{n} lokale Firmen"), "g.capital": ("ein Programm", "{n} Programme"),
         "x.why": "Warum wir diese Partner gewählt haben",
-        "x.why1": ("{names} arbeitet genau daran: {plain}", "{names} arbeiten genau daran: {plain}"),
+        "x.why1": ("{names} arbeitet an {term}: {plain}", "{names} arbeiten an {term}: {plain}"),
         "x.why2": ("{names} arbeitet im selben Gebiet wie die Firma.", "{names} arbeiten im selben Gebiet wie die Firma."),
         "r.people": "Fachperson", "r.org": "Forschungsteam", "r.offering": "Labor oder Dienstleistung",
         "r.activities": "Forschungsprojekt", "r.company": "lokale Firma", "r.capital": "Förderprogramm",
@@ -128,11 +136,12 @@ T = {
     },
     "fr": {
         "kicker": "Une invitation à rencontrer la recherche bernoise",
-        "hook": "Votre demande mentionne {topics}. À Berne, {n} équipe(s) de recherche décrivent des travaux sur ces "
-                "sujets sur leurs pages publiques. Nous aimerions vous les présenter en personne.",
-        "hook_nt": "À Berne, {n} équipe(s) de recherche décrivent des travaux proches de ceux de {company}. Nous "
-                   "aimerions vous les présenter en personne.",
-        "why": "Qui vous rencontreriez", "topic": "Sujet commun", "stmt": "affirmations sourcées", "teams": "équipes de recherche",
+        "hook": "Votre demande mentionne {topics}. À Berne, nous avons trouvé {who} dont les pages publiques "
+                "décrivent des travaux sur ces sujets. Nous aimerions vous mettre en relation en personne.",
+        "hook_nt": "À Berne, nous avons trouvé {who} dont les pages publiques décrivent des travaux proches de ceux de "
+                   "{company}. Nous aimerions vous mettre en relation en personne.",
+        "who": ("un partenaire potentiel", "{n} partenaires potentiels (personnes, équipes de recherche, infrastructures et projets)"),
+        "why": "Qui vous rencontreriez", "topic": "Sujet commun", "stmt": "affirmations sourcées", "teams": "partenaires potentiels",
         "pubs_n": "publications", "tech": "Détails techniques", "pubs": "Publications choisies",
         "proof": "Berne en chiffres", "visit": "Proposition : une demi-journée à Berne",
         "visit_meet": "Rencontrer {who}", "visit_tour": "Visiter : {what}", "visit_talk": "Échanger sur collaboration, projets pilotes et prochaines étapes",
@@ -147,7 +156,8 @@ T = {
         "n.need": "Votre besoin", "n.answer": "La réponse de Berne", "n.with": "Avec", "n.est": "Bénéfice estimé",
         "n.calc": "Notre calcul", "m.with": ", par exemple avec {names}",
         "n.canton": "Canton de Berne, promotion économique",
-        "n.intro": "La promotion économique du canton de Berne vous met en relation avec les spécialistes bernois du sujet.",
+        "n.intro": "Nous n'avons pas encore trouvé à Berne de partenaire dont les pages publiques le montrent ; la "
+                   "promotion économique du canton de Berne l'examinera avec vous.",
         "n.generic": "Développer vos produits avec des partenaires à Berne",
         "opp": "Opportunités stratégiques pour {company}",
         "o.people": "Des compétences pour renforcer vos produits", "o.org": "Des équipes pour un développement commun",
@@ -157,14 +167,15 @@ T = {
         "x.does": "Ce que fait {company}",
         "x.found": "Ce dont ils ont besoin, et ce que nous avons trouvé à Berne",
         "x.need1": "Ils ont besoin de {need}. À Berne, nous avons trouvé : {names}.",
-        "x.need_us": "Ils ont besoin de {need}. Notre propre équipe peut les aider.",
+        "x.need_us": "Ils ont besoin de {need}. Nous n'avons pas trouvé à Berne de partenaire dont les pages publiques le montrent.",
+        "x.need_agency": "Ils ont besoin de {need}. Notre propre équipe peut les aider.",
         "x.found0": "À Berne, nous avons trouvé {groups} dans le même domaine.",
         "g.people": ("un expert", "{n} experts"), "g.org": ("une équipe de recherche", "{n} équipes de recherche"),
         "g.offering": ("un laboratoire ou service", "{n} laboratoires ou services"),
         "g.activities": ("un projet de recherche", "{n} projets de recherche"),
         "g.company": ("une entreprise locale", "{n} entreprises locales"), "g.capital": ("un programme", "{n} programmes"),
         "x.why": "Pourquoi ces partenaires",
-        "x.why1": ("{names} travaille précisément sur ceci : {plain}", "{names} travaillent précisément sur ceci : {plain}"),
+        "x.why1": ("{names} travaille sur {term} : {plain}", "{names} travaillent sur {term} : {plain}"),
         "x.why2": ("{names} travaille dans le même domaine que l'entreprise.",
                    "{names} travaillent dans le même domaine que l'entreprise."),
         "r.people": "expert", "r.org": "équipe de recherche", "r.offering": "laboratoire ou service",
@@ -380,20 +391,23 @@ def _rule_for(need: str, groups: list[str], used: set[str]) -> dict | None:
     return next((r for r in rules if r["id"] == fb), None)
 
 
-def _partners_for(need: str, rule: dict, items: list[dict], ents: dict[str, Entity], lang: str) -> list[dict]:
-    """Chosen partners of the groups that can answer this kind of need whose own text names a topic of the need
-    or the kind of need itself (e.g. "regulatory"); shared words only rank them. None: nobody is claimed."""
+def _partners_for(need: str, rule: dict, items: list[dict], ents: dict[str, Entity], lang: str,
+                  topic_words: set[str]) -> list[dict]:
+    """Chosen partners of the groups that can answer this kind of need whose own text shows the need: its own
+    words, and its topic as a phrase (needs.supports). The rule's pattern only classifies the need: run over a
+    partner's pages it matched "CE-marked" in a paper title or "hormonal regulation". Shared words only rank.
+    None: nobody is claimed."""
     terms = {x["term"] for x in plain.find_terms(need, lang)}
     words = _words(need)
     scored = []
     for k, it in enumerate(items):
-        if it["group"] not in rule.get("groups", []):
+        if it["group"] not in rule.get("groups", []) or it["id"] not in ents:
             continue
         text = ents[it["id"]].search_text()
+        if not need_words.supports(text, need, topic_words):
+            continue
         shared = len(terms & {x["term"] for x in plain.find_terms(text, lang)})
-        kind = bool(re.search(rule["match"], text, re.I))
-        if shared or kind:
-            scored.append((-(3 * shared + 2 * kind + len(words & _words(text))), k, it))
+        scored.append((-(3 * shared + len(words & _words(text))), k, it))
     return [it for _, _, it in sorted(scored)[:3]]
 
 
@@ -460,6 +474,11 @@ def _mail_sentence(text: str, figure: str, who: list[dict], t: dict, lang: str) 
     return text[:1].upper() + text[1:] + (t["m.with"].format(names=names) if names else "") + "."
 
 
+def _form(found_as: str) -> str:
+    """A topic as written, abbreviations in capitals ("mri" -> "MRI")."""
+    return found_as.upper() if " " not in found_as and len(found_as) <= 4 else found_as
+
+
 def _count(t: dict, g: str, n: int) -> str:
     one, many = t["g." + g]
     return one if n == 1 else many.format(n=n)
@@ -516,10 +535,12 @@ def build(case: Case, lang: str, officer: dict, ui_lang: str | None = None) -> d
     for h in showcase.build().get("highlights", [])[:3]:
         proof.append({**h, "label": h["label"].get(lang) or h["label"]["en"], "ref": cite(h["url"], h["url"])})
 
-    topic_txt = ", ".join(x["term"] for x in all_topics[:3])
+    req_forms = {x["term"]: x["found_as"] for x in plain.find_terms(case.source_text(), lang)}
+    topic_txt = ", ".join(_form(req_forms.get(x["term"], x["term"])) for x in all_topics[:3])
     n = len(items)
-    hook = t["hook"].format(topics=topic_txt, n=n) if topic_txt else \
-        t["hook_nt"].format(company=company or t["x.company"], n=n)
+    who_n = t["who"][0] if n == 1 else t["who"][1].format(n=n)
+    hook = t["hook"].format(topics=topic_txt, who=who_n) if topic_txt else \
+        t["hook_nt"].format(company=company or t["x.company"], who=who_n)
     people = [i["name"] for i in items if i["type"] in ("person", "unit")][:3]
     facility = next((i["name"] for i in items if i["type"] == "infrastructure"), None)
     agenda = ([t["visit_meet"].format(who=", ".join(people))] if people else []) + \
@@ -531,20 +552,24 @@ def build(case: Case, lang: str, officer: dict, ui_lang: str | None = None) -> d
 
     # each need: how Bern answers it, with whom, and the estimated benefit (always labelled as an estimate)
     item_groups = [i["group"] for i in items]
+    topic_words = need_words.topic(case.analysis)
     needs, used, named = [], set(), set()      # named: partners the email has already mentioned
     for need in _clauses([x for x in case.analysis.company_needs if x.strip()]) or [t["n.generic"]]:
         rule = _rule_for(need, item_groups, used)
         if not rule or len(needs) == 4:
             continue
         used.add(rule["id"])
-        who = _partners_for(need, rule, items, ents, lang)
+        who = _partners_for(need, rule, items, ents, lang, topic_words)
         pick = lambda f: (rule.get(f) or {}).get(lang) or (rule.get(f) or {}).get("en", "")  # noqa: E731
-        # no chosen partner shows this on its own pages: say only that the canton makes the introduction
-        solve = pick("solve") if who or not rule.get("groups") else t["n.intro"]
-        needs.append({"id": rule["id"], "need": _short(need, 220), "solve": solve,
+        agency = not rule.get("groups")       # the canton's own service (premises, permits): no partner needed
+        shown = bool(who) or agency
+        # no chosen partner shows this on its own pages: say so, with no estimate and no line in the email
+        needs.append({"id": rule["id"], "need": _short(need, 220), "solve": pick("solve") if shown else t["n.intro"],
+                      "found": shown, "agency": agency,
                       "partners": [{"name": i["name"], "ref": i["page_ref"], "id": i["id"]} for i in who],
-                      "figure": pick("figure"), "gain": pick("gain"), "basis": pick("basis"), "calc": pick("calc"),
-                      "mail": _mail_sentence(pick("mail"), pick("figure"), [i for i in who if i["id"] not in named], t, lang)})
+                      **{f: pick(f) if shown else "" for f in ("figure", "gain", "basis", "calc")},
+                      "mail": _mail_sentence(pick("mail"), pick("figure"), [i for i in who if i["id"] not in named], t, lang)
+                      if shown else ""})
         named |= {i["id"] for i in who[:2]}
 
     brief = {"lang": lang, "company": company, "kicker": t["kicker"], "hook": hook, "items": items,
@@ -567,20 +592,25 @@ def build(case: Case, lang: str, officer: dict, ui_lang: str | None = None) -> d
     for nd in needs:
         need = xpick(nd["id"], "need_plain")
         found.append({"text": tx["x.need1"].format(need=need, names=names(nd["partners"])) if nd["partners"]
-                      else tx["x.need_us"].format(need=need)})
+                      else tx["x.need_agency" if nd["agency"] else "x.need_us"].format(need=need)})
     if not found:
         groups = [_count(tx, g, item_groups.count(g)) for g in _GROUPS if g in item_groups]
         found.append({"text": tx["x.found0"].format(groups=_join(groups, xlang))})
     by_topic: dict[str, list[dict]] = {}
+    forms: dict[str, list[str]] = {}            # the words each partner's own page uses for the topic
     for it in items:
-        tp = (x_topics[it["id"]] or [None])[0]
+        tp = (x_topics.get(it["id"]) or [None])[0]
         by_topic.setdefault(tp["plain"] if tp else "", []).append(it)
+        if tp:
+            forms.setdefault(tp["plain"], []).append(_form(tp["found_as"]))
     why = []
     for expl, group in sorted(by_topic.items(), key=lambda kv: kv[0] == ""):
         who_ = _join([f"{_plain_name(i['name'])} ({tx['r.' + i['group']]})" for i in group], xlang)
         one, many = tx["x.why1" if expl else "x.why2"]
-        why.append({"text": (one if len(group) == 1 else many).format(names=who_, plain=expl[:1].lower() + expl[1:])})
-    how = [{"text": xpick(nd["id"], "plain")} for nd in needs if xpick(nd["id"], "plain")]
+        term = " / ".join(list(dict.fromkeys(forms.get(expl, [])))[:2])
+        why.append({"text": (one if len(group) == 1 else many).format(names=who_, term=term,
+                                                                      plain=expl[:1].lower() + expl[1:])})
+    how = [{"text": xpick(nd["id"], "plain")} for nd in needs if nd["found"] and xpick(nd["id"], "plain")]
     explainer = [
         {"title": tx["x.does"].format(company=who), "lines": [{"text": _plain_profile(case, company, xlang)}]},
         {"title": tx["x.found"], "lines": found},

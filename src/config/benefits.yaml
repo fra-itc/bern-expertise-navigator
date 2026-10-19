@@ -38,9 +38,9 @@ rules:
       fr: "Estimation : temps généralement perdu en reprises lorsque la documentation et les preuves cliniques sont préparées sans soutien expérimenté."
     need_plain: {en: "official approval to sell a medical product", de: "die offizielle Zulassung, um ein Medizinprodukt zu verkaufen", fr: "l'autorisation officielle pour vendre un produit médical"}
     plain:
-      en: "People in Bern who know the approval rules can help them get it right the first time. We estimate this saves 3 to 6 months."
-      de: "Fachleute in Bern, die die Zulassungsregeln kennen, helfen, es beim ersten Mal richtig zu machen. Wir schätzen, das spart 3 bis 6 Monate."
-      fr: "Des personnes à Berne qui connaissent les règles d'autorisation les aident à bien faire du premier coup. Nous estimons le gain à 3 à 6 mois."
+      en: "People in Bern who know the approval rules can help them get it right the first time."
+      de: "Fachleute in Bern, die die Zulassungsregeln kennen, helfen, es beim ersten Mal richtig zu machen."
+      fr: "Des personnes à Berne qui connaissent les règles d'autorisation les aident à bien faire du premier coup."
     calc:
       en: "Without experienced support, a first conformity review usually leads to 1–2 extra rounds of corrections of about 3 months each: 1–2 × 3 months = 3–6 months. With specialists preparing the file from the start, we assume no extra round."
       de: "Ohne erfahrene Unterstützung führt eine erste Konformitätsprüfung meist zu 1–2 zusätzlichen Korrekturrunden von je etwa 3 Monaten: 1–2 × 3 Monate = 3–6 Monate. Mit Fachleuten, die das Dossier von Anfang an vorbereiten, nehmen wir keine zusätzliche Runde an."
@@ -64,9 +64,9 @@ rules:
       fr: "Estimation : délai habituel pour ouvrir un nouveau centre d'étude (avis éthique, contrats, recrutement) par rapport à un centre qui mène déjà des études comparables."
     need_plain: {en: "to test their product with patients", de: "ihr Produkt mit Patientinnen und Patienten zu testen", fr: "tester leur produit avec des patients"}
     plain:
-      en: "Teams in Bern already test products like theirs with patients, so they do not have to start from zero. We estimate this saves 6 to 12 months."
-      de: "Teams in Bern testen solche Produkte bereits mit Patienten, die Firma muss also nicht bei null anfangen. Wir schätzen, das spart 6 bis 12 Monate."
-      fr: "Des équipes à Berne testent déjà ce genre de produit avec des patients : l'entreprise ne part pas de zéro. Nous estimons le gain à 6 à 12 mois."
+      en: "Teams in Bern already test products like theirs with patients, so they do not have to start from zero."
+      de: "Teams in Bern testen solche Produkte bereits mit Patienten, die Firma muss also nicht bei null anfangen."
+      fr: "Des équipes à Berne testent déjà ce genre de produit avec des patients : l'entreprise ne part pas de zéro."
     calc:
       en: "New study site: ethics approval and contracts 4–6 months + building study staff and patient recruitment 5–9 months = 9–15 months. Centre that already runs comparable studies: about 3 months to start. 9–15 − 3 = 6–12 months."
       de: "Neues Studienzentrum: Ethikbewilligung und Verträge 4–6 Monate + Aufbau von Studienpersonal und Rekrutierung 5–9 Monate = 9–15 Monate. Zentrum mit vergleichbaren laufenden Studien: etwa 3 Monate bis zum Start. 9–15 − 3 = 6–12 Monate."
@@ -104,29 +104,29 @@ rules:
   - id: facility
     match: "prototyp|manufactur|production|fabricat|testing|test bench|laborator|\\blab\\b|equipment|facilit|infrastructure|imaging|measur|herstell|fertig|labor|gerät"
     groups: [offering]
-    figure: {en: "CHF 0.1–0.5 M", de: "CHF 0,1–0,5 Mio.", fr: "CHF 0,1 à 0,5 M"}
-    gain: {en: "investment avoided", de: "vermiedene Investition", fr: "d'investissement évité"}
+    figure: {en: "", de: "", fr: ""}
+    gain: {en: "", de: "", fr: ""}
     solve:
       en: "Use existing laboratories, test benches and prototyping workshops in Bern instead of buying and qualifying equipment."
       de: "Bestehende Labore, Prüfstände und Prototypen-Werkstätten in Bern nutzen, statt Geräte zu kaufen und zu qualifizieren."
       fr: "Utiliser les laboratoires, bancs d'essai et ateliers de prototypage existants à Berne au lieu d'acheter et de qualifier des équipements."
     basis:
-      en: "Estimate: order of magnitude for buying and qualifying a comparable laboratory or test set-up; access is usually paid per use."
-      de: "Schätzung: Grössenordnung für Kauf und Qualifizierung einer vergleichbaren Labor- oder Prüfeinrichtung; die Nutzung wird meist pro Einsatz verrechnet."
-      fr: "Estimation : ordre de grandeur de l'achat et de la qualification d'un laboratoire ou d'un banc comparable ; l'accès est généralement facturé à l'usage."
+      en: "Access to existing facilities is usually paid per use."
+      de: "Die Nutzung bestehender Einrichtungen wird meist pro Einsatz verrechnet."
+      fr: "L'accès aux infrastructures existantes est généralement facturé à l'usage."
     need_plain: {en: "labs and machines to build and test their product", de: "Labore und Maschinen, um ihr Produkt zu bauen und zu prüfen", fr: "des laboratoires et des machines pour fabriquer et tester leur produit"}
     plain:
-      en: "They can use labs and machines that already exist in Bern instead of buying their own. We estimate this avoids spending CHF 100,000 to 500,000."
-      de: "Sie können bestehende Labore und Maschinen in Bern nutzen, statt eigene zu kaufen. Wir schätzen, das erspart CHF 100'000 bis 500'000."
-      fr: "Ils peuvent utiliser des laboratoires et des machines qui existent déjà à Berne au lieu d'acheter les leurs. Nous estimons l'économie à CHF 100 000 à 500 000."
+      en: "They can use labs and machines that already exist in Bern instead of buying their own."
+      de: "Sie können bestehende Labore und Maschinen in Bern nutzen, statt eigene zu kaufen."
+      fr: "Ils peuvent utiliser des laboratoires et des machines qui existent déjà à Berne au lieu d'acheter les leurs."
     calc:
-      en: "Buying a comparable laboratory or test set-up: equipment CHF 80,000–400,000 + installation and qualification CHF 20,000–100,000 = CHF 0.1–0.5 M. Using existing facilities in Bern is paid per use; that cost is not deducted here."
-      de: "Kauf einer vergleichbaren Labor- oder Prüfeinrichtung: Geräte CHF 80'000–400'000 + Installation und Qualifizierung CHF 20'000–100'000 = CHF 0,1–0,5 Mio. Die Nutzung bestehender Einrichtungen in Bern wird pro Einsatz verrechnet; diese Kosten sind hier nicht abgezogen."
-      fr: "Achat d'un laboratoire ou d'un banc comparable : équipements CHF 80 000 à 400 000 + installation et qualification CHF 20 000 à 100 000 = CHF 0,1 à 0,5 M. L'utilisation des infrastructures bernoises est facturée à l'usage ; ce coût n'est pas déduit ici."
+      en: "No figure: the cost of a comparable laboratory or test set-up depends on the equipment, and using existing facilities in Bern is paid per use."
+      de: "Keine Zahl: Die Kosten einer vergleichbaren Labor- oder Prüfeinrichtung hängen von den Geräten ab, und die Nutzung bestehender Einrichtungen in Bern wird pro Einsatz verrechnet."
+      fr: "Pas de chiffre : le coût d'un laboratoire ou d'un banc comparable dépend des équipements, et l'utilisation des infrastructures bernoises est facturée à l'usage."
     mail:
-      en: "you could avoid an investment of roughly {figure} by using existing laboratories, test benches and prototyping workshops in Bern"
-      de: "Sie könnten eine Investition von rund {figure} vermeiden, indem Sie bestehende Labore, Prüfstände und Prototypen-Werkstätten in Bern nutzen"
-      fr: "vous pourriez éviter un investissement d'environ {figure} en utilisant les laboratoires, bancs d'essai et ateliers de prototypage existants à Berne"
+      en: "you could use existing laboratories, test benches and prototyping workshops in Bern instead of buying and qualifying your own equipment"
+      de: "Sie könnten bestehende Labore, Prüfstände und Prototypen-Werkstätten in Bern nutzen, statt eigene Geräte zu kaufen und zu qualifizieren"
+      fr: "vous pourriez utiliser les laboratoires, bancs d'essai et ateliers de prototypage existants à Berne au lieu d'acheter et de qualifier vos propres équipements"
   - id: data
     match: "\\bdata\\b|daten|données|software|algorithm|artificial intelligence|\\bai\\b|\\bki\\b|machine learning|digital|dataset"
     groups: [people, org, activities, offering]
@@ -142,9 +142,9 @@ rules:
       fr: "Estimation : délai pour un premier algorithme ou flux de données validé sans partenaire expérimenté."
     need_plain: {en: "computer and data skills", de: "Fachwissen zu Software und Daten", fr: "des compétences en informatique et en données"}
     plain:
-      en: "Teams in Bern already write this kind of software, so the company can build on their work. We estimate this saves 6 to 12 months."
-      de: "Teams in Bern schreiben bereits solche Software, die Firma kann darauf aufbauen. Wir schätzen, das spart 6 bis 12 Monate."
-      fr: "Des équipes à Berne écrivent déjà ce type de logiciel ; l'entreprise peut s'appuyer sur leur travail. Nous estimons le gain à 6 à 12 mois."
+      en: "Teams in Bern already write this kind of software, so the company can build on their work."
+      de: "Teams in Bern schreiben bereits solche Software, die Firma kann darauf aufbauen."
+      fr: "Des équipes à Berne écrivent déjà ce type de logiciel ; l'entreprise peut s'appuyer sur leur travail."
     calc:
       en: "First validated algorithm or data pipeline built from scratch: 12–18 months. Building on a team with existing methods and data: about 6 months. 12–18 − 6 = 6–12 months."
       de: "Erster validierter Algorithmus oder Datenpipeline von Grund auf: 12–18 Monate. Aufbauend auf einem Team mit bestehenden Methoden und Daten: etwa 6 Monate. 12–18 − 6 = 6–12 Monate."
@@ -194,9 +194,9 @@ rules:
       fr: "Estimation : délai habituel pour recruter et intégrer des profils R&D spécialisés en medtech."
     need_plain: {en: "experts who know their field", de: "Fachleute, die ihr Gebiet kennen", fr: "des experts de leur domaine"}
     plain:
-      en: "They can work with experts in Bern right away instead of hiring new staff. We estimate this saves 3 to 6 months."
-      de: "Sie können sofort mit Fachleuten in Bern arbeiten, statt neues Personal einzustellen. Wir schätzen, das spart 3 bis 6 Monate."
-      fr: "Ils peuvent travailler tout de suite avec des experts à Berne au lieu d'embaucher. Nous estimons le gain à 3 à 6 mois."
+      en: "They can work with experts in Bern right away instead of hiring new staff."
+      de: "Sie können sofort mit Fachleuten in Bern arbeiten, statt neues Personal einzustellen."
+      fr: "Ils peuvent travailler tout de suite avec des experts à Berne au lieu d'embaucher."
     calc:
       en: "Recruiting a specialised R&D profile: 2–4 months + onboarding 1–2 months = 3–6 months. Working with scientists already active on the topic can start right away."
       de: "Rekrutierung eines spezialisierten F&E-Profils: 2–4 Monate + Einarbeitung 1–2 Monate = 3–6 Monate. Die Zusammenarbeit mit Forschenden, die bereits am Thema arbeiten, kann sofort beginnen."

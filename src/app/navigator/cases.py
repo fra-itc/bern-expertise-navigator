@@ -19,7 +19,7 @@ from pydantic import BaseModel, Field, model_validator
 
 import yaml
 
-from . import archetypes, company as company_web, documents as docs, index, llm, plain, search, showcase, understand
+from . import archetypes, company as company_web, documents as docs, index, llm, needs, plain, search, showcase, understand
 from .config import CONFIG_DIR, DATA_DIR
 from .storage import case_store
 
@@ -493,15 +493,15 @@ _OT = {
     "en": {"intro": "For {company}, Bern offers", "people1": "one matching expert: {xs}.", "people": "{n} matching experts: {xs}.",
            "orgs": "Matching research units are {xs}.", "orgs1": "The matching research unit is {xs}.",
            "offer": "Relevant infrastructure and services include {xs}.", "act": "Related research activities include {xs}.",
-           "and": "and", "company": "this company", "units": "the following research units: {xs}."},
+           "and": "and", "company": "this company", "units": "the following research units: {xs}.", "need": "On “{need}”: {xs}."},
     "de": {"intro": "Für {company} bietet Bern", "people1": "eine passende Fachperson: {xs}.", "people": "{n} passende Fachpersonen: {xs}.",
            "orgs": "Passende Forschungseinheiten sind {xs}.", "orgs1": "Die passende Forschungseinheit ist {xs}.",
            "offer": "Relevante Infrastruktur und Dienstleistungen umfassen {xs}.", "act": "Verwandte Forschungsaktivitäten sind {xs}.",
-           "and": "und", "company": "diese Firma", "units": "folgende Forschungseinheiten: {xs}."},
+           "and": "und", "company": "diese Firma", "units": "folgende Forschungseinheiten: {xs}.", "need": "Zu «{need}»: {xs}."},
     "fr": {"intro": "Pour {company}, Berne offre", "people1": "un expert correspondant : {xs}.", "people": "{n} experts correspondants : {xs}.",
            "orgs": "Les unités de recherche correspondantes sont {xs}.", "orgs1": "L'unité de recherche correspondante est {xs}.",
            "offer": "Les infrastructures et services pertinents comprennent {xs}.", "act": "Les activités de recherche liées comprennent {xs}.",
-           "and": "et", "company": "cette entreprise", "units": "les unités de recherche suivantes : {xs}."},
+           "and": "et", "company": "cette entreprise", "units": "les unités de recherche suivantes : {xs}.", "need": "Pour « {need} » : {xs}."},
 }
 
 
@@ -516,8 +516,9 @@ def _who(m: Match) -> str:
     return ", ".join(x for x in [role, unit] if x)
 
 
-def _template(case: Case, picked: list[Match], lang: str) -> str:
-    """Only indexed facts (name, role, unit, institution), each followed by its source number."""
+def _template(case: Case, picked: list[Match], lang: str, paired: dict[str, list[int]] | None = None) -> str:
+    """Only indexed facts (name, role, unit, institution), each followed by its source number; then, for each
+    stated need, the assets whose own pages show it."""
     t = _OT.get(lang, _OT["en"])
     n = {m.id: i for i, m in enumerate(picked, 1)}
     people = [m for m in picked if _kind(m) == "person"]
@@ -540,6 +541,9 @@ def _template(case: Case, picked: list[Match], lang: str) -> str:
         out.append(t["offer"].format(xs=_join([cite(m) for m in offer], t["and"])))
     if act:
         out.append(t["act"].format(xs=_join([cite(m) for m in act], t["and"])))
+    for need, ns in (paired or {}).items():
+        if ns:
+            out.append(t["need"].format(need=need, xs=_join([f"{picked[k - 1].name} [{k}]" for k in ns], t["and"])))
     return " ".join(out)
 
 
@@ -595,23 +599,49 @@ def _check(text: str, sources: list[OfferSource]) -> bool:
 _ALSO = {"en": "Also relevant:", "de": "Ebenfalls relevant:", "fr": "Également pertinent :"}
 
 
+def _zones(text: str, sources: list[OfferSource]) -> list[tuple[int, int, str]]:
+    """Where other names sit in the text: units, institutes and institutions of the assets ("Sensing & Monitoring
+    Lab" holds "Monitoring", which is another asset). An asset's name found inside one of these is not that asset."""
+    names = {x for s in sources for x in (s.unit, s.institute, s.institution) if x and len(x.split()) > 1}
+    return [(m.start(), m.end(), n) for n in names
+            for m in re.finditer(rf"(?<![\w-]){re.escape(n)}(?![\w-])", text, re.I)]
+
+
+def _cite_keys(x: OfferSource) -> list[str]:
+    if x.entity_type == "person":
+        return _name_keys(x)                                  # surname
+    # full name, the part before ":" or " – ", then shorter word prefixes (min. 3 words) of long names, and an
+    # identifier the prose may use alone ("SPN-005 – Pilot study on …" -> "SPN-005")
+    head = re.split(r":| [–-] ", x.name)[0].strip()
+    words = re.sub(r"^(a|an|the)\s+", "", head, flags=re.I).split()
+    ident = [words[0]] if words and re.search(r"\d", words[0]) and len(words[0]) >= 4 else []
+    return list(dict.fromkeys([x.name, head, *(" ".join(words[:k]) for k in range(len(words), 2, -1)), *ident]))
+
+
+def _key_flags(k: str) -> int:
+    """A one-word name is matched as written ("Monitoring", the service, not "glucose monitoring"); longer names
+    in any case."""
+    return re.I if " " in k.strip() else 0
+
+
 def _cite(text: str, sources: list[OfferSource], lang: str = "en") -> str | None:
     """Insert [n] after the first mention of each asset's name. The model writes names only: given numbers,
-    it attached them to the wrong assets. None when an asset is not mentioned recognisably."""
+    it attached them to the wrong assets. Longer names are placed first, and a name inside another asset's name
+    or unit does not count ("Monitoring" in "Sensing & Monitoring Lab"). None when an asset is not mentioned
+    recognisably."""
     text = re.sub(r"\s*\[\d+\]", "", text)
+    zones = _zones(text, sources)
     spots, missing = [], []
-    for x in sources:
-        if x.entity_type == "person":
-            keys = _name_keys(x)                              # surname
-        else:   # full name, the part before ":", then shorter word prefixes (min. 3 words) of long names
-            words = re.sub(r"^(a|an|the)\s+", "", x.name.split(":")[0].strip(), flags=re.I).split()
-            keys = list(dict.fromkeys([x.name, x.name.split(":")[0].strip(),
-                                       *(" ".join(words[:k]) for k in range(len(words), 2, -1))]))
+    for x in sorted(sources, key=lambda s: -len(s.name)):
         hit = None
-        for k in keys:
-            m = re.search(rf"(?<![\w-]){re.escape(k)}(?![\w-])", text, re.I)
-            if m and not any(a <= m.start() < b for a, b, _ in spots):
-                hit = (m.start(), m.end(), x.n)
+        for k in _cite_keys(x):
+            for m in re.finditer(rf"(?<![\w-]){re.escape(k)}(?![\w-])", text, _key_flags(k)):
+                taken = any(a <= m.start() < b for a, b, _ in spots)
+                inside = any(a <= m.start() and m.end() <= b and n.lower() != x.name.lower() for a, b, n in zones)
+                if not taken and not inside:
+                    hit = (m.start(), m.end(), x.n)
+                    break
+            if hit:
                 break
         if hit:
             spots.append(hit)
@@ -622,9 +652,142 @@ def _cite(text: str, sources: list[OfferSource], lang: str = "en") -> str | None
     for a, b, n in sorted(spots, key=lambda z: -z[1]):
         text = f"{text[:b]} [{n}]{text[b:]}"
     if missing:   # the few assets the prose left out, in one closing sentence
+        missing.sort(key=lambda x: x.n)
         lead = _ALSO.get(lang, _ALSO["en"])
         text = f"{text.rstrip()} {lead} " + _join([f"{x.name}{' (' + x.role + ')' if x.role else ''} [{x.n}]"
                                                    for x in missing], _OT.get(lang, _OT["en"])["and"]) + "."
+    return text
+
+
+# ---- claim check: every word of the paragraph that says something must come from the sources ------------------
+# Words that connect or frame, in the three languages; everything else (a role, a topic, "experience",
+# "conducted", "manufacturing") has to be found in the text of the asset it is said about.
+_GLUE = set("""about across additional additionally along alongside also another available based between brings bring
+both called could contribute contributes contributing could engage engaged especially focus focused focuses focusing
+further their there these those through together where which while whose within would should other others offer offers
+offering provide provides providing relevant support supports supported related include includes including including
+works working company research particularly various several helps study studies project projects group groups team
+teams center centre university institute department laboratory field areas topics topic theme themes involved involve
+welche welcher welches sowie bietet bieten arbeitet arbeiten können könnte unterstützt ausserdem außerdem zudem darüber
+hinaus insbesondere bereich bereichen zusammenarbeit dabei deren dessen unter andere anderen weitere weiteren durch
+zwischen beschäftigt befasst forschung gruppe projekt projekte zentrum firma unternehmen
+using specialized specialised dedicated knowledge areas benefit pursue pursued available
+cover covers covering concern concerns deals addresses explore explores describes described located umfasst umfassen couvre portent
+offre offrent propose proposent travaille travaillent notamment également ainsi autour entre dont leurs pourrait
+peuvent peut domaine domaines grâce comme celle celui aussi plusieurs recherche groupe projet projets centre entreprise
+societe société""".split())
+def _supported(word: str, low: str) -> bool:
+    """`word` in the lowercased source text, as the word, its plural, or (long words) its stem: "develops" ~
+    "develop", "sensors" ~ "sensor"."""
+    if needs.has(low, word):
+        return True
+    return len(word) >= 7 and re.search(rf"(?<![\w-]){re.escape(word[:6])}", low) is not None
+
+
+def _chunks(sentence: str) -> list[tuple[str, set[int], bool]]:
+    """A sentence cut into (text, the assets it is said about, whether it is the framing before any citation).
+    Before the first citation: all cited assets ("For clinical validation, Dexcom can engage A [1] and B [2]").
+    After a citation: that asset, and its apposition ("A [1], group head of …,"). Assets joined by "and" share
+    what follows the last of them ("A [1] and B [2], …, bring machine learning": both must show it)."""
+    bits = re.split(r"\[(\d+)\]", sentence)
+    out = [(bits[0], {int(n) for n in bits[1::2]}, True)]
+    group: list[int] = []
+    for i in range(1, len(bits), 2):
+        n, seg = int(bits[i]), bits[i + 1]
+        group.append(n)
+        if re.match(r"\s*,?\s*(which|who|whose|where|that|welche|welcher|welches|der|die|das|deren|dessen|qui|dont|où)\b",
+                    seg, re.I) and not re.search(r",\s*(and|und|et)\s+[^\[]{0,80}$", seg):
+            out.append((seg, {n}, False))          # ", which …": said about this asset only
+            group = []
+            continue
+        ap = re.match(r"\s*,([^,\[]{0,140}),", seg)
+        if ap:
+            out.append((ap.group(1), {n}, False))
+            seg = seg[ap.end():]
+        if i + 2 < len(bits) and re.fullmatch(r"\s*,?\s*(and|und|et|as well as|sowie|ainsi que)\b[^\[]{0,80}", seg, re.I):
+            out.append((seg, set(group), False))   # "and Prof. B": names; what follows B is said about both
+            continue
+        out.append((seg, set(group), False))
+        group = []
+    return out
+
+
+def _faithful(text: str, sources: list[OfferSource], case: Case, texts: dict[int, str],
+              paired: dict[str, list[int]]) -> str | None:
+    """The first claim the sources do not support, as feedback for the model; None when every claim is supported."""
+    return next(_unsupported(text, sources, case, texts, paired), None)
+
+
+def _unsupported(text: str, sources: list[OfferSource], case: Case, texts: dict[int, str],
+                 paired: dict[str, list[int]]):
+    """Every claim the sources do not support:
+    - a company need is named only next to assets whose own text shows it (`needs.pairs`);
+    - every other word that says something is in the text of the asset(s) it is said about, or in what the
+      company itself told us."""
+    tw = needs.topic(case.analysis)
+    own = " ".join([case.company, case.analysis.summary, case.analysis.company_does, *case.analysis.offerings,
+                    *case.analysis.keywords, case.analysis.search_query]).lower()
+    kinds = {w: n for n in case.analysis.company_needs for w in needs.parts(n, tw)[0]}
+    names = {t for s in sources for t in index.tokenize(s.name)}
+    for sentence in _sentences(_mark_all(text, sources)):
+        if re.match(r"^\s*(Also relevant|Ebenfalls relevant|Également pertinent)", sentence):
+            continue
+        for chunk, who, framing in _chunks(sentence):
+            if not who:
+                continue
+            for need in case.analysis.company_needs:   # the chunk names this need: its assets must show it
+                kind, runs = needs.parts(need, tw)
+                low = chunk.lower()
+                said = [w for w in kind if needs.has(low, w)]
+                if len(said) >= 2 or said and any(all(needs.has(low, w) for w in r) for r in runs):
+                    bad = [n for n in sorted(who) if n not in paired.get(need, [])]
+                    if bad:
+                        yield f'the need "{need}" is linked to asset {bad[0]}, whose sources do not show it'
+            for w in dict.fromkeys(t for t in index.tokenize(chunk) if len(t) >= 5 and t.isalpha()):
+                if w in names or w in _GLUE or w in needs.FILLER:
+                    continue
+                need = kinds.get(w) or kinds.get(needs.base(w))
+                if need:   # a need's own word: only for the assets paired with that need, or that show the word
+                    bad = [n for n in who if n not in paired.get(need, []) and not needs.has(texts.get(n, ""), w)]
+                    if bad:
+                        yield f'"{w}" (the need "{need}") is linked to asset {bad[0]}, whose sources do not show it'
+                    continue
+                if framing and needs.has(own, w):    # the company's own words, framing the sentence
+                    continue
+                bad = [n for n in who if not _supported(w, texts.get(n, ""))]
+                if bad:
+                    yield f'"{w}" is said about asset {bad[0]}, but its sources do not contain it'
+
+
+_ABBR = re.compile(r"(?:\b(?:prof|dr|med|phil|nat|habil|pd|em|dipl|ing|sc|st|mr|ms|mrs|nr|no|vol|ca|bzw|etc|"
+                   r"e\.g|i\.e|z\.b|d\.h|u\.a|ph\.d)|\b[A-Z])\.$", re.I)
+
+
+def _sentences(text: str) -> list[str]:
+    """Sentences, not broken after titles and abbreviations ("Prof. Dr. med. A. Muster")."""
+    out: list[str] = []
+    for piece in re.split(r"(?<=[.!?])\s+", text):
+        if out and _ABBR.search(out[-1]):
+            out[-1] += " " + piece
+        else:
+            out.append(piece)
+    return out
+
+
+def _mark_all(text: str, sources: list[OfferSource]) -> str:
+    """[n] after EVERY mention of each asset (the paragraph cites only the first), so that what is said after a
+    later mention ("…, while the Medical Sensing Laboratory provides …") is checked against that asset."""
+    text = re.sub(r"\s*\[\d+\]", "", text)
+    zones = _zones(text, sources)
+    spots: list[tuple[int, int, int]] = []
+    for x in sorted(sources, key=lambda s: -len(s.name)):
+        for k in _cite_keys(x):
+            for m in re.finditer(rf"(?<![\w-]){re.escape(k)}(?![\w-])", text, _key_flags(k)):
+                if not any(a <= m.start() < b or a < m.end() <= b for a, b, _ in spots) and \
+                        not any(a <= m.start() and m.end() <= b and n.lower() != x.name.lower() for a, b, n in zones):
+                    spots.append((m.start(), m.end(), x.n))
+    for a, b, n in sorted(spots, key=lambda z: -z[1]):
+        text = f"{text[:b]} [{n}]{text[b:]}"
     return text
 
 
@@ -632,57 +795,95 @@ class _Para(BaseModel):
     paragraph: str
 
 
-def _discursive(case: Case, sources: list[OfferSource], lang: str) -> str | None:
-    """Apertus writes the paragraph from the listed facts only; it is accepted only if `_check` passes."""
+_NOT_FOUND = {"en": "Not shown on the public pages of a Bern partner: {xs}.",
+              "de": "Auf den öffentlichen Seiten keines Berner Partners belegt: {xs}.",
+              "fr": "Non attesté sur les pages publiques d'un partenaire bernois : {xs}."}
+
+
+def _need_lines(case: Case, sources: list[OfferSource], paired: dict[str, list[int]], lang: str) -> str:
+    """The needs no asset shows, said plainly instead of being attached to someone."""
+    open_ = [n for n, ns in paired.items() if not ns]
+    return _NOT_FOUND.get(lang, _NOT_FOUND["en"]).format(xs="; ".join(open_)) if open_ else ""
+
+
+def _discursive(case: Case, sources: list[OfferSource], lang: str, texts: dict[int, str],
+                paired: dict[str, list[int]]) -> str | None:
+    """Apertus writes the paragraph from the listed facts only; accepted only if the citations (`_check`) and
+    every claim (`_faithful`) hold. One retry with the problem found; else None (the template is used)."""
     language = {"de": "German", "fr": "French"}.get(lang, "English")
+    by_n = {s.n: s for s in sources}
     facts = "\n".join(
         f"[{x.n}] {x.kind}: {x.name}"
         + "".join(f"; {k}: {v}" for k, v in [("function", x.role), ("unit", x.unit), ("institution", x.institution),
                                                ("expertise", ", ".join(x.expertise[:3])), ("about", x.about[:200])] if v)
+        + "".join(f"; shows the company need: {need}" for need, ns in paired.items() if x.n in ns)
         for x in sources)
     msgs = [
         {"role": "system", "content": (
             "You write for the business-development team of the Canton of Bern. Write natural, flowing prose that a "
             "non-specialist reads easily, in a sober, factual tone. Use ONLY the facts listed for each numbered asset. "
-            "Do not add facts, do not promise results or benefits, do not say what anyone has agreed to. Never use "
-            "the words unique, world-class, leading expert, renowned, excellent, innovative, comprehensive, robust. "
-            "JSON only.")},
+            "Do not add facts, do not promise results or benefits, do not say what anyone has agreed to, and do not "
+            "say what an asset has done unless its facts say so. Never use the words unique, world-class, leading "
+            "expert, renowned, excellent, innovative, comprehensive, robust. JSON only.")},
         {"role": "user", "content": (
-            f"Company: {case.company or 'the company'}\nProfile: {case.analysis.summary}\n"
-            f"Business needs: {'; '.join(case.analysis.company_needs) or 'not stated'}\n\nBern assets:\n{facts}\n\n"
-            f"Write ONE paragraph of 100-150 words in {language} on what Bern offers this company, grouped by theme "
-            "(for example the company's needs), not as a list. Mention ALL assets, each once, by its exact name as "
-            "listed. Give each person's function exactly as listed (do not combine it with another unit). "
+            f"Company: {case.company or 'the company'}\nProfile: {case.analysis.summary}\n\nBern assets:\n{facts}\n\n"
+            f"Write ONE paragraph of 90-150 words in {language} on what Bern offers this company, not as a list. "
+            "Mention ALL assets, each once, by its exact name as listed. Describe each asset in its own clause with "
+            "its own facts only; never give two assets one shared description (no \"both\", no \"together\"). "
+            "Name a company need ONLY for the assets whose line says \"shows the company need\", and in that "
+            "sentence say nothing else about them. Do not mention any other need. Give each person's function "
+            "exactly as listed (do not combine it with another unit or institution). "
             "Do NOT write any numbers or citations; they are added afterwards.\n"
-            "Style example (other assets): \"For its work on glucose sensors, the company would find in Bern Prof. Anna "
-            "Muster, group head of the Sensing Lab, whose expertise covers wearable sensors and diabetes management. "
-            "Prototypes and test parts can be produced by Mechanical Production, a workshop certified to ISO 13485, "
-            "and the Clinical Research Database supports study data management.\"\n"
+            "Style example (other assets): \"For clinical validation, the company could work with Prof. Anna Muster. "
+            "Prof. Muster is group head of the Sensing Lab; her expertise covers wearable sensors. Mechanical "
+            "Production is a workshop certified to ISO 13485, and the Clinical Research Database supports study "
+            "data management.\"\n"
             'Return {"paragraph": "..."}.')},
     ]
-    try:
-        r: _Para = llm.chat_json(msgs, _Para, mode="none", max_tokens=450)  # type: ignore[assignment]
-    except llm.LLMError:
-        return None
-    text = _cite(_clean(r.paragraph), sources, lang)
-    return text if text and _check(text, sources) else None
+    for _ in range(2):
+        try:
+            r: _Para = llm.chat_json(msgs, _Para, mode="none", max_tokens=450)  # type: ignore[assignment]
+        except llm.LLMError:
+            return None
+        text = _cite(_clean(r.paragraph), sources, lang)
+        if not text or not _check(text, sources):
+            problem = "Mention every asset once by its exact name, without superlatives, in at most 150 words."
+        else:
+            problem = _faithful(text, sources, case, texts, paired)
+            if not problem:
+                return text
+        msgs += [{"role": "assistant", "content": json.dumps({"paragraph": r.paragraph}, ensure_ascii=False)},
+                 {"role": "user", "content": f"Not accepted: {problem}. Rewrite the paragraph using only the listed "
+                                             "facts. Return the JSON only."}]
+    return None
+
+
+def _weak(m: Match) -> bool:
+    """The match's own explanation says the evidence does not support it."""
+    return m.why.strip().lower().startswith(("weak match", "schwache", "correspondance faible"))
 
 
 def summarize_offer(case: Case, lang: str = "en") -> Offer:
-    """Selects the cited assets as the pitch partners. The paragraph is readable prose by Apertus, accepted only
-    when every citation sits right after the asset it names (in tests the model otherwise mis-attributed claims);
-    else a template built from the indexed fields. The sources carry the structured, traceable details."""
-    picked = pick_assets(case.matches)
+    """Selects the cited assets as the pitch partners (never one whose explanation says "Weak match"). The
+    paragraph is readable prose by Apertus, accepted only when every citation sits right after the asset it
+    names and every claim is in that asset's sources; else a template built from the indexed fields. A stated
+    need no asset shows is said to be not found, never attached to someone."""
+    picked = pick_assets([m for m in case.matches if not _weak(m)])
     if not picked:
         return Offer(text=case.no_match_message or "", lang=lang)
     for m in case.matches:
         m.selected = m in picked
     ents = index.load_entities()
     sources = [_source(i, m, ents, lang) for i, m in enumerate(picked, 1)]
-    text = _discursive(case, sources, lang) if llm.available() else None
-    if text:
-        return Offer(text=text, sources=sources, lang=lang, generated_by="apertus")
-    return Offer(text=_template(case, picked, lang), sources=sources, lang=lang, generated_by="rules")
+    texts = {s.n: " ".join([ents[s.id].search_text() if s.id in ents else "", s.name, s.role, s.unit, s.institute,
+                            s.institution, s.about, *s.expertise]).lower() for s in sources}
+    paired = {need: [int(n) for n in ns] for need, ns in
+              needs.pairs(case.analysis, {str(n): t for n, t in texts.items()}).items()}
+    text = _discursive(case, sources, lang, texts, paired) if llm.available() else None
+    by = "apertus" if text else "rules"
+    text = text or _template(case, picked, lang, paired)
+    tail = _need_lines(case, sources, paired, lang)
+    return Offer(text=f"{text} {tail}".strip(), sources=sources, lang=lang, generated_by=by)
 
 
 # ---------------- outreach ---------------------------------------------------

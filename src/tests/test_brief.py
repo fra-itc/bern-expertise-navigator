@@ -24,7 +24,9 @@ def _ent(i, name, etype, ev):
 ENTS = {
     "p1": _ent("p1", "Prof. Jane Example", "person", [
         Evidence(field="expertise", value="continuous glucose monitoring",
-                 snippet="Her lab develops new sensors for continuous glucose monitoring in daily life.", url=URL)]),
+                 snippet="Her lab develops new sensors for continuous glucose monitoring in daily life.", url=URL),
+        Evidence(field="description", value="clinical studies",
+                 snippet="Her team runs clinical studies of continuous glucose monitoring patches with patients.", url=URL)]),
     "p2": _ent("p2", "Dr. Not Approved", "person", []),
 }
 PAGES = [Page(url=PUB_URL, source="dcb", title="Projects", fetched_at="2026", text=(
@@ -100,7 +102,7 @@ def test_brief_only_chosen_partners_and_everything_sourced(client):
     assert nd["mail"].startswith("Your clinical evidence could be available about 6–12 months earlier")
     # the preface: everyday words — no academic titles, and the topic explained instead of named
     why = r["explainer"][2]["lines"][0]["text"]
-    assert why.startswith("Jane Example (expert) works on exactly this: a small sensor worn on the skin")
+    assert why.startswith("Jane Example (expert) works on continuous glucose monitoring: a small sensor worn on the skin")
     assert b["opportunities"] == [{"title": "Expertise to strengthen your products",
                                    "items": [{"name": "Prof. Jane Example", "ref": item["page_ref"]}]}]
     # public link: works, read-only, stable across updates
