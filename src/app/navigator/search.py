@@ -361,6 +361,8 @@ def fallback_why(q: str, terms: list[str], hits) -> str:
         phrases = list(dict.fromkeys(t for t in index.tokenize(" ".join([q, *terms]))
                                      if len(t) > 2 and re.search(rf"\b{re.escape(t)}", text)))
     fields = list(dict.fromkeys(_FIELD_NAME.get(ev.field, ev.field) for _, _, ev in lexical))
+    if not phrases:   # the match is on a word form the snippets don't spell out (e.g. a stem): name the fields only
+        return f"Matches your query in its {_join(fields[:3])}; see the quoted source."
     return f"Mentions {_join([f'“{p}”' for p in phrases[:3]])} in its {_join(fields[:3])}."
 
 
