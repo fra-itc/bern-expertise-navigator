@@ -81,3 +81,26 @@ def test_topic_words_and_support():
     assert cases.specific({"hearing"}, {"hearing"}) is True                  # central to the company
     assert cases.specific({"implant"}, set()) is False and cases.specific({"implant", "hip"}, set()) is True
     assert cases.central_words("hearing aid, hearing loss", {"hearing", "aid", "loss"}) == {"hearing"}
+
+
+def test_document_frequencies_come_from_the_storage_interface(monkeypatch):
+    """Regression: _doc_freq called index.load_bm25(), gone since the storage interface, so every request that
+    reached the topic filter raised AttributeError. The real _doc_freq and find_matches run here, unstubbed."""
+    monkeypatch.setattr(cases.index, "load_entities", lambda: ENTS)
+    monkeypatch.setattr(cases, "_df_cache", {})
+    monkeypatch.setattr(llm, "available", lambda *a, **k: False)
+    n, df = cases._doc_freq()
+    assert n == len(ENTS)
+    assert df["cochlear"] == 2 and df["hip"] == 1                     # per profile, not per occurrence
+    assert "cochlear" in cases.topic_words("cochlear implant maker")
+
+    def fake_search(q, k=10, llm_explain=True, **kw):
+        res = [SearchResult(id=e.id, person_or_unit=e.name, entity_type=e.entity_type, role=None,
+                            affiliation=Affiliation(unit=e.unit, institution="ARTORG"), institution="ARTORG",
+                            expertise=[], projects=[], infrastructure_services=[], contact=None, why_match="close in meaning",
+                            via=None, sources=[SourceRef(url=URL, snippet=e.name)], score=0.5, confidence=0.4)
+               for e in ENTS.values()]
+        return SearchResponse(query=q, expanded_terms=[], abstained=False, results=res)
+    monkeypatch.setattr(search, "search", fake_search)
+    names, _ = _names("hip implant, hip arthroplasty")
+    assert names == {"Prof. Hip Surgeon"}

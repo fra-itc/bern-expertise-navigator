@@ -249,7 +249,12 @@ def test_cases_roundtrip_and_api(env, monkeypatch):
     assert (c["company"], c["canton"], c["area"], c["niche"]) == ("", "BE", "diabetes", "glucose")
     cid = c["id"]
     assert client.get(f"/cases/{cid}").json() == c
-    stored = _sql('SELECT company, country, canton, area, niche FROM nav."case" WHERE id = %s', cid)[0]
+    # the offer paragraph is stored (0007); a row from before 0007 (offer NULL) still loads and gets it rebuilt
+    assert c["offer"] and _sql("""SELECT offer->>'text' FROM nav."case" WHERE id = %s""", cid)[0][0] == c["offer"]["text"]
+    _sql('UPDATE nav."case" SET offer = NULL WHERE id = %s RETURNING id', cid)
+    assert client.get(f"/cases/{cid}").json()["offer"] == c["offer"]
+    assert _sql("""SELECT offer IS NOT NULL FROM nav."case" WHERE id = %s""", cid)[0][0]
+    stored =_sql('SELECT company, country, canton, area, niche FROM nav."case" WHERE id = %s', cid)[0]
     assert stored == ("", "Switzerland", "BE", "diabetes", "glucose")
     listed = client.get("/cases").json()[0]
     assert (listed["canton"], listed["area"], listed["niche"]) == ("BE", "diabetes", "glucose")
