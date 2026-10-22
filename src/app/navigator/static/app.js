@@ -555,7 +555,7 @@
     'kb.access': 'Access is reserved for explicitly enabled Kanton Bern accounts.', 'kb.signin': 'Canton staff sign in', 'kb.password': 'Password',
     "theme.dark": "Switch to dark mode", "theme.light": "Switch to light mode",
     "foot.canton": "Official canton website", "foot.contact": "Contact the canton", "foot.imprint": "Cantonal imprint", "foot.legal": "Cantonal legal & privacy information",
-    "foot.project": "Research & Expertise Navigator · Hack Apertus prototype", "foot.logo": "Logo: © Kanton Bern",
+    "foot.project": "Research & Expertise Navigator · Hack Apertus prototype",
     "loading": "Loading…", "retry": "Try again",
     "rq.loadError": "Company requests could not be loaded",
     "rq.filter": "Find a company request", "rq.filterHint": "Search company, needs, location or specialty",
@@ -575,7 +575,7 @@
     'kb.access': 'Zugang nur für ausdrücklich freigeschaltete Konten des Kantons Bern.', 'kb.signin': 'Anmeldung für Kantonsmitarbeitende', 'kb.password': 'Passwort',
     "theme.dark": "Dunklen Modus aktivieren", "theme.light": "Hellen Modus aktivieren",
     "foot.canton": "Website des Kantons", "foot.contact": "Kontakt zum Kanton", "foot.imprint": "Impressum des Kantons", "foot.legal": "Rechtliches & Datenschutz des Kantons",
-    "foot.project": "Research & Expertise Navigator · Hack-Apertus-Prototyp", "foot.logo": "Logo: © Kanton Bern",
+    "foot.project": "Research & Expertise Navigator · Hack-Apertus-Prototyp",
     "loading": "Wird geladen…", "retry": "Erneut versuchen",
     "rq.loadError": "Firmenanfragen konnten nicht geladen werden",
     "rq.filter": "Firmenanfrage finden", "rq.filterHint": "Firma, Bedarf, Standort oder Fachgebiet suchen",
@@ -595,7 +595,7 @@
     'kb.access': 'Accès réservé aux comptes explicitement autorisés du Canton de Berne.', 'kb.signin': 'Connexion du personnel cantonal', 'kb.password': 'Mot de passe',
     "theme.dark": "Activer le mode sombre", "theme.light": "Activer le mode clair",
     "foot.canton": "Site officiel du canton", "foot.contact": "Contacter le canton", "foot.imprint": "Impressum du canton", "foot.legal": "Informations juridiques et confidentialité du canton",
-    "foot.project": "Research & Expertise Navigator · Prototype Hack Apertus", "foot.logo": "Logo : © Canton de Berne",
+    "foot.project": "Research & Expertise Navigator · Prototype Hack Apertus",
     "loading": "Chargement…", "retry": "Réessayer",
     "rq.loadError": "Impossible de charger les demandes d’entreprises",
     "rq.filter": "Trouver une demande", "rq.filterHint": "Rechercher une entreprise, un besoin, un lieu ou une spécialité",
@@ -733,7 +733,7 @@
     <nav class="footer-links" aria-label="${esc(t("foot.canton"))}"><a href="https://www.be.ch/de/start.html" target="_blank" rel="noopener">${esc(t("foot.canton"))}</a>
       <a href="https://www.be.ch/de/start/ueber-uns/kontaktformular.html" target="_blank" rel="noopener">${esc(t("foot.contact"))}</a>
       <a href="https://www.be.ch/de/tools/impressum.html" target="_blank" rel="noopener">${esc(t("foot.imprint"))}</a>
-      <a href="https://www.be.ch/de/tools/rechtliches.html" target="_blank" rel="noopener">${esc(t("foot.legal"))}</a></nav><small>${esc(t("foot.logo"))}</small>`;
+      <a href="https://www.be.ch/de/tools/rechtliches.html" target="_blank" rel="noopener">${esc(t("foot.legal"))}</a></nav>`;
 
   function renderChrome(shell, active) {
     const bar = $("#topbar");
